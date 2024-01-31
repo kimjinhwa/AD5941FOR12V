@@ -11,6 +11,7 @@
  * By using this software you agree to the terms of the associated
  * Analog Devices Software License Agreement.
 **/
+#include <Arduino.h>
 #include "ad5940.h"
 
 /*! \mainpage AD5940 Library Introduction
@@ -53,6 +54,7 @@
 
 /* Remove below variables after AD594x is released. */
 static BoolFlag bIsS2silicon = bFALSE;
+static char TAG[]="ad5940";
 
 /* Declare of SPI functions used to read/write registers */
 static uint32_t AD5940_SPIReadReg(uint16_t RegAddr);
@@ -931,11 +933,13 @@ static uint32_t AD5940_SPIReadReg(uint16_t RegAddr)
   uint32_t Data = 0;
   /* Set register address that we want to read */
   AD5940_CsClr();
+  delay(1);
   AD5940_ReadWrite8B(SPICMD_SETADDR);
   AD5940_ReadWrite16B(RegAddr);
   AD5940_CsSet();
   /* Read it */
   AD5940_CsClr();
+  delay(1);
   AD5940_ReadWrite8B(SPICMD_READREG);
   AD5940_ReadWrite8B(0);  //Dummy read
   /* The real data is coming */
@@ -2483,7 +2487,8 @@ void AD5940_CLKCfg(CLKCfg_Type *pClkCfg)
   tempreg |= (pClkCfg->SysClkDiv&0x3f) << BITP_AFECON_CLKCON0_SYSCLKDIV;
   tempreg |= (pClkCfg->ADCClkDiv&0xf) << BITP_AFECON_CLKCON0_ADCCLKDIV;
   AD5940_WriteReg(REG_AFECON_CLKCON0, tempreg);
-  AD5940_Delay10us(10);
+  //AD5940_Delay10us(10);
+  delayMicroseconds(100);
   /* Step2. set clock source */
   tempreg = pClkCfg->SysClkSrc;
   tempreg |= pClkCfg->ADCCLkSrc << BITP_AFECON_CLKSEL_ADCCLKSEL;
@@ -2909,6 +2914,7 @@ uint32_t  AD5940_WakeUp(int32_t TryCount)
 
     if(count > TryCount)
       break;    /* Failed */
+      delayMicroseconds(10);
   }
   return count;
 }
@@ -2940,7 +2946,8 @@ uint32_t AD5940_GetChipID(void)
 AD5940Err  AD5940_SoftRst(void)
 {
   AD5940_WriteReg(REG_AFECON_SWRSTCON, AD5940_SWRST);
-  AD5940_Delay10us(20); /* AD5940 need some time to exit reset status. 200us looks good. */
+  //AD5940_Delay10us(20); /* AD5940 need some time to exit reset status. 200us looks good. */
+  delayMicroseconds(200);
   /* We can check RSTSTA register to make sure software reset happened. */
   return AD5940ERR_OK;
 }
@@ -2953,9 +2960,11 @@ AD5940Err  AD5940_SoftRst(void)
 void AD5940_HWReset(void)
 {
   AD5940_RstClr();
-  AD5940_Delay10us(200); /* Delay some time */
+  //AD5940_Delay10us(200); /* Delay some time */
+  delayMicroseconds(2000);
   AD5940_RstSet();
-  AD5940_Delay10us(500); /* AD5940 need some time to exit reset status. 200us looks good. */
+  delayMicroseconds(5000);
+  //AD5940_Delay10us(500); /* AD5940 need some time to exit reset status. 200us looks good. */
 }
 
 /**
@@ -3008,7 +3017,8 @@ static uint32_t __AD5940_TakeMeasurement(int32_t *time_out)
   AD5940_AFECtrlS(AFECTRL_ADCCNV|AFECTRL_SINC2NOTCH, bTRUE);/* Start conversion */
   do
   {
-    AD5940_Delay10us(1);  /* Delay 10us */
+    //AD5940_Delay10us(1);  /* Delay 10us */
+    delayMicroseconds(10);
     if(AD5940_INTCTestFlag(AFEINTC_1,AFEINTSRC_SINC2RDY))
     {
         ADCCode = AD5940_ReadAfeResult(AFERESULT_SINC2);
@@ -3077,7 +3087,8 @@ AD5940Err AD5940_ADCPGACal(ADCPGACal_Type *pADCPGACal)
   /* Turn ON reference and ADC power, and DAC reference. We use DAC 1.8V reference to calibrate ADC because of the ADC reference bug. */
   AD5940_AFECtrlS(AFECTRL_ALL, bFALSE); /* Disable all */
   AD5940_AFECtrlS(AFECTRL_ADCPWR|AFECTRL_HPREFPWR|AFECTRL_DACREFPWR|AFECTRL_HSDACPWR|AFECTRL_SINC2NOTCH, bTRUE);
-  AD5940_Delay10us(25);   /* Wait 250us for reference power up */
+  //AD5940_Delay10us(25);   /* Wait 250us for reference power up */
+  delayMicroseconds(250);
   /* INTC configure and open calibration lock */
   INTCCfg = AD5940_INTCGetCfg(AFEINTC_1);
   AD5940_INTCCfg(AFEINTC_1, AFEINTSRC_SINC2RDY, bTRUE); /* Enable SINC2 Interrupt in INTC1 */
@@ -3092,7 +3103,8 @@ AD5940Err AD5940_ADCPGACal(ADCPGACal_Type *pADCPGACal)
     adc_base.ADCMuxN = ADCMUXN_VSET1P1;   /* Short input with common voltage set to 1.11v */
     adc_base.ADCPga = pADCPGACal->ADCPga; /* Set correct Gain value. */
     AD5940_ADCBaseCfgS(&adc_base);
-    AD5940_Delay10us(5);                  /* Wait for sometime */
+    //AD5940_Delay10us(5);                  /* Wait for sometime */
+    delayMicroseconds(50);
     ADCCode = 0;
     for(int i=0; i<8; i++)
     { /* ADC offset calibration register has resolution of 0.25LSB. take full use of it. */
@@ -3164,7 +3176,8 @@ AD5940Err AD5940_ADCPGACal(ADCPGACal_Type *pADCPGACal)
       //measure expected code
       adc_base.ADCPga = ADCPGA_1P5;
       AD5940_ADCBaseCfgS(&adc_base);  
-      AD5940_Delay10us(5);
+      //AD5940_Delay10us(5);
+      delayMicroseconds(50);
       time_out = pADCPGACal->TimeOut10us;   /* Reset time out counter */
       ExpectedGainCode = 0x8000 + (int32_t)((__AD5940_TakeMeasurement(&time_out) - 0x8000)/1.5f\
                                             *ideal_pga_gain[pADCPGACal->ADCPga]);
@@ -3172,7 +3185,8 @@ AD5940Err AD5940_ADCPGACal(ADCPGACal_Type *pADCPGACal)
     }
     adc_base.ADCPga = pADCPGACal->ADCPga;    /* Set to gain under calibration */
     AD5940_ADCBaseCfgS(&adc_base);
-    AD5940_Delay10us(5);
+    //AD5940_Delay10us(5);
+    delayMicroseconds(50);
     time_out = pADCPGACal->TimeOut10us;      /* Reset time out counter */
     ADCCode = __AD5940_TakeMeasurement(&time_out);
     if(time_out == 0) goto ADCPGACALERROR_TIMEOUT;
@@ -3266,7 +3280,8 @@ AD5940Err AD5940_LPTIAOffsetCal(LPTIAOffsetCal_Type *pLPTIAOffsetCal)
   /* Turn ON ADC and its reference. And SINC2. */
   AD5940_AFECtrlS(AFECTRL_ALL, bFALSE); /* Disable all firstly, we only enable things we use */
   AD5940_AFECtrlS(AFECTRL_ADCPWR|AFECTRL_HPREFPWR|AFECTRL_SINC2NOTCH, bTRUE);
-  AD5940_Delay10us(25);                     /* Wait 250us for reference power up */
+  //AD5940_Delay10us(25);                     /* Wait 250us for reference power up */
+  delayMicroseconds(250);
   /* INTC configure and open calibration lock */
   INTCCfg = AD5940_INTCGetCfg(AFEINTC_1);
   AD5940_INTCCfg(AFEINTC_1, AFEINTSRC_SINC2RDY, bTRUE); /* Enable SINC2 Interrupt in INTC1 */
@@ -3278,7 +3293,8 @@ AD5940Err AD5940_LPTIAOffsetCal(LPTIAOffsetCal_Type *pLPTIAOffsetCal)
     AD5940_WriteReg(REG_AFE_ADCOFFSETLPTIA0, 0);   /* Reset offset register */
 
     if(pLPTIAOffsetCal->SettleTime10us > 0)
-      AD5940_Delay10us(pLPTIAOffsetCal->SettleTime10us);  /* Delay 10us */
+      //AD5940_Delay10us(pLPTIAOffsetCal->SettleTime10us);  /* Delay 10us */
+      delayMicroseconds(10*pLPTIAOffsetCal->SettleTime10us);
     time_out = pLPTIAOffsetCal->TimeOut10us;   /* Reset time out counter */
     ADCCode = __AD5940_TakeMeasurement(&time_out);  /* Turn on ADC to get one valid data and then turn off ADC. */
     if(time_out == 0)
@@ -3492,7 +3508,8 @@ AD5940Err AD5940_HSRtiaCal(HSRTIACal_Type *pCalCfg, void *pResult)
   /***** MEASURE VOLTAGE ACROSS RCAL *****/
   AD5940_AFECtrlS(AFECTRL_WG|AFECTRL_ADCPWR, bTRUE);  /* Enable Waveform generator, ADC power */
   //wait for sometime.
-  AD5940_Delay10us(25);
+  //AD5940_Delay10us(25);
+  delayMicroseconds(250);
   AD5940_AFECtrlS(AFECTRL_ADCCNV|AFECTRL_DFT, bTRUE);  /* Start ADC convert and DFT */
   /* Wait until DFT ready */
   while(AD5940_INTCTestFlag(AFEINTC_1, AFEINTSRC_DFTRDY) == bFALSE);  
@@ -3506,7 +3523,8 @@ AD5940Err AD5940_HSRtiaCal(HSRTIACal_Type *pCalCfg, void *pResult)
   AD5940_ADCMuxCfgS(ADCMUXP_HSTIA_P, ADCMUXN_HSTIA_N);
   AD5940_AFECtrlS(AFECTRL_WG|AFECTRL_ADCPWR, bTRUE);  /* Enable Waveform generator, ADC power */
   //wait for sometime.
-  AD5940_Delay10us(25);
+  //AD5940_Delay10us(25);
+  delayMicroseconds(250);
   AD5940_AFECtrlS(AFECTRL_ADCCNV|AFECTRL_DFT, bTRUE);  /* Start ADC convert and DFT */
   /* Wait until DFT ready */
   while(AD5940_INTCTestFlag(AFEINTC_1, AFEINTSRC_DFTRDY) == bFALSE);  
@@ -3742,13 +3760,15 @@ AD5940Err AD5940_LPRtiaCal(LPRTIACal_Type *pCalCfg, void *pResult)
     pSWCfg->Nswitch = SWN_RCAL1;
     pSWCfg->Tswitch = SWT_TRTIA|SWT_RCAL1;
     AD5940_SWMatrixCfgS(pSWCfg);    
-    AD5940_Delay10us(1000);   /* Wait some time here. */
+    //AD5940_Delay10us(1000);   /* Wait some time here. */
+    delay(10);
     /* Measure RCAL channel voltage offset */
     pADCBaseCfg->ADCMuxN = ADCMUXN_N_NODE;
     pADCBaseCfg->ADCMuxP = ADCMUXP_P_NODE;
     pADCBaseCfg->ADCPga = ADCPgaGainRcal;
     AD5940_ADCBaseCfgS(pADCBaseCfg);
-    AD5940_Delay10us(50);   /* Wait some time here. */
+    //AD5940_Delay10us(50);   /* Wait some time here. */
+    delayMicroseconds(500);
     offset_rcal = __AD5940_TakeMeasurement(&time_out);  /* Turn on ADC to get one valid data and then turn off ADC. */
     /* Measure RTIA channel voltage offset */
     if(pCalCfg->LpAmpSel == LPAMP0)
@@ -3762,7 +3782,8 @@ AD5940Err AD5940_LPRtiaCal(LPRTIACal_Type *pCalCfg, void *pResult)
     }
     pADCBaseCfg->ADCPga = ADCPgaGainRtia;    
     AD5940_ADCBaseCfgS(pADCBaseCfg);
-    AD5940_Delay10us(50);   /* Wait some time here. */
+    //AD5940_Delay10us(50);   /* Wait some time here. */
+    delayMicroseconds(500);
     offset_rtia = __AD5940_TakeMeasurement(&time_out);  /* Turn on ADC to get one valid data and then turn off ADC. */
     /* Connect LPTIA loop, let current flow to RTIA. */
     pSWCfg->Dswitch = SWD_RCAL0|((pCalCfg->LpAmpSel == LPAMP0)?SWD_SE0:SWD_SE1);
@@ -3770,14 +3791,16 @@ AD5940Err AD5940_LPRtiaCal(LPRTIACal_Type *pCalCfg, void *pResult)
     pSWCfg->Nswitch = SWN_RCAL1;
     pSWCfg->Tswitch = SWT_TRTIA|SWT_RCAL1;
     AD5940_SWMatrixCfgS(pSWCfg);
-    AD5940_Delay10us(1000);   /* Wait some time here. */
+    //AD5940_Delay10us(1000);   /* Wait some time here. */
+    delay(10);
 		/* Measure RCAL */
     pADCBaseCfg = &dsp_cfg.ADCBaseCfg;
     pADCBaseCfg->ADCMuxN = ADCMUXN_N_NODE;
     pADCBaseCfg->ADCMuxP = ADCMUXP_P_NODE;
     pADCBaseCfg->ADCPga = ADCPgaGainRcal;
     AD5940_ADCBaseCfgS(pADCBaseCfg);
-    AD5940_Delay10us(50);   /* Wait some time here. */
+    //AD5940_Delay10us(50);   /* Wait some time here. */
+    delayMicroseconds(500);
     DftRcal.Real = (int32_t)__AD5940_TakeMeasurement(&time_out)- offset_rcal;
     DftRcal.Image = 0;
 		/* Measure RTIA */    
@@ -3792,7 +3815,8 @@ AD5940Err AD5940_LPRtiaCal(LPRTIACal_Type *pCalCfg, void *pResult)
     }
     pADCBaseCfg->ADCPga = ADCPgaGainRtia;
     AD5940_ADCBaseCfgS(pADCBaseCfg);
-    AD5940_Delay10us(50);   /* Wait some time here. */
+    //AD5940_Delay10us(50);   /* Wait some time here. */
+    delayMicroseconds(500);
     DftRtia.Real = (int32_t)__AD5940_TakeMeasurement(&time_out)- offset_rtia;
     DftRtia.Image = 0;
   }
@@ -3810,7 +3834,8 @@ AD5940Err AD5940_LPRtiaCal(LPRTIACal_Type *pCalCfg, void *pResult)
     AD5940_INTCClrFlag(AFEINTSRC_DFTRDY);
 
     AD5940_AFECtrlS(AFECTRL_HSTIAPWR|AFECTRL_INAMPPWR, bTRUE);
-    AD5940_Delay10us(100);      /* Wait for loop stable. */
+    //AD5940_Delay10us(100);      /* Wait for loop stable. */
+    delayMicroseconds(1000);
     pADCBaseCfg = &dsp_cfg.ADCBaseCfg;
 		/* DFT on RCAL */
     pADCBaseCfg->ADCMuxN = ADCMUXN_N_NODE;
@@ -3818,7 +3843,8 @@ AD5940Err AD5940_LPRtiaCal(LPRTIACal_Type *pCalCfg, void *pResult)
     pADCBaseCfg->ADCPga = ADCPgaGainRcal;
     AD5940_ADCBaseCfgS(pADCBaseCfg);
     AD5940_AFECtrlS(AFECTRL_ADCPWR|AFECTRL_WG, bTRUE);
-    AD5940_Delay10us(25);
+    //AD5940_Delay10us(25);
+    delayMicroseconds(250);
     AD5940_AFECtrlS(AFECTRL_ADCCNV|AFECTRL_DFT, bTRUE);
     /* Wait until DFT ready */
     while(AD5940_INTCTestFlag(AFEINTC_1, AFEINTSRC_DFTRDY) == bFALSE);  
@@ -3839,7 +3865,8 @@ AD5940Err AD5940_LPRtiaCal(LPRTIACal_Type *pCalCfg, void *pResult)
     pADCBaseCfg->ADCPga = ADCPgaGainRtia;
     AD5940_ADCBaseCfgS(pADCBaseCfg);
     AD5940_AFECtrlS(AFECTRL_ADCPWR|AFECTRL_WG, bTRUE);
-    AD5940_Delay10us(25);
+    //AD5940_Delay10us(25);
+    delayMicroseconds(250);
     AD5940_AFECtrlS(AFECTRL_ADCCNV|AFECTRL_DFT, bTRUE);
     /* Wait until DFT ready */
     while(AD5940_INTCTestFlag(AFEINTC_1, AFEINTSRC_DFTRDY) == bFALSE);  
@@ -4022,7 +4049,8 @@ AD5940Err AD5940_HSDACCal(HSDACCal_Type *pCalCfg)
   AD5940_AFECtrlS(AFECTRL_ALL, bFALSE); /* Disable all */
   AD5940_AFECtrlS(AFECTRL_ADCPWR|AFECTRL_HPREFPWR|AFECTRL_DACREFPWR|AFECTRL_HSDACPWR|AFECTRL_SINC2NOTCH|\
     AFECTRL_EXTBUFPWR|AFECTRL_INAMPPWR|AFECTRL_HSTIAPWR|AFECTRL_WG, bTRUE);
-  AD5940_Delay10us(25);   /* Wait 250us for reference power up */
+  //AD5940_Delay10us(25);   /* Wait 250us for reference power up */
+  delayMicroseconds(250);
   /* Step0.5 INTC configure and open calibration lock */
   AD5940_INTCCfg(AFEINTC_1, AFEINTSRC_SINC2RDY, bTRUE); /* Enable SINC2 Interrupt in INTC1 */
   AD5940_WriteReg(REG_AFE_CALDATLOCK, KEY_CALDATLOCK);  /* Unlock KEY */
@@ -4033,7 +4061,8 @@ AD5940Err AD5940_HSDACCal(HSDACCal_Type *pCalCfg)
   /* Step1: Do offset calibration. */
   {
     int32_t ExpectedCode = 0x8000;        /* Ideal ADC output */
-    AD5940_Delay10us(10);
+    //AD5940_Delay10us(10);
+    delayMicroseconds(100);
     time_out = 1000;   /* Reset time out counter */
     ADCCode = __AD5940_TakeMeasurement(&time_out);
 #ifdef ADI_DEBUG
@@ -4048,9 +4077,11 @@ AD5940Err AD5940_HSDACCal(HSDACCal_Type *pCalCfg)
     else
       ADCCode = -ADCCode;
     AD5940_WriteReg(regaddr_offset, ADCCode);
-    AD5940_Delay10us(10);
+    //AD5940_Delay10us(10);
+    delayMicroseconds(100);
     AD5940_WriteReg(REG_AFE_HSDACDAT, 0x800);
-    AD5940_Delay10us(10);
+    //AD5940_Delay10us(10);
+    delayMicroseconds(100);
 #ifdef ADI_DEBUG
 		ADCCode = __AD5940_TakeMeasurement(&time_out);
 		ADI_Print("Voltage after cal: %f \n", AD5940_ADCCode2Volt(ADCCode, ADCPGA_Sel, 1.82));
@@ -4120,7 +4151,8 @@ AD5940Err AD5940_LPDACCal(LPDACCal_Type *pCalCfg, LPDACPara_Type *pResult)
   /* Turn ON ADC and its reference. And SINC2. */
   AD5940_AFECtrlS(AFECTRL_ALL, bFALSE); /* Disable all firstly, we only enable things we use */
   AD5940_AFECtrlS(AFECTRL_ADCPWR|AFECTRL_HPREFPWR|AFECTRL_SINC2NOTCH, bTRUE);
-  AD5940_Delay10us(25);                     /* Wait 250us for reference power up */
+  //AD5940_Delay10us(25);                     /* Wait 250us for reference power up */
+  delayMicroseconds(250);
   /* INTC configure and open calibration lock */
   INTCCfg = AD5940_INTCGetCfg(AFEINTC_1);
   AD5940_INTCCfg(AFEINTC_1, AFEINTSRC_SINC2RDY, bTRUE); /* Enable SINC2 Interrupt in INTC1 */
@@ -4141,13 +4173,15 @@ AD5940Err AD5940_LPDACCal(LPDACCal_Type *pCalCfg, LPDACPara_Type *pResult)
     /* Equation2': ADCCode = Vbias0/1 - Vref1p1 */
     AD5940_LPDACWriteS(0,0);  /* Set LPDAC output voltage to 0.2V(zero code) */
     if(pCalCfg->SettleTime10us > 0)
-      AD5940_Delay10us(pCalCfg->SettleTime10us);  /* Delay nx10us */
+      //AD5940_Delay10us(pCalCfg->SettleTime10us);  /* Delay nx10us */
+      delayMicroseconds(10*pCalCfg->SettleTime10us );
     if(pCalCfg->LpdacSel == LPDAC0)
       AD5940_ADCMuxCfgS(ADCMUXP_VBIAS0, ADCMUXN_VREF1P1); /* Vbias0 is routed to 12BIT LPDAC */
     else
       AD5940_ADCMuxCfgS(ADCMUXP_VBIAS1, ADCMUXN_VREF1P1); /* Vbias1 is routed to 12BIT LPDAC */
 
-    AD5940_Delay10us(5);  /* Delay 50us */
+    //AD5940_Delay10us(5);  /* Delay 50us */
+    delayMicroseconds(50);
     time_out = pCalCfg->TimeOut10us;   /* Reset time out counter */
     ADCCode = __AD5940_TakeMeasurement(&time_out);  /* Turn on ADC to get one valid data and then turn off ADC. */
     if(time_out == 0)
@@ -4163,7 +4197,8 @@ AD5940Err AD5940_LPDACCal(LPDACCal_Type *pCalCfg, LPDACPara_Type *pResult)
       AD5940_ADCMuxCfgS(ADCMUXP_VZERO0, ADCMUXN_VREF1P1); /* Vbias0 is routed to 12BIT LPDAC */
     else
       AD5940_ADCMuxCfgS(ADCMUXP_VZERO1, ADCMUXN_VREF1P1); /* Vbias1 is routed to 12BIT LPDAC */
-    AD5940_Delay10us(5);  /* Delay 50us */
+    //AD5940_Delay10us(5);  /* Delay 50us */
+    delayMicroseconds(50);
     time_out = pCalCfg->TimeOut10us;   /* Reset time out counter */
     ADCCode = __AD5940_TakeMeasurement(&time_out);  /* Turn on ADC to get one valid data and then turn off ADC. */
     if(time_out == 0)
@@ -4180,12 +4215,14 @@ AD5940Err AD5940_LPDACCal(LPDACCal_Type *pCalCfg, LPDACPara_Type *pResult)
     /* Equation2: ADCCode = Vbias0 - Vref1p1 */
     AD5940_LPDACWriteS(0xfff,0x3f);  /* Set LPDAC output voltage to 2.4V(zero code) */
     if(pCalCfg->SettleTime10us > 0)
-      AD5940_Delay10us(pCalCfg->SettleTime10us);  /* Delay nx10us */
+      //AD5940_Delay10us(pCalCfg->SettleTime10us);  /* Delay nx10us */
+      delayMicroseconds(10*pCalCfg->SettleTime10us);
     if(pCalCfg->LpdacSel == LPDAC0)
       AD5940_ADCMuxCfgS(ADCMUXP_VBIAS0, ADCMUXN_VREF1P1); /* Vbias0 is routed to 12BIT LPDAC */
     else
       AD5940_ADCMuxCfgS(ADCMUXP_VBIAS1, ADCMUXN_VREF1P1); /* Vbias1 is routed to 12BIT LPDAC */
-    AD5940_Delay10us(5);  /* Delay 50us */
+    //AD5940_Delay10us(5);  /* Delay 50us */
+    delayMicroseconds(50);
     time_out = pCalCfg->TimeOut10us;   /* Reset time out counter */
     ADCCode = __AD5940_TakeMeasurement(&time_out);  /* Turn on ADC to get one valid data and then turn off ADC. */
     if(time_out == 0)
@@ -4201,7 +4238,8 @@ AD5940Err AD5940_LPDACCal(LPDACCal_Type *pCalCfg, LPDACPara_Type *pResult)
       AD5940_ADCMuxCfgS(ADCMUXP_VZERO0, ADCMUXN_VREF1P1); /* Vbias0 is routed to 12BIT LPDAC */
     else
       AD5940_ADCMuxCfgS(ADCMUXP_VZERO1, ADCMUXN_VREF1P1); /* Vbias1 is routed to 12BIT LPDAC */
-    AD5940_Delay10us(5);  /* Delay 50us */
+    //AD5940_Delay10us(5);  /* Delay 50us */
+    delayMicroseconds(50);
     time_out = pCalCfg->TimeOut10us;   /* Reset time out counter */
     ADCCode = __AD5940_TakeMeasurement(&time_out);  /* Turn on ADC to get one valid data and then turn off ADC. */
     if(time_out == 0)

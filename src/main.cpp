@@ -17,7 +17,8 @@
 
 //SPIClass SPI;
 uint32_t MCUPlatformInit(void *pCfg);
-static const int spiClk = 100000; // 1 MHz
+static const int spiClk = 1000000; // 1 MHz
+static char TAG[] ="Main";
 
 void digitalSet(bool bSet){
     digitalWrite(SCK, bSet);
@@ -57,43 +58,53 @@ void pinsetup()
     pinMode(RESET_5940, OUTPUT);
     pinMode(CELL485_DE, OUTPUT);
     digitalSet(HIGH);
-    //UNITY_BEGIN(); // IMPORTANT LINE!
-    //HardwareSerialExtension RS485Serial(CELL485_DE);
 };
 
 //HardwareSerial Serial1;
+void AD5940_Main(void *parameters);
+void AD5940_Main_init();
 void setup(){
-  pinsetup();
   Serial.begin(115200);
+  pinsetup();
 
   SPI.setFrequency(spiClk );
-  SPI.begin();
+  SPI.begin(SCK,MISO,MOSI,CS_5940);
   pinMode(SS, OUTPUT); //VSPI SS
-  Serial.begin(23400);
-  Serial1.begin(23400);
-  Serial2.begin(23400);
+  Serial1.begin(115200);
+  Serial2.begin(115200);
   AD5940_MCUResourceInit(0);
+  AD5940_Main_init();
+  delay(1000);
+  ESP_LOGI(TAG, "System Started");
 };
-void AD5940_Main(void);
-int i = 0;
+
+unsigned long previousmills = 0;
+int everySecondInterval = 500;
+unsigned long now;
 void loop(void)
 {
-    digitalSet(HIGH);
-    delay(1000);
-    digitalSet(LOW);
-    delay(1000);
-    Serial.println(i++);
-    // Serial.printf("\nAnalog Value %d",analogRead( READ_BATVOL));
+  now = millis();
+  if ((now - previousmills > everySecondInterval))
+  {
+    previousmills = now;
+    ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
+  }
+}
+    //Serial.println(i++);
+    //Serial.printf("\nAnalog Value %d",analogRead( READ_BATVOL));
     // Serial2.write(0x55);
     // if(Serial2.available()){
     //   Serial.printf("\nSerial2 read %x",Serial2.read());
     // }
   // printf("Hello AD5940-Build Time:%s\n",__TIME__);
   // log_i("");
-  // AD5940_Main();
 
+    // digitalSet(HIGH);
+    // delay(1000);
+    // digitalSet(LOW);
+  //void *param;
+  //AD5940_Main(param);
   //spiCommand(SPI, 0b11001100);
-}
 /* Below functions are used to initialize MCU Platform */
 /* 단순하게 Serial.begin(23400) 으로 사용한다.*/
 uint32_t MCUPlatformInit(void *pCfg)

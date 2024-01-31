@@ -16,11 +16,9 @@ Analog Devices Software License Agreement.
 #include <Arduino.h>
 #include <SPI.h>
 #include <AD5940.h>
+#include "main.h"
 #include "driver/gpio.h"
 
-#define GPIO_INTERRUPT26  GPIO_NUM_26 26
-#define ESP_INTR_FLAG_DEFAULT 0
-#define GPIO_OUTPUT_RESET GPIO_NUM_17
 
 #define SYSTICK_MAXCOUNT ((1L<<24)-1) /* we use Systick to complete function Delay10uS(). This value only applies to ADICUP3029 board. */
 #define SYSTICK_CLKFREQ   26000000L   /* Systick clock frequency in Hz. This only appies to ADICUP3029 board */
@@ -96,12 +94,12 @@ void AD5940_ReadWriteNBytes(unsigned char *pSendBuffer,unsigned char *pRecvBuff,
 
 void AD5940_CsClr(void)
 {
-   digitalWrite(SS,0);
+   digitalWrite(CS_5940,0);
 }
 
 void AD5940_CsSet(void)
 {
-   digitalWrite(SS,1);
+   digitalWrite(CS_5940,1);
 }
 
 void AD5940_RstSet(void)
@@ -138,7 +136,7 @@ uint32_t AD5940_GetMCUIntFlag(void)
 uint32_t AD5940_ClrMCUIntFlag(void)
 {
   //  pADI_XINT0->CLR = BITM_XINT_CLR_IRQ0;
-  //gpio_intr_status_clear(GPIO_INTERRUPT26);
+  //gpio_intr_status_clear(GPIO_INTERRUPT32);
   ucInterrupted = 0;
    return 1;
 }
