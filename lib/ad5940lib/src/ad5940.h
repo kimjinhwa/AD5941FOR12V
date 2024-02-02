@@ -23,7 +23,7 @@ extern "C"
 #include "math.h"
 #include "string.h"
 #include "stdio.h"
-#include "main.h"
+#include "mainGrobal.h"
 /** @addtogroup AD5940_Library
   * @{
   */

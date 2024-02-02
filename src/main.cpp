@@ -1,11 +1,19 @@
 #include <Arduino.h>
 #include <SPI.h>
-#include "main.h"
+#include <EEPROM.h>
+#include <wifi.h>
+
+#include "filesystem.h"
+
+#include "mainGrobal.h"
 #include "stdio.h"
 //#include "ADuCM3029.h"
 #include "AD5940.h"
 //#include "HardwareSerialExtention.h"
 #include "HardwareSerial.h"
+#include <BluetoothSerial.h>
+#include "myBlueTooth.h"
+#include "NetworkTask.h"
 
 // 기본 vSPI와 일치한다
 #define VSPI_MISO   MISO  // IO19
@@ -16,9 +24,12 @@
 // //SPIClass * vspi = NULL;
 
 //SPIClass SPI;
-uint32_t MCUPlatformInit(void *pCfg);
+//uint32_t MCUPlatformInit(void *pCfg);
 static const int spiClk = 1000000; // 1 MHz
 static char TAG[] ="Main";
+TaskHandle_t *h_pxNetworkTask;
+TaskHandle_t *h_pxblueToothTask;
+nvsSystemSet systemDefaultValue;
 
 void digitalSet(bool bSet){
     digitalWrite(SCK, bSet);
@@ -63,24 +74,67 @@ void pinsetup()
 //HardwareSerial Serial1;
 void AD5940_Main(void *parameters);
 void AD5940_Main_init();
+LittleFileSystem lsFile;
+void wifiApmodeConfig()
+{
+}
+void readnWriteEEProm()
+{
+  uint8_t ipaddr1;
+  if (EEPROM.read(0) != 0x55)
+  {
+
+    systemDefaultValue.AlarmAmpere = 200;
+    systemDefaultValue.alarmDiffCellVoltage = 200;
+    systemDefaultValue.alarmHighCellVoltage = 14500;
+    systemDefaultValue.alarmLowCellVoltage = 8500;
+    systemDefaultValue.AlarmTemperature = 65;
+    systemDefaultValue.cutoffHighCellVoltage = 14800;
+    systemDefaultValue.cutoffLowCellVoltage = 6500;
+    systemDefaultValue.GATEWAY =(uint32_t)IPAddress(192, 168, 0, 1); 
+    systemDefaultValue.IPADDRESS =(uint32_t)IPAddress(192, 168, 0, 201); 
+    systemDefaultValue.modbusId = 1;
+    strncpy(systemDefaultValue.ssid ,"iptime_mbhong",20);
+    strncpy(systemDefaultValue.ssid_password,"",10);
+    systemDefaultValue.SUBNETMASK =(uint32_t)IPAddress(255, 255, 255, 0); 
+    systemDefaultValue.TotalCellCount = 40;
+    strncpy(systemDefaultValue.userid,"admin",10);
+    strncpy(systemDefaultValue.userpassword,"admin",10);
+
+    EEPROM.writeByte(0, 0x55);
+    //EEPROM.writeBytes(1, (const byte *)&ipAddress_struct, sizeof(nvsSystemSet));
+    EEPROM.commit();
+  }
+  EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+}
+BluetoothSerial SerialBT;
+
 void setup(){
+  EEPROM.begin(100);
+  readnWriteEEProm();
   Serial.begin(115200);
+  Serial1.begin(115200,SERIAL_8N1,26,22);
+  Serial2.begin(115200,SERIAL_8N1,18,19);
+  SerialBT.begin("TIMP_Device_1");
+  wifiApmodeConfig();
+  lsFile.littleFsInitFast(0);
   pinsetup();
 
   SPI.setFrequency(spiClk );
   SPI.begin(SCK,MISO,MOSI,CS_5940);
   pinMode(SS, OUTPUT); //VSPI SS
-  Serial1.begin(115200);
-  Serial2.begin(115200);
   AD5940_MCUResourceInit(0);
   AD5940_Main_init();
   delay(1000);
   ESP_LOGI(TAG, "System Started");
+
+  //xTaskCreate(NetworkTask,"NetworkTask",5000,NULL,1,h_pxNetworkTask); //PCB 패턴문제로 사용하지 않는다.
+  xTaskCreate(blueToothTask,"blueToothTask",5000,NULL,1,h_pxblueToothTask);
 };
 
-unsigned long previousmills = 0;
-int everySecondInterval = 500;
-unsigned long now;
+static unsigned long previousmills = 0;
+static int everySecondInterval = 5000;
+static unsigned long now;
 void loop(void)
 {
   now = millis();
@@ -91,12 +145,12 @@ void loop(void)
   }
 }
     //Serial.println(i++);
-    //Serial.printf("\nAnalog Value %d",analogRead( READ_BATVOL));
+    //Serial.outputStream->printf("\nAnalog Value %d",analogRead( READ_BATVOL));
     // Serial2.write(0x55);
     // if(Serial2.available()){
-    //   Serial.printf("\nSerial2 read %x",Serial2.read());
+    //   Serial.outputStream->printf("\nSerial2 read %x",Serial2.read());
     // }
-  // printf("Hello AD5940-Build Time:%s\n",__TIME__);
+  // outputStream->printf("Hello AD5940-Build Time:%s\n",__TIME__);
   // log_i("");
 
     // digitalSet(HIGH);

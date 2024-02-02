@@ -3371,8 +3371,8 @@ AD5940Err AD5940_HSRtiaCal(HSRTIACal_Type *pCalCfg, void *pResult)
   float ExcitVolt; /* Excitation voltage, unit is mV */
   uint32_t RtiaVal;
   uint32_t const HpRtiaTable[]={200,1000,5000,10000,20000,40000,80000,160000,0};
-  uint32_t const HSTIADERLOADTable[]={0,10,30,50,100,999999999999};
-  uint32_t const HSTIADERTIATable[] = {50,100,200,1000,5000,10000,20000,40000,80000,160000,0,999999999999999};
+  uint32_t const HSTIADERLOADTable[]={0,10,30,50,100,999999999};
+  uint32_t const HSTIADERTIATable[] = {50,100,200,1000,5000,10000,20000,40000,80000,160000,0,999999999};
   uint32_t WgAmpWord;
 
   iImpCar_Type DftRcalVolt, DftRtiaVolt;

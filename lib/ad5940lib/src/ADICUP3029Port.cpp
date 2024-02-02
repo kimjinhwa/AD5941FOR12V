@@ -16,7 +16,7 @@ Analog Devices Software License Agreement.
 #include <Arduino.h>
 #include <SPI.h>
 #include <AD5940.h>
-#include "main.h"
+#include "mainGrobal.h"
 #include "driver/gpio.h"
 
 
