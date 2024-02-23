@@ -32,6 +32,8 @@
 //#define GPIO_INTERRUPT32  GPIO_NUM_32
 #define ESP_INTR_FLAG_DEFAULT 0
 
+#define MAX_INSTALLED_CELLS 50
+
 typedef struct
 {
     char ssid[20];
@@ -53,6 +55,14 @@ typedef struct
 } nvsSystemSet;
 extern nvsSystemSet systemDefaultValue;
 
+typedef struct {
+  time_t readTime;
+  float voltage;
+  float impendance;
+  int16_t temperature;
+  int16_t compensation;
+}_cell_value;
+extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
 //#define RESET_5940 GPIO_NUM_5
 // #define SERIAL_SEL_ADDR3    34  // Only Use Input
 // #define SERIAL_SEL_ADDR2    35  // test fail 

@@ -15,7 +15,7 @@
 #include "myBlueTooth.h"
 #include "NetworkTask.h"
 #include <RtcDS1302.h>
-
+#include "modbusRtu.h"
 // 기본 vSPI와 일치한다
 #define VSPI_MISO   MISO  // IO19
 #define VSPI_MOSI   MOSI  // IO 23
@@ -33,7 +33,8 @@ TaskHandle_t *h_pxblueToothTask;
 nvsSystemSet systemDefaultValue;
 ThreeWire myWire(13, 14, 33); // IO, SCLK, CE
 RtcDS1302<ThreeWire> Rtc(myWire);
-
+ModbusServerRTU rtu485(2000);
+_cell_value cellvalue[MAX_INSTALLED_CELLS];
 
 void pinsetup()
 {
@@ -224,7 +225,14 @@ class ExtendSerial//: public HardwareSerial
     };
 
 };
-
+void setupModbusAgentForLcd(){
+  //address는 항상 1이다.
+  uint8_t address_485 = 1; 
+  rtu485.begin(Serial2,9600,1);
+  rtu485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
+  rtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC03);
+  rtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
+}
 void setup(){
   EEPROM.begin(100);
   readnWriteEEProm();
@@ -235,8 +243,19 @@ void setup(){
   //외부 485통신에 사용한다.
   Serial2.begin(BAUDRATE,SERIAL_8N1,SERIAL_RX2 ,SERIAL_TX2 );
   ExtendSerial ExtendSerial;
-  ExtendSerial.selectCellModule(true);
+  //ExtendSerial.selectCellModule(true);
+  ExtendSerial.selectLcd();  //232통신이다 
+                             // 485가 enable가 된다고 해도 
+                             // 그쪽으로는 출력이 되지 않으므로 상관이 없다.
+  for(int i=0;i<40;i++){
+    cellvalue[i].voltage = 100+i;
+    cellvalue[i].impendance= 200+i;
+    cellvalue[i].temperature= 300+i;
+    cellvalue[i].compensation= 400+i;
 
+  }
+
+  setupModbusAgentForLcd();
   SerialBT.begin("TIMP_Device_1");
   wifiApmodeConfig();
   lsFile.littleFsInitFast(0);
@@ -254,15 +273,24 @@ void setup(){
   xTaskCreate(blueToothTask,"blueToothTask",5000,NULL,1,h_pxblueToothTask);
 };
 
-static unsigned long previousmills = 0;
-static int everySecondInterval = 5000;
+static unsigned long previousSecondmills = 0;
+static int everySecondInterval = 1000;
+
+static int Interval_5Second = 5000;
+static unsigned long previous_5Secondmills = 0;
 static unsigned long now;
+//각각의 시간은 병렬로 수행된다.
 void loop(void)
 {
-  now = millis(); if ((now - previousmills > everySecondInterval))
+  now = millis(); 
+  if ((now - previousSecondmills > everySecondInterval))
   {
-    previousmills = now;
+    previousSecondmills = now;
     ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
+  }
+  if ((now - previous_5Secondmills > Interval_5Second))
+  {
+    previousSecondmills = now;
   }
 }
     //Serial.println(i++);
