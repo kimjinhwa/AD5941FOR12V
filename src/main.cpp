@@ -34,6 +34,7 @@ nvsSystemSet systemDefaultValue;
 ThreeWire myWire(13, 14, 33); // IO, SCLK, CE
 RtcDS1302<ThreeWire> Rtc(myWire);
 ModbusServerRTU rtu485(2000,CELL485_DE);
+//ModbusServerRTU extrtu485(2000,EXT_485EN_1);
 _cell_value cellvalue[MAX_INSTALLED_CELLS];
 
 void pinsetup()
@@ -232,6 +233,12 @@ void setupModbusAgentForLcd(){
   rtu485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
   rtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC03);
   rtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
+
+  // extrtu485.begin(Serial1,9600,1);
+  // extrtu485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
+  // extrtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC03);
+  // extrtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
+
 }
 void setup(){
   EEPROM.begin(100);
@@ -460,4 +467,16 @@ int UrtCfg(int iBaud)
   //     Serial.printf("%c",Serial2.read());
   //   }
   //   delay(1000);
+  // }
+  // while(1){
+  //   // Serial.println("Serial Test");
+  //   // digitalWrite(EXT_485EN_1, HIGH);
+  //   // Serial1.println("Serial ext Test");
+  //   // Serial1.flush();
+  //   digitalWrite(EXT_485EN_1, LOW);
+  //   if(Serial1.available()){
+  //     Serial.printf("%c",Serial1.read());
+  //   }
+  //   //digitalWrite(EXT_485EN_1, HIGH);
+  //   delay(5);
   // }
