@@ -36,7 +36,7 @@ ModbusMessage FC06(ModbusMessage request)
   }
   else if (writeAddress  >= 40 && writeAddress  < 47)
   { // 시간을 설정한다.
-    Serial.printf("\nFunction code 06 %d[%d] %d ",address,writeAddress,value);
+    //Serial.printf("\nFunction code 06 %d[%d] %d ",address,writeAddress,value);
     switch (writeAddress  )
     {
     case 40:

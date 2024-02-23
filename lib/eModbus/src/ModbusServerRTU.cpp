@@ -235,9 +235,9 @@ void ModbusServerRTU::serve(ModbusServerRTU *myServer) {
         // Do we have gathered a valid response now?
         if (response.size() >= 3) {
           // Yes. send it back.
-          digitalWrite(CELL485_DE, 1);
+          //digitalWrite(CELL485_DE, 1);
           RTUutils::send(*(myServer->MSRserial), myServer->MSRlastMicros, myServer->MSRinterval, myServer->MRTSrts, response, myServer->MSRuseASCII);
-          digitalWrite(CELL485_DE, 0);
+          //digitalWrite(CELL485_DE, 0);
           LOG_D("Response sent.\n");
           // Count it, in case we had an error response
           if (response.getError() != SUCCESS) {

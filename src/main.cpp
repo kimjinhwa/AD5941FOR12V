@@ -33,7 +33,7 @@ TaskHandle_t *h_pxblueToothTask;
 nvsSystemSet systemDefaultValue;
 ThreeWire myWire(13, 14, 33); // IO, SCLK, CE
 RtcDS1302<ThreeWire> Rtc(myWire);
-ModbusServerRTU rtu485(2000);
+ModbusServerRTU rtu485(2000,CELL485_DE);
 _cell_value cellvalue[MAX_INSTALLED_CELLS];
 
 void pinsetup()
