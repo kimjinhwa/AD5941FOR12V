@@ -1,6 +1,15 @@
 {
     "files.associations": {
         "ad5940.h": "c",
-        "batimpedance.h": "c"
+        "batimpedance.h": "c",
+        "*.tcc": "cpp",
+        "iomanip": "cpp",
+        "exception": "cpp",
+        "fstream": "cpp",
+        "iosfwd": "cpp",
+        "new": "cpp",
+        "ostream": "cpp",
+        "sstream": "cpp",
+        "streambuf": "cpp"
     }
 }

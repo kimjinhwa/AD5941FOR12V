@@ -263,6 +263,48 @@ const char* LittleFileSystem::rangematch(const char *pattern, char test, int fla
 void LittleFileSystem::setOutputStream(Print* stream){
     this->outputStream = stream;
 }
+int LittleFileSystem::rm(String fileName)
+{
+    String unLinkfilename = String("/spiffs/") + fileName;
+    if (unlink(unLinkfilename.c_str()) == -1){
+      outputStream->printf("Faild to delete %s\r\n", unLinkfilename.c_str());
+      return -1 ;
+    }
+    else{
+      outputStream->printf("File deleted %s\r\n", unLinkfilename.c_str());
+      return 1 ;
+    }
+
+  //
+  DIR *dir = NULL;
+  dir = opendir("/spiffs/");
+  if (!dir)
+  {
+    outputStream->printf( "Error opening directory\r\n");
+    return -1;
+  }
+  struct dirent *entry;
+  unLinkfilename.replace("*", ".");
+  unLinkfilename.replace("..", ".");
+  if (!unLinkfilename.startsWith("."))
+  {
+    unLinkfilename= "." + unLinkfilename;
+  }
+  size_t ext_len = unLinkfilename.length();
+
+  while ((entry = readdir(dir)) != NULL)
+  {
+    if (entry->d_type == DT_REG && strlen(entry->d_name) > ext_len &&
+        strcmp(entry->d_name + strlen(entry->d_name) - ext_len, unLinkfilename.c_str()) == 0)
+    {
+      String filePath = "/spiffs/" + String(entry->d_name);
+      if (unlink(filePath.c_str()) != 0)
+      {
+      }
+      outputStream->printf( "deleted file %s\r\n", filePath.c_str());
+    }
+  }
+}
 void LittleFileSystem::littleFsInitFast(int bformat){
   esp_vfs_spiffs_conf_t conf = {
       .base_path = "/spiffs",
@@ -376,12 +418,12 @@ void LittleFileSystem::df()
                    p->type, p->subtype, p->address, p->size, p->label);
     } while (pi = (esp_partition_next(pi)));
   }
-  outputStream->printf( "\r\n|  HEAP   |       |          |   %d | ESP.getHeapSize |\r\n", ESP.getHeapSize());
+  outputStream->printf( "\r\n|HEAP     |       |          |   %d | ESP.getHeapSize |\r\n", ESP.getHeapSize());
   outputStream->printf( "|Free heap|       |          |   %d | ESP.getFreeHeap |\r\n", ESP.getFreeHeap());
   outputStream->printf( "|Psram    |       |          |   %d | ESP.PsramSize   |\r\n", ESP.getPsramSize());
   outputStream->printf( "|Free Psrm|       |          |   %d | ESP.FreePsram   |\r\n", ESP.getFreePsram());
   outputStream->printf( "|UsedPsram|       |          |   %d | Psram - FreeRam |\r\n", ESP.getPsramSize() - ESP.getFreePsram());
-  outputStream->printf( "|BlEheap Size|       |          |   %d |\r\n", uxTaskGetStackHighWaterMark(h_pxblueToothTask));
+  outputStream->printf( "|BlEh Size|       |          |   %d |\r\n", uxTaskGetStackHighWaterMark(h_pxblueToothTask));
 }
 int LittleFileSystem::format()
 {
@@ -389,6 +431,22 @@ int LittleFileSystem::format()
   return 1;
 }
 
+
+int LittleFileSystem::writeLog(time_t logtime,u_int16_t status,u_int16_t fault)
+{
+  FILE *fp;
+  upslog_t log = {
+    .logTime = logtime, .status = status, .fault = fault
+  };
+  fp = fopen("/spiffs/logFile.txt", "w+");
+  if(fp == NULL){
+    outputStream->printf("\nLogFile Open Error");
+    return -1;
+  };
+  fwrite((upslog_t *)&log,sizeof(upslog_t),1,fp);
+  fclose(fp);
+  return 0;
+}
 void LittleFileSystem::cat(String filename)
 {
   FILE *f;

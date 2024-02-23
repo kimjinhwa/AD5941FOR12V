@@ -4,8 +4,8 @@
 #include <wifi.h>
 
 #include "filesystem.h"
-
 #include "mainGrobal.h"
+
 #include "stdio.h"
 //#include "ADuCM3029.h"
 #include "AD5940.h"
@@ -14,6 +14,7 @@
 #include <BluetoothSerial.h>
 #include "myBlueTooth.h"
 #include "NetworkTask.h"
+#include <RtcDS1302.h>
 
 // 기본 vSPI와 일치한다
 #define VSPI_MISO   MISO  // IO19
@@ -30,35 +31,21 @@ static char TAG[] ="Main";
 TaskHandle_t *h_pxNetworkTask;
 TaskHandle_t *h_pxblueToothTask;
 nvsSystemSet systemDefaultValue;
+ThreeWire myWire(13, 14, 33); // IO, SCLK, CE
+RtcDS1302<ThreeWire> Rtc(myWire);
 
-void digitalSet(bool bSet){
-    digitalWrite(SCK, bSet);
-    digitalWrite(MISO, bSet);
-    digitalWrite(MOSI, bSet);
-    digitalWrite(AD5940_ISR, bSet);
 
-    digitalWrite(SERIAL_SEL_ADDR0, bSet);
-    digitalWrite(SERIAL_SEL_ADDR1, bSet);
-
-    digitalWrite(RTC1305_EN, bSet);
-    digitalWrite(AD636_SEL, bSet);
-    digitalWrite(CS_5940, bSet);
-    digitalWrite(EXT_485EN_1, bSet);
-    digitalWrite(RESET_N, bSet);
-    digitalWrite(RESET_5940, bSet);
-    digitalWrite(CELL485_DE, bSet);
-    digitalWrite(LED_OP, bSet);
-}
 void pinsetup()
 {
     pinMode(READ_BATVOL, INPUT);
-    pinMode(SCK, OUTPUT);
-    pinMode(MISO, OUTPUT);
-    pinMode(MOSI, OUTPUT);
+    // pinMode(SCK, OUTPUT);
+    // pinMode(MISO, OUTPUT);
+    // pinMode(MOSI, OUTPUT);
 
     pinMode(AD5940_ISR, OUTPUT);
     pinMode(SERIAL_SEL_ADDR0, OUTPUT);
     pinMode(SERIAL_SEL_ADDR1, OUTPUT);
+    pinMode(SERIAL_TX2 , OUTPUT);
     pinMode(LED_OP, OUTPUT);
 
     pinMode(RTC1305_EN, OUTPUT);
@@ -68,13 +55,15 @@ void pinsetup()
     pinMode(RESET_N, OUTPUT);
     pinMode(RESET_5940, OUTPUT);
     pinMode(CELL485_DE, OUTPUT);
-    digitalSet(HIGH);
+
+
+    digitalWrite(CS_5940, HIGH);
 };
 
 //HardwareSerial Serial1;
 void AD5940_Main(void *parameters);
 void AD5940_Main_init();
-LittleFileSystem lsFile;
+
 void wifiApmodeConfig()
 {
 }
@@ -109,16 +98,141 @@ void readnWriteEEProm()
 }
 BluetoothSerial SerialBT;
 
+void setRtcNewTime(RtcDateTime rtc){
+  digitalWrite(CS_5940, HIGH);
+  SPI.end();
+  Rtc.Begin();
+  delay(1);
+  if (!Rtc.GetIsRunning())
+  {
+    printf("RTC was not actively running, starting now\r\n");
+    Rtc.SetIsRunning(true);
+  }
+  else 
+    printf("RTC was actively status running \r\n");
+  // struct timeval tmv;
+  // tmv.tv_usec = 0;
+  // tmv.tv_sec = 0;
+  //RtcDateTime now(tmv.tv_sec);
+  Rtc.SetDateTime(rtc);
+  myWire.end();
+  SPI.begin(SCK,MISO,MOSI,CS_5940);
+}
+RtcDateTime getDs1302GetRtcTime(){
+  digitalWrite(CS_5940, HIGH);
+  SPI.end();
+  Rtc.Begin();
+  if (!Rtc.GetIsRunning())
+  {
+    printf("RTC was not actively running, starting now\r\n");
+    Rtc.SetIsRunning(true);
+  }
+  else 
+    printf("RTC was actively status running \r\n");
+  delay(1);
+  RtcDateTime nowTime = Rtc.GetDateTime();
+  myWire.end();
+  delay(1);
+  SPI.begin(SCK,MISO,MOSI,CS_5940);
+  return nowTime;
+}
+void setRtc()
+{
+  Rtc.Begin();
+  RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
+  printf("\r\ncompiled time is %d/%d/%d %d:%d:%d\r\n",compiled.Year(),compiled.Month(),compiled.Day(),compiled.Hour(),compiled.Minute(),compiled.Second());
+  if (!Rtc.IsDateTimeValid())
+  {
+    printf("RTC lost confidence in the DateTime!\r\n");
+    //Rtc.SetDateTime(compiled);
+  }
+  else 
+    printf("RTC available in the DateTime!\r\n");
+  if (Rtc.GetIsWriteProtected())
+  {
+    printf("RTC was write protected, enabling writing now\r\n");
+    Rtc.SetIsWriteProtected(false);
+  }
+  else 
+    printf("RTC enabling writing \r\n");
+  if (!Rtc.GetIsRunning())
+  {
+    printf("RTC was not actively running, starting now\r\n");
+    Rtc.SetIsRunning(true);
+  }
+  else 
+    printf("RTC was actively status running \r\n");
+  if (!Rtc.GetIsRunning())
+  {
+    printf("RTC was not actively running, starting now\r\n");
+    Rtc.SetIsRunning(true);
+  }
+  else 
+    printf("RTC was actively status running \r\n");
+
+  RtcDateTime now = Rtc.GetDateTime();
+  printf("\r\nnow time is %d/%d/%d %d:%d:%d\r\n",now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
+  if (now < compiled)
+  {
+    printf("\r\nSet data with compiled time");
+    //Rtc.SetDateTime(compiled);
+  }
+  struct timeval tmv;
+  tmv.tv_sec = now.TotalSeconds();
+  tmv.tv_usec = 0;
+  //time_t toUnixTime = now.Unix32Time();
+  //시스템의 시간도 같이 맞추어 준다.
+  settimeofday(&tmv, NULL);
+  gettimeofday(&tmv, NULL);
+  now = RtcDateTime(tmv.tv_sec);
+  //now = tmv.tv_sec;
+  printf("\r\nset and reread time is %d/%d/%d %d:%d:%d\r\n",now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
+
+  myWire.end();
+}
+#define SELECT_LCD do {digitalWrite(SERIAL_SEL_ADDR0,HIGH);digitalWrite(SERIAL_SEL_ADDR1,LOW); }while(0)
+  
+  
+class ExtendSerial//: public HardwareSerial
+{
+  private:
+    const uint8_t _addr0=23;
+    const uint8_t _addr1=2;
+    bool _addrValue0;
+    bool _addrValue1;
+  public:
+    ExtendSerial(){// : HardwareSerial(uart_num) {
+    //LCDSerial(uint8_t uart_num) : HardwareSerial(uart_num){
+      pinMode(_addr0,OUTPUT);
+      pinMode(_addr1,OUTPUT);
+    };
+    void selectLcd(){
+      digitalWrite(_addr0,true);
+      digitalWrite(_addr1,false); 
+    };
+    void ReleaseLcd(){
+      digitalWrite(_addr0,LOW);
+      digitalWrite(_addr1,LOW); 
+    };
+
+};
+
 void setup(){
   EEPROM.begin(100);
   readnWriteEEProm();
-  Serial.begin(115200);
-  Serial1.begin(115200,SERIAL_8N1,26,22);
-  Serial2.begin(115200,SERIAL_8N1,18,19);
+  pinsetup();
+  Serial.begin(BAUDRATE);
+  // 내부의 LCD와 셀의 온도및 릴레이를 위해 사용한다.
+  Serial1.begin(BAUDRATE,SERIAL_8N1,SERIAL_RX1 ,SERIAL_TX1 );
+  //외부 485통신에 사용한다.
+  Serial2.begin(BAUDRATE,SERIAL_8N1,SERIAL_RX2 ,SERIAL_TX2 );
+  ExtendSerial ExtendSerial;
+  ExtendSerial.selectLcd();
+
   SerialBT.begin("TIMP_Device_1");
   wifiApmodeConfig();
   lsFile.littleFsInitFast(0);
-  pinsetup();
+  setRtc();
 
   SPI.setFrequency(spiClk );
   SPI.begin(SCK,MISO,MOSI,CS_5940);
@@ -137,8 +251,7 @@ static int everySecondInterval = 5000;
 static unsigned long now;
 void loop(void)
 {
-  now = millis();
-  if ((now - previousmills > everySecondInterval))
+  now = millis(); if ((now - previousmills > everySecondInterval))
   {
     previousmills = now;
     ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
@@ -279,3 +392,28 @@ int UrtCfg(int iBaud)
 //   while((pADI_UART0->COMLSR&0x20) == 0);// tx fifo empty
 //   return c;
 // }
+
+// void digitalSet(bool bSet){
+//     // digitalWrite(SCK, bSet);
+//     // digitalWrite(MISO, bSet);
+//     // digitalWrite(MOSI, bSet);
+//     // digitalWrite(AD5940_ISR, bSet);
+//     // digitalWrite(SERIAL_SEL_ADDR0, bSet);
+//     // digitalWrite(SERIAL_SEL_ADDR1, bSet);
+//     // digitalWrite(RTC1305_EN, bSet);
+//     // digitalWrite(AD636_SEL, bSet);
+//     // digitalWrite(CS_5940, bSet);
+//     // digitalWrite(EXT_485EN_1, bSet);
+//     // digitalWrite(RESET_N, bSet);
+//     // digitalWrite(RESET_5940, bSet);
+//     // digitalWrite(CELL485_DE, bSet);
+//     // digitalWrite(LED_OP, bSet);
+// }
+  // while(1){
+  //   Serial.println("LCD Test");
+  //   Serial2.println("LCD Test");
+  //   if(Serial2.available()){
+  //     Serial2.printf("%c",Serial2.read());
+  //   }
+  //   delay(1000);
+  // }

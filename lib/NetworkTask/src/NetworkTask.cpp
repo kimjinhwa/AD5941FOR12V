@@ -1,13 +1,15 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include "mainGrobal.h"
+
 //#include <openVPNClinet.h>
 
 const char *soft_ap_ssid ="IMP_";
 const char *soft_ap_password = "87654321";
 void NetworkTask(void *parameter)
 {
-
-    WiFi.begin("AndroidHotspot1953", "87654321");
+    //WiFi.begin(systemDefaultValue.ssid, systemDefaultValue.ssid_password);
+    WiFi.begin("iptime_mbhong", "");
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         printf(".");

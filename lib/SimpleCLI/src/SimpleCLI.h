@@ -8,6 +8,8 @@
 #define SimpleCLI_h
 
 #include "CommandError.h" // CommandError, Command, Argument
+#include "filesystem.h"
+#include "Stream.h"
 
 #define SIMPLECLI_VERSION "1.1.4"
 #define SIMPLECLI_VERSION_MAJOR 1
@@ -33,12 +35,15 @@ class SimpleCLI {
         void addCmd(Command& c);
 
     public:
-        SimpleCLI(int commandQueueSize = 10, int errorQueueSize = 10);
+        Print *outputStream ;
+        Stream *inputStream ;
+        SimpleCLI(int commandQueueSize = 10, int errorQueueSize = 10,Print *outputStream = &Serial);
         ~SimpleCLI();
 
         void pause();
         void unpause();
-
+        void setOutputStream(Print *outputStream );
+        void setInputStream(Stream *inputStream );
         void parse(const String& input);
         void parse(const char* input);
         void parse(const char* input, size_t input_len);
@@ -76,5 +81,6 @@ class SimpleCLI {
         void setOnError(void (* onError)(cmd_error* e));
         void setErrorCallback(void (* onError)(cmd_error* e));
 };
-
+extern SimpleCLI simpleCli;
+extern LittleFileSystem lsFile;
 #endif // ifndef SimpleCLI_h

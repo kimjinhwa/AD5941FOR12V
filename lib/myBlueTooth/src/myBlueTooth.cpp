@@ -5,167 +5,183 @@
 #include "filesystem.h"
 #include <RtcDS1302.h>
 
-SimpleCLI simpleCli;
 
 extern BluetoothSerial SerialBT;
-extern LittleFileSystem lsFile;
-Print *outputStream;
-Stream *inputStream;
-
-ThreeWire myWire(13, 14, 33); // IO, SCLK, CE
-RtcDS1302<ThreeWire> Rtc(myWire);
-
-void printDateTime(const RtcDateTime &dt){
-  outputStream->printf("\r\nnow time is %d/%d/%d %d:%d:%d",dt.Year(),dt.Month(),dt.Day(),dt.Hour(),dt.Minute(),dt.Second());
-}
-void getTime(){
-  RtcDateTime now_rtc = Rtc.GetDateTime();
-  printDateTime(now_rtc);
-}
-void ls_configCallback(cmd *cmdPtr){
-  Command cmd(cmdPtr);
-  Argument arg = cmd.getArgument(0);
-  String argVal = arg.getValue();
-  lsFile.listDir("/spiffs/", NULL);
-}
+//extern LittleFileSystem lsFile;
+// Print *outputStream;
+// Stream *inputStream;
 
 
-void time_configCallback(cmd *cmdPtr){
-  RtcDateTime now = Rtc.GetDateTime();
-  Command cmd(cmdPtr);
-  Argument arg ;
-  String strValue ;
+// void ls_configCallback(cmd *cmdPtr){
+//   Command cmd(cmdPtr);
+//   Argument arg = cmd.getArgument(0);
+//   String argVal = arg.getValue();
+//   lsFile.listDir("/spiffs/", NULL);
+// }
 
-  arg = cmd.getArgument("year");
-  if(arg.isSet()){
-    strValue = arg.getValue();
-    now = RtcDateTime(strValue.toInt(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
-    Rtc.SetDateTime(now);
-    return ;
-  }
-  arg = cmd.getArgument("Month");
-  if(arg.isSet()){
-    strValue = arg.getValue();
-    now = RtcDateTime(now.Year(),strValue.toInt(),now.Day(),now.Hour(),now.Minute(),now.Second());
-    Rtc.SetDateTime(now);
-    return ;
-  }
-  arg = cmd.getArgument("day");
-  if(arg.isSet()){
-    strValue = arg.getValue();
-    now = RtcDateTime(now.Year(),now.Month(),strValue.toInt(),now.Hour(),now.Minute(),now.Second());
-    Rtc.SetDateTime(now);
-    return ;
-  }
-  arg = cmd.getArgument("hour");
-  if(arg.isSet()){
-    strValue = arg.getValue();
-    now = RtcDateTime(now.Year(),now.Month(),now.Day(),strValue.toInt(),now.Minute(),now.Second());
-    Rtc.SetDateTime(now);
-    return ;
-  }
-  arg = cmd.getArgument("minute");
-  if(arg.isSet()){
-    strValue = arg.getValue();
-    now = RtcDateTime(now.Year(),now.Month(),now.Day(),now.Hour(),strValue.toInt(),now.Second());
-    Rtc.SetDateTime(now);
-    return ;
-  }
-  arg = cmd.getArgument("second");
-  if(arg.isSet()){
-    strValue = arg.getValue();
-    now = RtcDateTime(now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),strValue.toInt());
-    Rtc.SetDateTime(now);
-    return ;
-  }
-  getTime();
-  String argVal = arg.getValue();
-}
 
-void errorCallback(cmd_error *errorPtr)
-{
-  CommandError e(errorPtr);
+// void time_configCallback(cmd *cmdPtr){
+//   RtcDateTime now;
+//   Command cmd(cmdPtr);
+//   Argument arg ;
+//   String strValue ;
+//   // gettimeofday(&tmv,NULL);
+//   // struct tm *timeinfo = gmtime(&tmv.tv_sec);
+//   // now =  RtcDateTime (tmv.tv_sec); //
+//   //struct timeval tmv;
+//   now = getDs1302GetRtcTime();
+//   outputStream->printf("\nnow is to %d/%d/%d %d:%d:%d ",now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
+//   //tmv.tv_usec = now.TotalSeconds();
 
-  outputStream->printf( (String("ERROR: ") + e.toString()).c_str());
+//   arg = cmd.getArgument("year");
+//   if(arg.isSet()){
+//     strValue = arg.getValue();
+//     outputStream->printf("\nTime will Set to %d/%d/%d %d:%d:%d ",strValue.toInt(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
+//     now = RtcDateTime(strValue.toInt(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
+//     setRtcNewTime(now);
+//     now = getDs1302GetRtcTime();
+//     outputStream->printf("\nNow New time is set to %d/%d/%d %d:%d:%d ",now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
+//     return ;
+//   }
+//   arg = cmd.getArgument("Month");
+//   if(arg.isSet()){
+//     strValue = arg.getValue();
+//     now = RtcDateTime(now.Year(),strValue.toInt(),now.Day(),now.Hour(),now.Minute(),now.Second());
+//     setRtcNewTime(now);
+//     return ;
+//   }
+//   arg = cmd.getArgument("day");
+//   if(arg.isSet()){
+//     strValue = arg.getValue();
+//     now = RtcDateTime(now.Year(),now.Month(),strValue.toInt(),now.Hour(),now.Minute(),now.Second());
+//     setRtcNewTime(now);
+//     return ;
+//   }
+//   arg = cmd.getArgument("hour");
+//   if(arg.isSet()){
+//     strValue = arg.getValue();
+//     now = RtcDateTime(now.Year(),now.Month(),now.Day(),strValue.toInt(),now.Minute(),now.Second());
+//     setRtcNewTime(now);
+//     return ;
+//   }
+//   arg = cmd.getArgument("minute");
+//   if(arg.isSet()){
+//     strValue = arg.getValue();
+//     now = RtcDateTime(now.Year(),now.Month(),now.Day(),now.Hour(),strValue.toInt(),now.Second());
+//     setRtcNewTime(now);
+//     return ;
+//   }
+//   arg = cmd.getArgument("second");
+//   if(arg.isSet()){
+//     strValue = arg.getValue();
+//     return ;
+//   }
+//   getTime();
+//   String argVal = arg.getValue();
+// }
 
-  if (e.hasCommand())
-  {
-    outputStream->printf(  (String("Did you mean? ") + e.getCommand().toString()).c_str());
-  }
-  else
-  {
-     outputStream->printf(  simpleCli.toString().c_str());
-  }
-}
+// void errorCallback(cmd_error *errorPtr)
+// {
+//   CommandError e(errorPtr);
 
-void help_Callback(cmd *cmdptr){
+//   outputStream->printf( (String("ERROR: ") + e.toString()).c_str());
 
-}
-void df_configCallback(cmd *cmdPtr)
-{
-  Command cmd(cmdPtr);
-  lsFile.df();
-}
-void reboot_configCallback(cmd *cmdPtr)
-{
-  Command cmd(cmdPtr);
-  outputStream->println( "\r\nNow System Rebooting...\r\n");
-  esp_restart();
-}
+//   if (e.hasCommand())
+//   {
+//     outputStream->printf(  (String("Did you mean? ") + e.getCommand().toString()).c_str());
+//   }
+//   else
+//   {
+//      outputStream->printf(  simpleCli.toString().c_str());
+//   }
+// }
 
-void format_configCallback(cmd *cmdPtr)
-{
-  outputStream->printf("\r\nWould you system formating(Y/n)...\r\n");
-  int c = 0;
-  while (1)
-  {
-    if (SerialBT.connected())
-      c = SerialBT.read();
-    else
-      c = Serial.read();
+// void help_Callback(cmd *cmdptr){
 
-    if (c == 'Y')
-    {
-      lsFile.littleFsInit(1);
-      outputStream->printf("\r\nSystem format completed\r\n");
-      return;
-    }
-    if (c == 'n')
-      return;
-  }
-}
-void cat_configCallback(cmd *cmdPtr)
-{
-  Command cmd(cmdPtr);
-  Argument arg = cmd.getArgument(0);
-  String argVal = arg.getValue();
-  outputStream->printf("\r\n");
+// }
+// void df_configCallback(cmd *cmdPtr)
+// {
+//   Command cmd(cmdPtr);
+//   lsFile.df();
+// }
+// void reboot_configCallback(cmd *cmdPtr)
+// {
+//   Command cmd(cmdPtr);
+//   outputStream->println( "\r\nNow System Rebooting...\r\n");
+//   esp_restart();
+// }
 
-  if (argVal.length() == 0)
-    return;
-  argVal = String("/spiffs/") + argVal;
+// void format_configCallback(cmd *cmdPtr)
+// {
+//   outputStream->printf("\r\nWould you system formating(Y/n)...\r\n");
+//   int c = 0;
+//   while (1)
+//   {
+//     if (SerialBT.connected())
+//       c = SerialBT.read();
+//     else
+//       c = Serial.read();
 
-  lsFile.cat(argVal);
-}
+//     if (c == 'Y')
+//     {
+//       lsFile.littleFsInit(1);
+//       outputStream->printf("\r\nSystem format completed\r\n");
+//       return;
+//     }
+//     if (c == 'n')
+//       return;
+//   }
+// }
+
+// void rm_configCallback(cmd *cmdPtr)
+// {
+//   Command cmd(cmdPtr);
+//   Argument arg = cmd.getArgument(0);
+//   String argVal = arg.getValue();
+//   outputStream->printf("\r\n");
+
+//   if (argVal.length() == 0)
+//     return;
+
+//   lsFile.rm(argVal);
+//   // if (!argVal.startsWith("*"))
+//   // {
+//   //   argVal = String("/spiffs/") + argVal;
+//   // }
+// };
+// void cat_configCallback(cmd *cmdPtr)
+// {
+//   Command cmd(cmdPtr);
+//   Argument arg = cmd.getArgument(0);
+//   String argVal = arg.getValue();
+//   outputStream->printf("\r\n");
+
+//   if (argVal.length() == 0)
+//     return;
+//   argVal = String("/spiffs/") + argVal;
+
+//   lsFile.cat(argVal);
+// }
 myBlueTooth::myBlueTooth(){
 
-  Command cmd_config = simpleCli.addCommand("ls",ls_configCallback);
-  cmd_config.setDescription(" File list \r\n ");
-  cmd_config = simpleCli.addCommand("time", time_configCallback);
-  cmd_config.addArgument("y/ear","");
-  cmd_config.addArgument("M/onth","");
-  cmd_config.addArgument("d/ay","");
-  cmd_config.addArgument("h/our","");
-  cmd_config.addArgument("m/inute","");
-  cmd_config.addArgument("s/econd","");
-  cmd_config.setDescription(" Get Time or set \r\n time -y 2024 or time -M 11,..., Month is M , minute is m ");
-  cmd_config = simpleCli.addCommand("df", df_configCallback);
-  cmd_config = simpleCli.addSingleArgCmd("reboot", reboot_configCallback);
-  cmd_config = simpleCli.addSingleArgCmd("format", format_configCallback);
-  cmd_config = simpleCli.addSingleArgCmd("cat", cat_configCallback);
-  simpleCli.setOnError(errorCallback);
-  cmd_config= simpleCli.addCommand("help",help_Callback);
-  cmd_config.setDescription(" Get help!");
+  //Command cmd_config ;//= simpleCli.addCommand("ls",ls_configCallback);
+  //cmd_config =  simpleCli.addSingleArgCmd("cat", cat_configCallback);
+  //cmd_config = simpleCli.addSingleArgCmd("rm", rm_configCallback);
+  //cmd_config = simpleCli.addSingleArgCmd("mv", mv_configCallback);
+  //cmd_config = simpleCli.addSingleArgCmd("format", format_configCallback);
+  //cmd_config = simpleCli.addCommand("time", time_configCallback);
+  // cmd_config.addArgument("y/ear","");
+  // cmd_config.addArgument("M/onth","");
+  // cmd_config.addArgument("d/ay","");
+  // cmd_config.addArgument("h/our","");
+  // cmd_config.addArgument("m/inute","");
+  // cmd_config.addArgument("s/econd","");
+//  cmd_config.setDescription(" Get Time or set \r\n time -y 2024 or time -M 11,..., Month is M , minute is m ");
+//  cmd_config = simpleCli.addCommand("df", df_configCallback);
+  //cmd_config = simpleCli.addSingleArgCmd("reboot", reboot_configCallback);
+  //simpleCli.setOnError(errorCallback);
+  //cmd_config= simpleCli.addCommand("help",help_Callback);
+  //cmd_config.setDescription(" Get help!");
 }
 
 void myBlueTooth::readInputSerialBT()
@@ -200,54 +216,25 @@ void myBlueTooth::readInputSerialBT()
     }
   }
 }
+// void btCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
+//   if (event == ESP_SPP_OPEN_EVT                    ) {
+//     Serial.printf("\nUser Connected");
+//   }
 
-void setRtc()
-{
-  Rtc.Begin();
-  RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
-  printDateTime(compiled);
-  if (!Rtc.IsDateTimeValid())
-  {
-    printf("RTC lost confidence in the DateTime!\r\n");
-    Rtc.SetDateTime(compiled);
-  }
-  else 
-    printf("RTC available in the DateTime!\r\n");
-  if (Rtc.GetIsWriteProtected())
-  {
-    printf("RTC was write protected, enabling writing now\r\n");
-    Rtc.SetIsWriteProtected(false);
-  }
-  else 
-    printf("RTC enabling writing \r\n");
-  if (!Rtc.GetIsRunning())
-  {
-    printf("RTC was not actively running, starting now\r\n");
-    Rtc.SetIsRunning(true);
-  }
-  else 
-    printf("RTC was actively status running \r\n");
-
-  RtcDateTime now = Rtc.GetDateTime();
-  if (now < compiled)
-  {
-    Rtc.SetDateTime(compiled);
-  }
-  struct timeval tmv;
-  tmv.tv_sec = now.Unix32Time();
-  tmv.tv_usec = 0;
-  //시스템의 시간도 같이 맞추어 준다.
-  settimeofday(&tmv, NULL);
-}
+// };
 static unsigned long previousmills = 0;
 static int everySecondInterval = 5000;
 static unsigned long now;
 void blueToothTask(void *parameter)
 {
   myBlueTooth blueTooth;
-  outputStream = &Serial;
-  inputStream= &Serial;
-  //setRtc();
+  //outputStream = &Serial;
+  simpleCli.inputStream= &Serial;
+//  SerialBT.register_callback((esp_spp_cb_t *)btCallBack);
+// typedef void (*esp_spp_cb_t)(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
+// ESP_SPP_OPEN_EVT                    
+
+
   for (;;)
   {
     blueTooth.readInputSerialBT();
@@ -257,13 +244,13 @@ void blueToothTask(void *parameter)
       previousmills = now;
       if (SerialBT.connected()){
         lsFile.setOutputStream(&SerialBT);
-        outputStream = &SerialBT;
-        inputStream= &SerialBT;
+        simpleCli.outputStream = &SerialBT;
+        simpleCli.inputStream= &SerialBT;
       }
       else{
         lsFile.setOutputStream(&Serial);
-        outputStream = &Serial;
-        inputStream= &Serial;
+        simpleCli.outputStream = &Serial;
+        simpleCli.inputStream= &Serial;
       }
     }
     delay(10);
