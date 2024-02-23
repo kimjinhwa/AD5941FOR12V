@@ -206,6 +206,14 @@ class ExtendSerial//: public HardwareSerial
       pinMode(_addr0,OUTPUT);
       pinMode(_addr1,OUTPUT);
     };
+    /* 송수신모드를 사용하기 위하여 사용산다. */
+    /*  writeEnable true: 송신가능  */
+    /* writeEnable false : 수신가능*/
+    void selectCellModule(bool writeEnable){
+      digitalWrite(_addr0,false);
+      digitalWrite(_addr1,false); 
+      digitalWrite(CELL485_DE, writeEnable);
+    };
     void selectLcd(){
       digitalWrite(_addr0,true);
       digitalWrite(_addr1,false); 
@@ -227,7 +235,7 @@ void setup(){
   //외부 485통신에 사용한다.
   Serial2.begin(BAUDRATE,SERIAL_8N1,SERIAL_RX2 ,SERIAL_TX2 );
   ExtendSerial ExtendSerial;
-  ExtendSerial.selectLcd();
+  ExtendSerial.selectCellModule(true);
 
   SerialBT.begin("TIMP_Device_1");
   wifiApmodeConfig();
@@ -414,6 +422,14 @@ int UrtCfg(int iBaud)
   //   Serial2.println("LCD Test");
   //   if(Serial2.available()){
   //     Serial2.printf("%c",Serial2.read());
+  //   }
+  //   delay(1000);
+  // }
+  // while(1){
+  //   Serial.println("LCD Test");
+  //   Serial2.println("LCD Test");
+  //   if(Serial2.available()){
+  //     Serial.printf("%c",Serial2.read());
   //   }
   //   delay(1000);
   // }
