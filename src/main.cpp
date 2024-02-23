@@ -34,7 +34,7 @@ nvsSystemSet systemDefaultValue;
 ThreeWire myWire(13, 14, 33); // IO, SCLK, CE
 RtcDS1302<ThreeWire> Rtc(myWire);
 ModbusServerRTU rtu485(2000,CELL485_DE);
-//ModbusServerRTU extrtu485(2000,EXT_485EN_1);
+ModbusServerRTU extrtu485(2000,EXT_485EN_1);
 _cell_value cellvalue[MAX_INSTALLED_CELLS];
 
 void pinsetup()
@@ -234,10 +234,10 @@ void setupModbusAgentForLcd(){
   rtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC03);
   rtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
 
-  // extrtu485.begin(Serial1,9600,1);
-  // extrtu485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
-  // extrtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC03);
-  // extrtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
+  extrtu485.begin(Serial1,9600,1);
+  extrtu485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
+  extrtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC03);
+  extrtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
 
 }
 void setup(){
@@ -267,10 +267,10 @@ void setup(){
   wifiApmodeConfig();
   lsFile.littleFsInitFast(0);
   setRtc();
-
   SPI.setFrequency(spiClk );
   SPI.begin(SCK,MISO,MOSI,CS_5940);
   pinMode(SS, OUTPUT); //VSPI SS
+
   AD5940_MCUResourceInit(0);
   AD5940_Main_init();
   delay(1000);
@@ -299,6 +299,7 @@ void loop(void)
   {
     previousSecondmills = now;
   }
+  delay(10);
 }
     //Serial.println(i++);
     //Serial.outputStream->printf("\nAnalog Value %d",analogRead( READ_BATVOL));
@@ -468,15 +469,15 @@ int UrtCfg(int iBaud)
   //   }
   //   delay(1000);
   // }
+  // digitalWrite(EXT_485EN_1, LOW);
   // while(1){
   //   // Serial.println("Serial Test");
   //   // digitalWrite(EXT_485EN_1, HIGH);
   //   // Serial1.println("Serial ext Test");
   //   // Serial1.flush();
-  //   digitalWrite(EXT_485EN_1, LOW);
-  //   if(Serial1.available()){
-  //     Serial.printf("%c",Serial1.read());
-  //   }
+  //   // while(Serial1.available()){
+  //   //   Serial.printf(" %02x",Serial1.read());
+  //   // }
   //   //digitalWrite(EXT_485EN_1, HIGH);
   //   delay(5);
   // }

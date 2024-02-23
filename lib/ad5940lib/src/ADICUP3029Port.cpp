@@ -173,13 +173,13 @@ uint32_t AD5940_MCUResourceInit(void *pCfg)
   digitalWrite(GPIO_OUTPUT_RESET,1);
   //gpio_set_level(GPIO_OUTPUT_RESET, 1);
 
-  gpio_set_direction(GPIO_NUM_26, GPIO_MODE_INPUT_OUTPUT);
-  // gpio_set_intr_type(GPIO_NUM_26, GPIO_INTR_NEGEDGE /*GPIO_INTR_ANYEDGE*/);
+  gpio_set_direction(GPIO_NUM_32, GPIO_MODE_INPUT_OUTPUT);
+  // gpio_set_intr_type(GPIO_NUM_32, GPIO_INTR_NEGEDGE /*GPIO_INTR_ANYEDGE*/);
   // gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
-  // gpio_isr_handler_add(GPIO_NUM_26, Ext_Int0_Handler, (void *)GPIO_NUM_26);
-  // gpio_intr_enable(GPIO_NUM_26);
-  attachInterrupt(digitalPinToInterrupt(GPIO_NUM_26), Ext_Int0_Handler, FALLING);
-  //gpio_set_level(GPIO_NUM_26, HIGH);
+  // gpio_isr_handler_add(GPIO_NUM_32, Ext_Int0_Handler, (void *)GPIO_NUM_32);
+  // gpio_intr_enable(GPIO_NUM_32);
+  attachInterrupt(digitalPinToInterrupt(GPIO_NUM_32), Ext_Int0_Handler, FALLING);
+  //gpio_set_level(GPIO_NUM_32, HIGH);
   AD5940_CsSet(); /* AD5941 Chip을 선택한다. */
   AD5940_Delay10us(150 * 100);
   AD5940_RstSet();
@@ -220,7 +220,7 @@ uint32_t AD5940_MCUResourceInit(void *pCfg)
 /* MCU related external line interrupt service routine */
 void Ext_Int0_Handler()
 {
-  //gpio_intr_status_clear(GPIO_NUM_26);
+  //gpio_intr_status_clear(GPIO_NUM_32);
   //  pADI_XINT0->CLR = BITM_XINT_CLR_IRQ0;
   ucInterrupted = 1;
   // /* This example just set the flag and deal with interrupt in AD5940Main function. It's your choice to choose how to process interrupt. */
