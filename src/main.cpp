@@ -36,7 +36,7 @@ ThreeWire myWire(13, 14, 33); // IO, SCLK, CE
 RtcDS1302<ThreeWire> Rtc(myWire);
 ModbusServerRTU rtu485(2000,CELL485_DE);// LCD를 위하여 사용한다.
 ModbusServerRTU extrtu485(2000,EXT_485EN_1);
-ModbusClientRTU cellModbus(CELL485_DE);
+//ModbusClientRTU cellModbus(CELL485_DE);
 
 _cell_value cellvalue[MAX_INSTALLED_CELLS];
 
@@ -255,6 +255,7 @@ void handleError(Error error, uint32_t token)
   // ModbusError wraps the error code and provides a readable error message for it
   ModbusError me(error);
   //LOG_E("Error response: %02X - %s\n", (int)me, (const char *)me);
+  data_ready = false;
 }
 
 void setupModbusAgentForLcd(){
@@ -272,11 +273,11 @@ void setupModbusAgentForLcd(){
   extrtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
   //extrtu485.suspendTask();
 
-  cellModbus.onDataHandler(&handleData);
-  cellModbus.onErrorHandler(&handleError);
-  cellModbus.setTimeout(2000);
-  cellModbus.begin(Serial2);
-  cellModbus.suspendTask();
+  // cellModbus.onDataHandler(&handleData);
+  // cellModbus.onErrorHandler(&handleError);
+  // cellModbus.setTimeout(2000);
+  // cellModbus.begin(Serial2);
+  // cellModbus.suspendTask();
 };
 ExtendSerial extendSerial;
 void setup(){
@@ -296,7 +297,6 @@ void setup(){
   for(int i=0;i<40;i++){
     cellvalue[i].voltage = 10+i;
     cellvalue[i].impendance= 20+i;
-    cellvalue[i].temperature= 30+i;
     cellvalue[i].voltageCompensation= i;
     cellvalue[i].impendanceCompensation= i;
   }
@@ -320,6 +320,78 @@ void setup(){
 
 };
 
+bool sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
+{
+  uint16_t checkSum ;
+  Serial.printf("\nrequest\n");
+  rtu485.suspendTask();
+  uint8_t buf[256];
+  uint16_t readCount=0;
+  buf[0] =modbusId;
+  buf[1] = fCode;
+  buf[2] = 0;
+  buf[3] = 0;
+  buf[4] = 0;
+  buf[5] = 2;
+  checkSum =  RTUutils::calcCRC(buf,6);
+  buf[6] = checkSum & 0x00FF;
+  buf[7] = checkSum >> 8    ;
+
+  extendSerial.selectCellModule(false);
+  while(Serial2.available())Serial2.read();
+  extendSerial.selectCellModule(true);
+  Serial2.write(buf,8);
+  Serial2.flush();
+  extendSerial.selectCellModule(false);
+  uint16_t timeout;
+  timeout = 300;
+  while (timeout--)
+  {
+    if (Serial2.available())
+    {
+      buf[readCount++] = Serial2.read();
+      //Serial.printf("%d:%02x ",readCount-1, buf[readCount - 1]);
+    };
+    delay(1);
+    if (readCount == 9){
+      data_ready = true;
+      break;
+    }
+  }
+  if (data_ready)
+  {
+    uint16_t value = buf[3]*256  + buf[4] ;
+    Serial.printf("\n%d:%02x %02x Temperature %d",modbusId-1,buf[3],buf[4], value);
+    cellvalue[modbusId - 1].temperature = value / 100;
+  }
+  else
+  {
+    Serial.println("----------------------------");
+    Serial.println("Receive Failed");
+    Serial.println("----------------------------");
+  }
+  while(Serial2.available())Serial2.read();
+  extendSerial.selectLcd();
+  rtu485.resumeTask();
+  return data_ready;
+
+  //cellModbus.resumeTask();
+  // data_ready = false;
+  // uint16_t retryCount = 5;
+  // while (!data_ready && retryCount--)
+  // {
+  //   //Error err = cellModbus.addRequest((uint32_t)millis(), modbusId, READ_INPUT_REGISTER, 0, 2);
+  //   while (!data_ready && timeout)
+  //   {
+  //     timeout--;
+  //     delay(1);
+  //   }
+  //}
+  // Serial.print("\nData Received %d",);
+  // //cellModbus.suspendTask();
+  // extendSerial.selectLcd();
+  // return data_ready;
+}
 static unsigned long previousSecondmills = 0;
 static int everySecondInterval = 1000;
 
@@ -328,38 +400,13 @@ static unsigned long previous_3Secondmills = 0;
 
 static int Interval_5Second = 5000;
 static unsigned long previous_5Secondmills = 0;
+
+static int Interval_60Second = 60000;
+static unsigned long previous_60Secondmills = 0;
+
 static unsigned long now;
 //각각의 시간은 병렬로 수행된다.
-bool sendGetMoubusTemperature(uint8_t modbusId,uint8_t fCode){
 
-    rtu485.suspendTask();
-    cellModbus.resumeTask();
-    data_ready = false;
-    Serial.printf("\nrequest\n");
-    extendSerial.selectCellModule(true);
-    Error err = cellModbus.addRequest((uint32_t)millis(),1,READ_INPUT_REGISTER,0,2);
-    uint16_t timeout = 1000;
-    while (!data_ready)
-    {
-      timeout--;
-      delay(1); 
-      if(timeout == 0 )break;;
-    }
-    //Serial.print("\nData Received %d",);
-    if(data_ready){
-      Serial.printf("\n%Temperature %d",values[0]);
-      cellvalue[modbusId-1].temperature =values[0]/100;
-    }
-    else{
-      Serial.println("----------------------------");
-      Serial.println("Receive Failed");
-      Serial.println("----------------------------");
-    }
-    cellModbus.suspendTask();
-    rtu485.resumeTask();
-    extendSerial.selectLcd();
-    return data_ready;
-}
 void loop(void)
 {
   now = millis(); 
@@ -370,18 +417,25 @@ void loop(void)
     // Serial2.flush();
     //extendSerial.selectLcd();
 
-    previousSecondmills = now;
     ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
+    previousSecondmills = now;
   }
+  bool bRet;
   if ((now - previous_3Secondmills > Interval_3Second))
   {
     previous_3Secondmills= now;
-    sendGetMoubusTemperature(1,04);
-
   }
   if ((now - previous_5Secondmills > Interval_5Second))
   {
     previous_5Secondmills= now;
+  }
+  if ((now - previous_60Secondmills > Interval_60Second))
+  {
+    for(int i=1;i<=40;i++)
+    {
+      sendGetMoubusTemperature(i,04);
+    }
+    previous_60Secondmills= now;
   }
   delay(10);
 }
