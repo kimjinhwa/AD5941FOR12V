@@ -461,7 +461,7 @@ bool sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
   Serial2.flush();
   extendSerial.selectCellModule(false);
   uint16_t timeout;
-  timeout = 300;
+  timeout = 100;
   while (timeout--)
   {
     if (Serial2.available())
@@ -471,8 +471,10 @@ bool sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
     };
     delay(1);
     if (readCount == 9){
+      if(buf[0] ==modbusId && buf[1] == fCode &&  RTUutils::validCRC(buf,6)){
       data_ready = true;
       break;
+      }
     }
   }
   if (data_ready)
@@ -551,7 +553,7 @@ void loop(void)
   }
   if ((now - previous_60Secondmills > Interval_60Second))
   {
-    for(int i=1;i<=40;i++)
+    for(int i=1;i<=5;i++)
     {
       sendGetMoubusTemperature(i,04);
     }
