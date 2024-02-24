@@ -22,6 +22,7 @@
         "memory": "cpp",
         "random": "cpp",
         "initializer_list": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "type_traits": "cpp"
     }
 }
