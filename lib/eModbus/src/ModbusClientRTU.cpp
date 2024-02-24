@@ -144,7 +144,7 @@ uint32_t ModbusClientRTU::pendingRequests() {
 Error ModbusClientRTU::addRequestM(ModbusMessage msg, uint32_t token) {
   Error rc = SUCCESS;        // Return value
 
-  LOG_D("request for %02X/%02X\n", msg.getServerID(), msg.getFunctionCode());
+  //LOG_D("request for %02X/%02X\n", msg.getServerID(), msg.getFunctionCode());
 
   // Add it to the queue, if valid
   if (msg) {
@@ -155,7 +155,7 @@ Error ModbusClientRTU::addRequestM(ModbusMessage msg, uint32_t token) {
     }
   }
 
-  LOG_D("RC=%02X\n", rc);
+  //LOG_D("RC=%02X\n", rc);
   return rc;
 }
 
@@ -227,7 +227,7 @@ bool ModbusClientRTU::addToQueue(uint32_t token, ModbusMessage request, bool syn
     }
   }
 
-  LOG_D("RC=%02X\n", rc);
+  //LOG_D("RC=%02X\n", rc);
   return rc;
 }
 
@@ -245,12 +245,12 @@ void ModbusClientRTU::handleConnection(ModbusClientRTU *instance) {
       // Yes. pull it.
       RequestEntry request = instance->requests.front();
 
-      LOG_D("Pulled request from queue\n");
+      //LOG_D("Pulled request from queue\n");
 
       // Send it via Serial
       RTUutils::send(*(instance->MR_serial), instance->MR_lastMicros, instance->MR_interval, instance->MTRSrts, request.msg, instance->MR_useASCII);
 
-      LOG_D("Request sent.\n");
+      //LOG_D("Request sent.\n");
       // HEXDUMP_V("Data", request.msg.data(), request.msg.size());
 
       // For a broadcast, we will not wait for a response
@@ -265,7 +265,7 @@ void ModbusClientRTU::handleConnection(ModbusClientRTU *instance) {
           instance->MR_useASCII,
           instance->MR_skipLeadingZeroByte);
   
-        LOG_D("%s response (%d bytes) received.\n", response.size()>1 ? "Data" : "Error", response.size());
+        //LOG_D("%s response (%d bytes) received.\n", response.size()>1 ? "Data" : "Error", response.size());
         HEXDUMP_V("Data", response.data(), response.size());
   
         // No error in receive()?
@@ -286,8 +286,8 @@ void ModbusClientRTU::handleConnection(ModbusClientRTU *instance) {
           response.setError(request.msg.getServerID(), request.msg.getFunctionCode(), static_cast<Error>(response[0]));
         }
   
-        LOG_D("Response generated.\n");
-        HEXDUMP_V("Response packet", response.data(), response.size());
+        //LOG_D("Response generated.\n");
+        //HEXDUMP_V("Response packet", response.data(), response.size());
 
         // If we got an error, count it
         if (response.getError() != SUCCESS) {

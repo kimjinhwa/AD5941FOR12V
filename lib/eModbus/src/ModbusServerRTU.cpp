@@ -171,7 +171,7 @@ void ModbusServerRTU::serve(ModbusServerRTU *myServer) {
 
     // Request longer than 1 byte (that will signal an error in receive())? 
     if (request.size() > 1) {
-      LOG_D("Request received.\n");
+      //LOG_D("Request received.\n");
 
       // Yes. 
       // Do we have a sniffer listening?
@@ -192,14 +192,14 @@ void ModbusServerRTU::serve(ModbusServerRTU *myServer) {
         // Do we have a callback function registered for it?
         MBSworker callBack = myServer->getWorker(request[0], request[1]);
         if (callBack) {
-          LOG_D("Callback found.\n");
+          //LOG_D("Callback found.\n");
           // Yes, we do. Count the message
           {
             LOCK_GUARD(cntLock, myServer->m);
             myServer->messageCount++;
           }
           // Get the user's response
-          LOG_D("Callback called.\n");
+          //LOG_D("Callback called.\n");
           m = callBack(request);
           HEXDUMP_V("Callback response", m.data(), m.size());
 
@@ -238,7 +238,7 @@ void ModbusServerRTU::serve(ModbusServerRTU *myServer) {
           //digitalWrite(CELL485_DE, 1);
           RTUutils::send(*(myServer->MSRserial), myServer->MSRlastMicros, myServer->MSRinterval, myServer->MRTSrts, response, myServer->MSRuseASCII);
           //digitalWrite(CELL485_DE, 0);
-          LOG_D("Response sent.\n");
+          //LOG_D("Response sent.\n");
           // Count it, in case we had an error response
           if (response.getError() != SUCCESS) {
             LOCK_GUARD(errorCntLock, myServer->m);

@@ -270,7 +270,7 @@ void setupModbusAgentForLcd(){
 
   cellModbus.onDataHandler(&handleData);
   cellModbus.onErrorHandler(&handleError);
-  cellModbus.setTimeout(1000);
+  cellModbus.setTimeout(2000);
   cellModbus.begin(Serial2);
   cellModbus.suspendTask();
 };
