@@ -319,7 +319,124 @@ void setup(){
   xTaskCreate(blueToothTask,"blueToothTask",5000,NULL,1,h_pxblueToothTask);
 
 };
+int readData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len){
+  uint16_t timeout;
+  timeout = 300;
+  uint16_t readCount=0;
+  while (timeout--)
+  {
+    if (Serial2.available())
+    {
+      buf[readCount++] = Serial2.read();
+      Serial.printf("%d:%02x ",readCount-1, buf[readCount - 1]);
+    };
+    delay(1);
+    if (readCount == len){
+      //data를 받았다. 이제 id, command ,checksum 체크섬이 같은지 보자.
+      if(buf[0] ==modbusId && buf[1] == funcCode &&  RTUutils::validCRC(buf,6)){
+        data_ready = true;
+        break;
+      }
+    }
+  }
+  if (data_ready)
+  {
+    Serial.printf("\nData Good Recieved\n");
+    //uint16_t value = buf[3]*256  + buf[4] ;
+    //Serial.printf("\n%d:%02x %02x Temperature %d",modbusId-1,buf[3],buf[4], value);
+    //cellvalue[modbusId - 1].temperature = value / 100;
+  }
+  else
+  {
+    Serial.println("----------------------------");
+    Serial.println("Receive Failed");
+    Serial.println("----------------------------");
+  }
+  while(Serial2.available())Serial2.read();
 
+  return data_ready;
+};
+int makeData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t len){
+  uint16_t checkSum ;
+  buf[0] =modbusId; buf[1] = funcCode;
+  buf[2] = (uint8_t)((address & 0xff00) >>8 ); 
+  buf[3] = (uint8_t)(address & 0x00ff); // Address는 0부터 
+  buf[4] = (uint8_t)((len & 0xff00) >>8) ; 
+  buf[5] = (uint8_t)(len & 0x00ff);  //  갯수는 2개
+  checkSum =  RTUutils::calcCRC(buf,6);
+  buf[6] = checkSum & 0x00FF;
+  buf[7] = checkSum >> 8    ;
+
+  extendSerial.selectCellModule(false);
+  while(Serial2.available())Serial2.read();
+  extendSerial.selectCellModule(true);
+  Serial2.write(buf,8);
+  Serial2.flush();
+  return 1;
+}
+
+bool sendSelectBattery(uint8_t modbusId)
+{
+  //Coil 명령를 사용하며 
+  //1. 0xFF 명령으로 전체 OUT명령을 준다. 
+  //2. modbusID를 켠다. 
+  //3. 제대로 켜졌는지 다시 읽어본다. 
+  //4. modbusID+1를 켠다 
+  //5. 제대로 켜졌는지 다시 읽어본다. 
+
+  uint16_t checkSum ;
+  Serial.printf("\nrequest\n");
+  rtu485.suspendTask();
+  uint8_t buf[256];
+
+  Serial.printf("\n전체 릴레이를 끄자(%d)",buf[3]);
+  //makeData(buf,0xFF,05,0,0xFF00); // 0xff BROADCAST
+  makeData(buf,0xFF,05,0,0x00); // 0xff BROADCAST
+  delay(100);
+  //makeData(buf,0xFF,05,1,0xFF00); // 0xff BROADCAST
+  makeData(buf,0xFF,05,1,0x00); // 0xff BROADCAST
+  delay(500);
+  makeData(buf,modbusId,01,0,2); // Read coil data 2 개 
+
+  extendSerial.selectCellModule(false);  //읽기 모드로 전환
+  uint16_t readCount = readData(modbusId,1, buf,6); //buf[3]이 Relay 데이타 이다.
+
+  makeData(buf,modbusId,05,0,0xFF00); // 0xff BROADCAST
+  delay(100);
+  makeData(buf,modbusId+1,05,1,0xFF00); // 0xff BROADCAST
+  delay(100);
+  //if(buf[3] != 0)
+  // {
+  //   Serial.printf("\n전체 릴레이를 끄자(%d)",buf[3]);
+  //   //makeData(buf,0xFF,05,0,0xFF00); // 0xff BROADCAST
+  //   makeData(buf,0xFF,05,0,0x00); // 0xff BROADCAST
+  //   delay(100);
+  //   //makeData(buf,0xFF,05,1,0xFF00); // 0xff BROADCAST
+  //   makeData(buf,0xFF,05,1,0x00); // 0xff BROADCAST
+  // }
+
+
+  extendSerial.selectLcd();
+  rtu485.resumeTask();
+  return data_ready;
+
+  //cellModbus.resumeTask();
+  // data_ready = false;
+  // uint16_t retryCount = 5;
+  // while (!data_ready && retryCount--)
+  // {
+  //   //Error err = cellModbus.addRequest((uint32_t)millis(), modbusId, READ_INPUT_REGISTER, 0, 2);
+  //   while (!data_ready && timeout)
+  //   {
+  //     timeout--;
+  //     delay(1);
+  //   }
+  //}
+  // Serial.print("\nData Received %d",);
+  // //cellModbus.suspendTask();
+  // extendSerial.selectLcd();
+  // return data_ready;
+}
 bool sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
 {
   uint16_t checkSum ;
@@ -407,6 +524,7 @@ static unsigned long previous_60Secondmills = 0;
 static unsigned long now;
 //각각의 시간은 병렬로 수행된다.
 
+uint8_t modbusId=1;
 void loop(void)
 {
   now = millis(); 
@@ -427,6 +545,8 @@ void loop(void)
   }
   if ((now - previous_5Secondmills > Interval_5Second))
   {
+    sendSelectBattery(modbusId++);
+    modbusId = modbusId > 4 ? 1:modbusId;
     previous_5Secondmills= now;
   }
   if ((now - previous_60Secondmills > Interval_60Second))
