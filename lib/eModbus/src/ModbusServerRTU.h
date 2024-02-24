@@ -34,6 +34,12 @@ public:
   // begin: create task with RTU server to accept requests
   void begin(Stream& serial, uint32_t baudRate, int coreID = -1);
   void begin(HardwareSerial& serial, int coreID = -1);
+  void suspendTask(){
+    vTaskSuspend( serverTask);
+  }
+  void resumeTask(){
+    vTaskResume( serverTask);
+  }
   
 
   // end: kill server task

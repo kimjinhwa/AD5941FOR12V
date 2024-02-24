@@ -59,6 +59,12 @@ public:
   // addBroadcastMessage: create a fire-and-forget message to all servers on the RTU bus
   Error addBroadcastMessage(const uint8_t *data, uint8_t len);
 
+  void suspendTask(){
+    vTaskSuspend( worker);
+  }
+  void resumeTask(){
+    vTaskResume( worker);
+  }
 protected:
   struct RequestEntry {
     uint32_t token;
@@ -85,6 +91,8 @@ protected:
 
   // start background task
   void doBegin(uint32_t baudRate, int coreID);
+
+  
 
   void isInstance() { return; }   // make class instantiable
   queue<RequestEntry> requests;   // Queue to hold requests to be processed

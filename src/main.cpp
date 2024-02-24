@@ -15,6 +15,7 @@
 #include "myBlueTooth.h"
 #include "NetworkTask.h"
 #include <RtcDS1302.h>
+#include "ModbusClientRTU.h"
 #include "modbusRtu.h"
 // 기본 vSPI와 일치한다
 #define VSPI_MISO   MISO  // IO19
@@ -33,8 +34,10 @@ TaskHandle_t *h_pxblueToothTask;
 nvsSystemSet systemDefaultValue;
 ThreeWire myWire(13, 14, 33); // IO, SCLK, CE
 RtcDS1302<ThreeWire> Rtc(myWire);
-ModbusServerRTU rtu485(2000,CELL485_DE);
+ModbusServerRTU rtu485(2000,CELL485_DE);// LCD를 위하여 사용한다.
 ModbusServerRTU extrtu485(2000,EXT_485EN_1);
+ModbusClientRTU cellModbus(CELL485_DE);
+
 _cell_value cellvalue[MAX_INSTALLED_CELLS];
 
 void pinsetup()
@@ -228,6 +231,30 @@ class ExtendSerial//: public HardwareSerial
     };
 
 };
+#define NUM_VALUES 21
+uint32_t request_time;
+bool data_ready = false;
+float values[NUM_VALUES];
+void handleData(ModbusMessage response, uint32_t token) 
+{
+  // First value is on pos 3, after server ID, function code and length byte
+  uint16_t offs = 3;
+  // The device has values all as IEEE754 float32 in two consecutive registers
+  // Read the requested in a loop
+  for (uint8_t i = 0; i < NUM_VALUES; ++i) {
+    offs = response.get(offs, values[i]);
+  }
+  // Signal "data is complete"
+  request_time = token;
+  data_ready = true;
+}
+void handleError(Error error, uint32_t token) 
+{
+  // ModbusError wraps the error code and provides a readable error message for it
+  ModbusError me(error);
+  //LOG_E("Error response: %02X - %s\n", (int)me, (const char *)me);
+}
+
 void setupModbusAgentForLcd(){
   //address는 항상 1이다.
   uint8_t address_485 = 1; 
@@ -241,7 +268,13 @@ void setupModbusAgentForLcd(){
   extrtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
   extrtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
 
-}
+  cellModbus.onDataHandler(&handleData);
+  cellModbus.onErrorHandler(&handleError);
+  cellModbus.setTimeout(1000);
+  cellModbus.begin(Serial2);
+  cellModbus.suspendTask();
+};
+ExtendSerial extendSerial;
 void setup(){
   EEPROM.begin(1000);
   readnWriteEEProm();
@@ -251,11 +284,11 @@ void setup(){
   Serial1.begin(BAUDRATE,SERIAL_8N1,SERIAL_RX1 ,SERIAL_TX1 );
   //외부 485통신에 사용한다.
   Serial2.begin(BAUDRATE,SERIAL_8N1,SERIAL_RX2 ,SERIAL_TX2 );
-  ExtendSerial ExtendSerial;
   //ExtendSerial.selectCellModule(true);
-  ExtendSerial.selectLcd();  //232통신이다 
+  extendSerial.selectLcd();  //232통신이다 
                              // 485가 enable가 된다고 해도 
                              // 그쪽으로는 출력이 되지 않으므로 상관이 없다.
+
   for(int i=0;i<40;i++){
     cellvalue[i].voltage = 10+i;
     cellvalue[i].impendance= 20+i;
@@ -280,6 +313,7 @@ void setup(){
 
   //xTaskCreate(NetworkTask,"NetworkTask",5000,NULL,1,h_pxNetworkTask); //PCB 패턴문제로 사용하지 않는다.
   xTaskCreate(blueToothTask,"blueToothTask",5000,NULL,1,h_pxblueToothTask);
+
 };
 
 static unsigned long previousSecondmills = 0;
@@ -294,12 +328,21 @@ void loop(void)
   now = millis(); 
   if ((now - previousSecondmills > everySecondInterval))
   {
+    // cell의 온도값을 요청
+    // Serial2.printf("\nLet's work with cell module");
+    // Serial2.flush();
+    //extendSerial.selectLcd();
+    cellModbus.resumeTask();
+    extendSerial.selectCellModule(true);
+    data_ready = false;
+    Error err = cellModbus.addRequest((uint32_t)millis(),1,READ_INPUT_REGISTER,0,2);
+
     previousSecondmills = now;
     ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
   }
   if ((now - previous_5Secondmills > Interval_5Second))
   {
-    previousSecondmills = now;
+    previous_5Secondmills= now;
   }
   delay(10);
 }
@@ -463,6 +506,15 @@ int UrtCfg(int iBaud)
   //   }
   //   delay(1000);
   // }
+  // extendSerial.selectCellModule(true);  //232통신이다 
+  // while(1){
+  //   Serial.println("LCD Test");
+  //   Serial2.println("LCD Test");
+  //   // if(Serial2.available()){
+  //   //   Serial2.printf("%c",Serial2.read());
+  //   // }
+  //   delay(1000);
+  // }
   // while(1){
   //   Serial.println("LCD Test");
   //   Serial2.println("LCD Test");
@@ -482,4 +534,13 @@ int UrtCfg(int iBaud)
   //   // }
   //   //digitalWrite(EXT_485EN_1, HIGH);
   //   delay(5);
+  // }
+  // extendSerial.selectCellModule(true);  //232통신이다 
+  // while(1){
+  //   Serial.println("LCD Test");
+  //   Serial2.println("LCD Test");
+  //   // if(Serial2.available()){
+  //   //   Serial2.printf("%c",Serial2.read());
+  //   // }
+  //   delay(1000);
   // }
