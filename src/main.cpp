@@ -270,6 +270,7 @@ void setupModbusAgentForLcd(){
   extrtu485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
   extrtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
   extrtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
+  //extrtu485.suspendTask();
 
   cellModbus.onDataHandler(&handleData);
   cellModbus.onErrorHandler(&handleError);
@@ -348,6 +349,11 @@ bool sendGetMoubusTemperature(uint8_t modbusId,uint8_t fCode){
     if(data_ready){
       Serial.printf("\n%Temperature %d",values[0]);
       cellvalue[modbusId-1].temperature =values[0]/100;
+    }
+    else{
+      Serial.println("----------------------------");
+      Serial.println("Receive Failed");
+      Serial.println("----------------------------");
     }
     cellModbus.suspendTask();
     rtu485.resumeTask();
