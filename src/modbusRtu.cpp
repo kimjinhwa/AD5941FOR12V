@@ -5,6 +5,159 @@
 #include <RtcDS1302.h>
 void setRtcNewTime(RtcDateTime rtc);
 
+void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
+  struct timeval tmv;
+  gettimeofday(&tmv, NULL);
+  RtcDateTime now;
+  now = RtcDateTime(tmv.tv_sec);
+  if(fCode== 4){
+    for(int i=0;i<40;i++){
+      sendValue[i] = (uint16_t)(cellvalue[i].voltage *100);
+    }
+    int16_t temperature; 
+    for(int i=40;i<80;i++){
+      sendValue[i] = cellvalue[i-40].temperature +40 ;
+      //*(sendValue+i) = (uint16_t)();
+    }
+    for(int i=80;i<120;i++){
+      sendValue[i] = (uint16_t)(cellvalue[i-80].impendance*100);
+    }
+  }
+  if(fCode== 3){
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    for(int i=0;i<40;i++){
+      sendValue[i] = (uint16_t)(systemDefaultValue.voltageCompensation[i]);
+    }
+    int16_t temperature; 
+    for(int i=40;i<80;i++){
+      sendValue[i] = 0;
+      //*(sendValue+i) = (uint16_t)();
+    }
+    for(int i=80;i<120;i++){
+      sendValue[i] = (uint16_t)(systemDefaultValue.impendanceCompensation[i-80]);
+    }
+  }
+  sendValue[120]=now.Year();
+  sendValue[121]=now.Month();
+  sendValue[122]=now.Day();
+  sendValue[123]=now.Hour();
+  sendValue[124]=now.Minute();
+  sendValue[125]=now.Second();
+  sendValue[126]=2;
+  sendValue[127]=20;
+  sendValue[128]=150;
+  sendValue[129]=1450;
+  sendValue[130]=850;
+  sendValue[131]=10000;
+}
+ModbusMessage FC03(ModbusMessage request) {
+  uint16_t address;           // requested register address
+  uint16_t writeAddress;           // requested register address
+  uint16_t words;             // requested number of registers
+  ModbusMessage response;     // response message to be sent back
+  uint16_t value;
+  uint16_t sendValue[256];
+
+  struct timeval tmv;
+  gettimeofday(&tmv, NULL);
+  RtcDateTime now;
+  now = RtcDateTime(tmv.tv_sec);
+  memset(sendValue,0x00,256);
+  setSendbuffer(03,sendValue);
+  // get request values
+  request.get(2, address);
+  request.get(4, words);
+
+  if(  words ==0  ||  ((address & 0x00FF) + words) > 255){
+    response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
+    return response;
+  } 
+  response.add(request.getServerID(), request.getFunctionCode(), (uint8_t)(words * 2));
+
+  //Serial.printf("\nFunction code 04 %d[%d] %d ",address,writeAddress,words);
+  if ((address + words) < 0x100)
+  {
+    for (int i = address; i < words + address; i++)
+    {
+        value = sendValue[i];
+        response.add(value);
+    }
+  }
+  return response;
+};
+ModbusMessage FC04(ModbusMessage request) {
+  uint16_t address;           // requested register address
+  uint16_t writeAddress;           // requested register address
+  uint16_t words;             // requested number of registers
+  ModbusMessage response;     // response message to be sent back
+  uint16_t value;
+  uint16_t sendValue[256];
+  memset(sendValue,0x00,256);
+  setSendbuffer(04,sendValue);
+  // get request values
+  request.get(2, address);
+  request.get(4, words);
+  writeAddress = address & 0xFF;
+
+  if(  words ==0  ||  ((address & 0x00FF) + words) > 255){
+    response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
+    return response;
+  } 
+  response.add(request.getServerID(), request.getFunctionCode(), (uint8_t)(words * 2));
+
+  if ((address + words) < 0x100)
+  {
+    //Serial.printf("\nFunction code 04 %d[%d] %d ",address,writeAddress,words);
+      for (int i = address; i < words + address; i++)
+      {
+        value = sendValue[i];
+        response.add(value);
+        //Serial.printf(" %d",value);
+      }
+  }
+  else if((address >= 0x100) && address+words < (0x100 + MAX_INSTALLED_CELLS)){
+    for (int i = writeAddress ; i< words+writeAddress ; i++)
+    {
+        value = sendValue[i+40];
+        response.add(value);
+    }
+  }
+  else if((address >= 0x200) && address+words < (0x200 + MAX_INSTALLED_CELLS)){
+    writeAddress = address & 0xFF;
+    for (int i = writeAddress; i< words+writeAddress ; i++)
+    {
+        value = sendValue[i+80];
+        response.add(value);
+    }
+  }
+  else if((address >= 0x300) && address+words < (0x300 + MAX_INSTALLED_CELLS)){
+    writeAddress = address & 0xFF;
+    for (int i = writeAddress ;i <  words+writeAddress; i++)
+    {
+      value = sendValue[i];
+      response.add(value);
+    }
+  }
+  else if((address >= 0x400) && address+words < (0x400 + 255)){
+    writeAddress = address & 0x00FF;
+    //Serial.printf("\nFunction code 03 %d[%d] %d ",address,writeAddress,words);
+    for (int i = writeAddress; i < writeAddress+words; i++)
+    {
+      value = sendValue[i+120];
+      response.add(value);
+    }
+  }
+  else if((address >= 0x700) && address <= 0x7FF){
+    writeAddress = address & 0xFF;
+    for (int i = writeAddress; i < words; i++)
+    {
+      uint8_t _modBusID = EEPROM.readByte(1);
+      value = _modBusID;
+      response.add(value);
+    }
+  }
+  return response;
+};
 ModbusMessage FC06(ModbusMessage request)
 {
   uint16_t address;       // requested register address
@@ -12,6 +165,7 @@ ModbusMessage FC06(ModbusMessage request)
   uint16_t value;
   uint16_t sendValue[256];
   memset(sendValue, 0x00, 256);
+  setSendbuffer(03,sendValue);
   // get request values
   request.get(2, address);
   request.get(4, value);
@@ -31,30 +185,41 @@ ModbusMessage FC06(ModbusMessage request)
   response.add(value);
 
   if( writeAddress  <40){
-    cellvalue[writeAddress  ].readTime = tmv.tv_sec;
-    cellvalue[writeAddress  ].compensation = value;
+    systemDefaultValue.voltageCompensation[writeAddress  ]=value;
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.commit();
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    Serial.printf("\nFunction code 06 %d[%d] %d ",address,writeAddress,value);
+    Serial.printf("\nWrite and read %d ",systemDefaultValue.voltageCompensation[writeAddress]);
   }
-  else if (writeAddress  >= 40 && writeAddress  < 47)
+  if( writeAddress>=40 &&  writeAddress  < 80){
+  }
+  if( writeAddress>=80 &&  writeAddress  < 120){
+    systemDefaultValue.impendanceCompensation[writeAddress-80] = value; 
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.commit();
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  }
+  if (writeAddress  >= 120 && writeAddress  < 126)
   { // 시간을 설정한다.
-    //Serial.printf("\nFunction code 06 %d[%d] %d ",address,writeAddress,value);
     switch (writeAddress  )
     {
-    case 40:
+    case 120:
       now = RtcDateTime(value, now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second());
       break;
-    case 41:
+    case 121:
       now = RtcDateTime(now.Year(), value, now.Day(), now.Hour(), now.Minute(), now.Second());
       break;
-    case 42:
+    case 122:
       now = RtcDateTime(now.Year(), now.Month(), value, now.Hour(), now.Minute(), now.Second());
       break;
-    case 43:
+    case 123:
       now = RtcDateTime(now.Year(), now.Month(), now.Day(), value, now.Minute(), now.Second());
       break;
-    case 44:
+    case 124:
       now = RtcDateTime(now.Year(), now.Month(), now.Day(), now.Hour(), value, now.Second());
       break;
-    case 45:
+    case 125:
       now = RtcDateTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), value);
       break;
 
@@ -65,98 +230,6 @@ ModbusMessage FC06(ModbusMessage request)
     tmv.tv_usec = 0;
     settimeofday(&tmv, NULL);
     setRtcNewTime(now);
-  }
-  return response;
-};
-ModbusMessage FC03(ModbusMessage request) {
-  uint16_t address;           // requested register address
-  uint16_t writeAddress;           // requested register address
-  uint16_t words;             // requested number of registers
-  ModbusMessage response;     // response message to be sent back
-  uint16_t value;
-  uint16_t sendValue[256];
-
-  struct timeval tmv;
-  gettimeofday(&tmv, NULL);
-  RtcDateTime now;
-  now = RtcDateTime(tmv.tv_sec);
-  memset(sendValue,0x00,256);
-  // get request values
-  request.get(2, address);
-  request.get(4, words);
-
-  if(  words ==0  ||  ((address & 0x00FF) + words) > 255){
-    response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
-    return response;
-  } 
-  
-  response.add(request.getServerID(), request.getFunctionCode(), (uint8_t)(words * 2));
-
-  if(address < (0x00 + MAX_INSTALLED_CELLS)){  // 0~39번지의 요구이면 
-    for (int i = address; i< words+address; i++)
-    {
-      value = (uint16_t)cellvalue[i].voltage*100;
-      response.add(value);
-    }
-  }
-  else if((address >= 0x100) && address+words < (0x100 + MAX_INSTALLED_CELLS)){
-    writeAddress = address & 0xFF;
-    for (int i = writeAddress ; i< words+writeAddress ; i++)
-    {
-      value = cellvalue[i].temperature+40;
-      response.add(value);
-    }
-  }
-  else if((address >= 0x200) && address+words < (0x200 + MAX_INSTALLED_CELLS)){
-    writeAddress = address & 0xFF;
-    for (int i = writeAddress; i< words+writeAddress ; i++)
-    {
-      value = (u_int16_t)cellvalue[i].impendance*100;
-      response.add(value);
-    }
-  }
-  else if((address >= 0x300) && address+words < (0x300 + MAX_INSTALLED_CELLS)){
-    writeAddress = address & 0xFF;
-    for (int i = writeAddress ;i <  words+writeAddress; i++)
-    {
-      value = sendValue[i];
-      response.add(value);
-    }
-  }
-  else if((address >= 0x400) && address+words < (0x400 + 255)){
-    writeAddress = address & 0x00FF;
-    //Serial.printf("\nFunction code 03 %d[%d] %d ",address,writeAddress,words);
-    sendValue[40]=now.Year();
-    sendValue[41]=now.Month();
-    sendValue[42]=now.Day();
-    sendValue[43]=now.Hour();
-    sendValue[44]=now.Minute();
-    sendValue[45]=now.Second();
-    sendValue[46]=2;
-    sendValue[47]=20;
-    sendValue[48]=150;
-    sendValue[49]=1450;
-    sendValue[50]=850;
-    sendValue[51]=10000;
-    for (int i = writeAddress; i < writeAddress+words; i++)
-    {
-      if( i<40)
-        value = cellvalue[i].compensation;
-      else if( i>=40 && i <= 255)
-        value = sendValue[i];
-      else 
-        value = 0;
-      response.add(value);
-    }
-  }
-  else if((address >= 0x700) && address <= 0x7FF){
-    writeAddress = address & 0xFF;
-    for (int i = writeAddress; i < words; i++)
-    {
-      uint8_t _modBusID = EEPROM.readByte(1);
-      value = _modBusID;
-      response.add(value);
-    }
   }
   return response;
 };

@@ -52,17 +52,21 @@ typedef struct
     uint16_t cutoffHighCellVoltage;    // 75 
     uint16_t cutoffLowCellVoltage;    // 77
     uint16_t alarmDiffCellVoltage;    // 75
+    int16_t voltageCompensation[40];// 2byte
+    int16_t impendanceCompensation[40];// 2byte
 } nvsSystemSet;
 extern nvsSystemSet systemDefaultValue;
 
 typedef struct {
-  time_t readTime;
-  float voltage;
-  float impendance;
-  int16_t temperature;
-  int16_t compensation;
-}_cell_value;
+  time_t readTime; // 4byte
+  float voltage;// 4byte
+  float impendance;// 4byte
+  int16_t temperature;// 2byte
+  int16_t voltageCompensation;// 2byte
+  int16_t impendanceCompensation;// 2byte
+}_cell_value; // Total 18bte
 extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
+
 //#define RESET_5940 GPIO_NUM_5
 // #define SERIAL_SEL_ADDR3    34  // Only Use Input
 // #define SERIAL_SEL_ADDR2    35  // test fail 

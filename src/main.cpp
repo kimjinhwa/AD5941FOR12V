@@ -74,7 +74,6 @@ void readnWriteEEProm()
   uint8_t ipaddr1;
   if (EEPROM.read(0) != 0x55)
   {
-
     systemDefaultValue.AlarmAmpere = 200;
     systemDefaultValue.alarmDiffCellVoltage = 200;
     systemDefaultValue.alarmHighCellVoltage = 14500;
@@ -91,9 +90,12 @@ void readnWriteEEProm()
     systemDefaultValue.TotalCellCount = 40;
     strncpy(systemDefaultValue.userid,"admin",10);
     strncpy(systemDefaultValue.userpassword,"admin",10);
-
+    for(int i=0;i<40;i++){
+      systemDefaultValue.voltageCompensation[i]=0;
+      systemDefaultValue.impendanceCompensation[i]=0;
+    }
     EEPROM.writeByte(0, 0x55);
-    //EEPROM.writeBytes(1, (const byte *)&ipAddress_struct, sizeof(nvsSystemSet));
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
   }
   EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
@@ -231,17 +233,17 @@ void setupModbusAgentForLcd(){
   uint8_t address_485 = 1; 
   rtu485.begin(Serial2,9600,1);
   rtu485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
-  rtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC03);
+  rtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
   rtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
 
   extrtu485.begin(Serial1,9600,1);
   extrtu485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
-  extrtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC03);
+  extrtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
   extrtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
 
 }
 void setup(){
-  EEPROM.begin(100);
+  EEPROM.begin(1000);
   readnWriteEEProm();
   pinsetup();
   Serial.begin(BAUDRATE);
@@ -255,11 +257,11 @@ void setup(){
                              // 485가 enable가 된다고 해도 
                              // 그쪽으로는 출력이 되지 않으므로 상관이 없다.
   for(int i=0;i<40;i++){
-    cellvalue[i].voltage = 100+i;
-    cellvalue[i].impendance= 200+i;
-    cellvalue[i].temperature= 300+i;
-    cellvalue[i].compensation= 400+i;
-
+    cellvalue[i].voltage = 10+i;
+    cellvalue[i].impendance= 20+i;
+    cellvalue[i].temperature= 30+i;
+    cellvalue[i].voltageCompensation= i;
+    cellvalue[i].impendanceCompensation= i;
   }
 
   setupModbusAgentForLcd();

@@ -22,6 +22,22 @@
     4. 셀과의 통신이 항상 우선시 되므로 LCD에서는  매초 마다 폴링을 하여 요청이 있는지를 확인한다. 
     5. Device는 셀과의 통신이 완료 되면 LCD수신모드로 들어간다.(LCD에게는 Agent 이기 때문이다.)
 
+### MODBUS FC04
+1. FC04펑션의 추가 및 수정.    
+  - 한번에 모든데이타를 전송한다. 최대 256개의 데이타   
+  - 0x00~0xFF 
+    - 0~39 : Cell Voltage
+    - 40~79 : temperature + 40
+    - 80~119 : impedance 
+    - 120~255 : Etc 
+
+1. FC03펑션의 추가 및 수정.    
+  - 전압과 내부저항의 보정값루틴을 사용한다.
+1. FC06을 사용하여 보정값을 메모리에 저장한다.
+
+
+### Modbus Address function 4(3000)
+
 ### Modbus Address function 3,4
     - 0~0xff: CellVolage * 100 
     - 0~0x1ff: temperature + 40
