@@ -468,7 +468,7 @@ bool sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
     if (Serial2.available())
     {
       buf[readCount++] = Serial2.read();
-      //Serial.printf("%d:%02x ",readCount-1, buf[readCount - 1]);
+      //ESP_LOGI("modbus","%d:%02x ",readCount-1, buf[readCount - 1]);
     };
     delay(1);
     if (readCount == 9){
@@ -481,14 +481,14 @@ bool sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
   if (data_ready)
   {
     uint16_t value = buf[3]*256  + buf[4] ;
-    Serial.printf("\n%d:%02x %02x Temperature %d",modbusId-1,buf[3],buf[4], value);
+    ESP_LOGI("modbus","%d:%02x %02x Temperature %d",modbusId-1,buf[3],buf[4], value);
     cellvalue[modbusId - 1].temperature = value / 100;
   }
   else
   {
-    Serial.println("----------------------------");
-    Serial.println("Receive Failed");
-    Serial.println("----------------------------");
+    ESP_LOGI("modbus","----------------------------");
+    ESP_LOGI("modbus","Receive Failed");
+    ESP_LOGI("modbus","----------------------------");
   }
   while(Serial2.available())Serial2.read();
   extendSerial.selectLcd();
@@ -549,21 +549,20 @@ void loop(void)
   }
   if ((now - previous_5Secondmills > Interval_5Second))
   {
-    sendSelectBattery(modbusId);
-    time_t startRead = millis();
-    float batVoltage =  batDevice.readBatAdcValue(600);
-    // adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
-    // float batVoltage =  adc1_get_raw(ADC1_CHANNEL_0);
-    time_t endRead = millis();// take 300ms
-    Serial.printf("\nBat Voltage is : %3.2f (%ldmilisecond)",batVoltage,endRead-startRead);
-    batVoltage =  batDevice.getBatVoltage(batVoltage);
-    Serial.printf("\n    Voltage is : %3.2f (%ldmilisecond)",batVoltage,endRead-startRead);
-    modbusId = modbusId > 4 ? 1:modbusId;
+    for(int i=1;i<INSTALLED_CELLS;i++){
+      sendSelectBattery(i);
+      time_t startRead = millis();
+      float batVoltage =  batDevice.readBatAdcValue(600);
+      time_t endRead = millis();// take 300ms
+      ESP_LOGI("Voltage","Bat Voltage is : %3.3f (%ldmilisecond)",batVoltage,endRead-startRead);
+    }
+    //modbusId = modbusId > 4 ? 1:modbusId;
+
     previous_5Secondmills= now;
   }
   if ((now - previous_60Secondmills > Interval_60Second))
   {
-    for(int i=1;i<=5;i++)
+    for(int i=1;i< INSTALLED_CELLS;i++)
     {
       sendGetMoubusTemperature(i,04);
     }
