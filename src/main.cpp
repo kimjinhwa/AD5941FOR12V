@@ -2,7 +2,7 @@
 #include <SPI.h>
 #include <EEPROM.h>
 #include <wifi.h>
-
+#include <driver/adc.h>
 #include "filesystem.h"
 #include "mainGrobal.h"
 
@@ -17,6 +17,7 @@
 #include <RtcDS1302.h>
 #include "ModbusClientRTU.h"
 #include "modbusRtu.h"
+#include "batDeviceInterface.h"
 // 기본 vSPI와 일치한다
 #define VSPI_MISO   MISO  // IO19
 #define VSPI_MOSI   MOSI  // IO 23
@@ -404,7 +405,7 @@ bool sendSelectBattery(uint8_t modbusId)
   makeData(buf,modbusId,05,0,0xFF00); // 0xff BROADCAST
   delay(100);
   makeData(buf,modbusId+1,05,1,0xFF00); // 0xff BROADCAST
-  delay(100);
+  delay(200);
   //if(buf[3] != 0)
   // {
   //   Serial.printf("\n전체 릴레이를 끄자(%d)",buf[3]);
@@ -527,6 +528,7 @@ static unsigned long now;
 //각각의 시간은 병렬로 수행된다.
 
 uint8_t modbusId=1;
+BatDeviceInterface batDevice;
 void loop(void)
 {
   now = millis(); 
@@ -547,7 +549,15 @@ void loop(void)
   }
   if ((now - previous_5Secondmills > Interval_5Second))
   {
-    sendSelectBattery(modbusId++);
+    sendSelectBattery(modbusId);
+    time_t startRead = millis();
+    float batVoltage =  batDevice.readBatAdcValue(600);
+    // adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
+    // float batVoltage =  adc1_get_raw(ADC1_CHANNEL_0);
+    time_t endRead = millis();// take 300ms
+    Serial.printf("\nBat Voltage is : %3.2f (%ldmilisecond)",batVoltage,endRead-startRead);
+    batVoltage =  batDevice.getBatVoltage(batVoltage);
+    Serial.printf("\n    Voltage is : %3.2f (%ldmilisecond)",batVoltage,endRead-startRead);
     modbusId = modbusId > 4 ? 1:modbusId;
     previous_5Secondmills= now;
   }
