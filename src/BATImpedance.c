@@ -568,6 +568,7 @@ static AD5940Err AppBATDataProcess(int32_t * const pData, uint32_t *pDataCount)
     }
     AppBATCfg.RcalVolt.Real /= DftResCount;
     AppBATCfg.RcalVolt.Image /= DftResCount;
+    //ESP_LOGI("IMP","%f,%f,%f",AppBATCfg.RcalVolt.Real,AppBATCfg.RcalVolt.Image,AD5940_ComplexMag(&AppBATCfg.RcalVolt));
     *pDataCount = 0;  /* Report no result to upper application */
   }
   else if(AppBATCfg.state == STATE_BATTERY)
@@ -582,7 +583,15 @@ static AD5940Err AppBATDataProcess(int32_t * const pData, uint32_t *pDataCount)
       BatImp.Image *= AppBATCfg.RcalVal;
       BatImp.Real *= AppBATCfg.RcalVal;
       pOut[i] = BatImp;
-		//	printf("i: %d , %.2f , %.2f , %.2f , %.2f , %.2f , %.2f , %.2f\n",AppBATCfg.SweepCfg.SweepIndex, AppBATCfg.SweepCurrFreq, BatImp.Real, BatImp.Image, AppBATCfg.RcalVolt.Real, AppBATCfg.RcalVolt.Image, AppBATCfg.RcalVoltTable[AppBATCfg.SweepCfg.SweepIndex][0], AppBATCfg.RcalVoltTable[AppBATCfg.SweepCfg.SweepIndex][1]);
+		  ESP_LOGI("RCAL","i: %d , %.2f , %.2f , %.2f , %.2f , %.2f , %.2f , %.2f\n",
+          AppBATCfg.SweepCfg.SweepIndex, 
+          AppBATCfg.SweepCurrFreq, 
+          BatImp.Real, 
+          BatImp.Image, 
+          AppBATCfg.RcalVolt.Real, 
+          AppBATCfg.RcalVolt.Image,
+          AppBATCfg.RcalVoltTable[AppBATCfg.SweepCfg.SweepIndex][0], 
+          AppBATCfg.RcalVoltTable[AppBATCfg.SweepCfg.SweepIndex][1]);
     }
     *pDataCount = DftResCount;
   }
@@ -637,39 +646,31 @@ AD5940Err AppBATMeasureRCAL(void)
 	uint32_t buff[100];
 	uint32_t temp;
 	AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bFALSE); /* Disable INT0 interrupt for RCAL measurement. */
-  while(1){
 	AppBATCfg.state = STATE_RCAL;
+	if(AppBATCfg.SweepCfg.SweepEn)
+	{
+		uint32_t i;
+    for(i=0;i<AppBATCfg.SweepCfg.SweepPoints;i++)
+    {
+      AD5940_SEQMmrTrig(SEQID_0);
+			while(AD5940_INTCTestFlag(AFEINTC_1, AFEINTSRC_DATAFIFOTHRESH) == bFALSE);
+			printf("i: %d   Freq: %.2f ",AppBATCfg.SweepCfg.SweepIndex, AppBATCfg.SweepCurrFreq);
+			AppBATISR(buff, &temp);
+			AppBATCfg.RcalVoltTable[i][0] = AppBATCfg.RcalVolt.Real;
+			AppBATCfg.RcalVoltTable[i][1] = AppBATCfg.RcalVolt.Image;
+			printf(" RcalVolt:(%f,%f)\n",  AppBATCfg.RcalVoltTable[i][0], AppBATCfg.RcalVoltTable[i][1]);
+			AD5940_Delay10us(10000);
+    }
+		AppBATCfg.RcalVolt.Real = AppBATCfg.RcalVoltTable[0][0];
+		AppBATCfg.RcalVolt.Image = AppBATCfg.RcalVoltTable[0][1];
+	}else
 	{
 		AD5940_SEQMmrTrig(SEQID_0); //여기서 DAC출력은 종료된다.
 		while(AD5940_INTCTestFlag(AFEINTC_1, AFEINTSRC_DATAFIFOTHRESH) == bFALSE);
 		AppBATISR(buff, &temp);
-    ESP_LOGI("TEST","FOR TEST");
 	}
-  }
 	AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);
 	return 0;
-    //여기서 신호가 출력된다.
-    // while(1){   
-    //  
-    //   delay(3000);
-    // }
-	// if(AppBATCfg.SweepCfg.SweepEn)
-	// {
-	// 	uint32_t i;
-  //   for(i=0;i<AppBATCfg.SweepCfg.SweepPoints;i++)
-  //   {
-  //     AD5940_SEQMmrTrig(SEQID_0);
-	// 		while(AD5940_INTCTestFlag(AFEINTC_1, AFEINTSRC_DATAFIFOTHRESH) == bFALSE);
-	// 		printf("i: %d   Freq: %.2f ",AppBATCfg.SweepCfg.SweepIndex, AppBATCfg.SweepCurrFreq);
-	// 		AppBATISR(buff, &temp);
-	// 		AppBATCfg.RcalVoltTable[i][0] = AppBATCfg.RcalVolt.Real;
-	// 		AppBATCfg.RcalVoltTable[i][1] = AppBATCfg.RcalVolt.Image;
-	// 		printf(" RcalVolt:(%f,%f)\n",  AppBATCfg.RcalVoltTable[i][0], AppBATCfg.RcalVoltTable[i][1]);
-	// 		AD5940_Delay10us(10000);
-  //   }
-	// 	AppBATCfg.RcalVolt.Real = AppBATCfg.RcalVoltTable[0][0];
-	// 	AppBATCfg.RcalVolt.Image = AppBATCfg.RcalVoltTable[0][1];
-	// }else
 }
 
 /**

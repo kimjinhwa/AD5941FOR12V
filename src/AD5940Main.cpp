@@ -37,7 +37,7 @@ int32_t BATShowResult(uint32_t *pData, uint32_t DataCount)
   /*Process data*/
   for(int i=0;i<DataCount;i++)
   {
-    printf("Freq: %f (real, image) = ,%f , %f ,mOhm \n",freq, pImp[i].Real,pImp[i].Image);
+    printf("Freq: %f (real, image) = ,%f , %f ,%f mOhm \n",freq, pImp[i].Real,pImp[i].Image,AD5940_ComplexMag(&pImp[i]));
   }
   return 0;
 }
@@ -148,23 +148,26 @@ void AD5940_Main(void *parameters)
   // AD5940BATStructInit(); /* Configure your parameters in this function */
   // AppBATInit(AppBuff, APPBUFF_SIZE);    /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
   //
-    ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
-    AD5940_AGPIOToggle(AGPIO_Pin2);
-  while (1)
-  {
-    ESP_LOGI(TAG, "AppBATCtrl(BATCTRL_MRCAL, 0)\n");
-    time_t startTime = millis();
-    if (AD5940ERR_WAKEUP == AppBATCtrl(BATCTRL_MRCAL, 0))
-    {
-      ESP_LOGW(TAG, "\nWakeup Error..retry...");
-    }; /* Measur RCAL each point in sweep */
-    time_t endTime = millis();
-    ESP_LOGI("IMP", "RcalVolt Real Image IMP:%f\t %f\t %f (%dmills)",
-             AppBATCfg.RcalVolt.Real,
-             AppBATCfg.RcalVolt.Image,
-             AD5940_ComplexMag(&AppBATCfg.RcalVolt),endTime-startTime);
-    delay(100);
-  };
+  ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
+  AD5940_AGPIOToggle(AGPIO_Pin2);
+  AppBATCfg.RcalVolt.Real = -107659;
+  AppBATCfg.RcalVolt.Image = 112141; 
+
+  // while (1)
+  // {
+  //   ESP_LOGI(TAG, "AppBATCtrl(BATCTRL_MRCAL, 0)\n");
+  //   time_t startTime = millis();
+  //   if (AD5940ERR_WAKEUP == AppBATCtrl(BATCTRL_MRCAL, 0))
+  //   {
+  //     ESP_LOGW(TAG, "\nWakeup Error..retry...");
+  //   }; /* Measur RCAL each point in sweep */
+  //   time_t endTime = millis();
+  //   ESP_LOGI("IMP", "RcalVolt Real Image IMP:%f\t %f\t %f (%dmills)",
+  //            AppBATCfg.RcalVolt.Real,
+  //            AppBATCfg.RcalVolt.Image,
+  //            AD5940_ComplexMag(&AppBATCfg.RcalVolt),endTime-startTime);
+  //   //delay(100);
+  // };
   //
   //AppBATCtrl(BATCTRL_MRCAL, 0);     /* Measur RCAL each point in sweep */
   digitalWrite(AD636_SEL,HIGH);
@@ -173,8 +176,8 @@ void AD5940_Main(void *parameters)
     /* Check if interrupt flag which will be set when interrupt occurred. */
 
 	  AppBATCtrl(BATCTRL_START, 0); 
-		//while(AD5940_INTCTestFlag(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH) == bFALSE);
-    if(AD5940_GetMCUIntFlag())
+		while(AD5940_INTCTestFlag(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH) == bFALSE);
+    //if(AD5940_GetMCUIntFlag())
     {
 
         AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
@@ -182,7 +185,7 @@ void AD5940_Main(void *parameters)
 				temp = APPBUFF_SIZE;
 	      AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);
 				AppBATISR(AppBuff, &temp); 			/* Deal with it and provide a buffer to store data we got */
-				//AD5940_Delay10us(100000);
+				AD5940_Delay10us(100000);
 				BATShowResult(AppBuff, temp);		/* Print measurement results over UART */		
 				AD5940_SEQMmrTrig(SEQID_0);  		/* Trigger next measurement ussing MMR write*/      
    }
