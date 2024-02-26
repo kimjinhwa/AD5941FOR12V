@@ -18,6 +18,12 @@
 #include "ModbusClientRTU.h"
 #include "modbusRtu.h"
 #include "batDeviceInterface.h"
+
+// #include <esp_int_wdt.h>
+// #include <esp_task.h>
+#include <esp_task_wdt.h>
+
+#define WDT_TIMEOUT 60 
 // 기본 vSPI와 일치한다
 #define VSPI_MISO   MISO  // IO19
 #define VSPI_MOSI   MOSI  // IO 23
@@ -29,7 +35,7 @@
 //SPIClass SPI;
 static const int spiClk = 1000000; // 1 MHz
 static char TAG[] ="Main";
-TaskHandle_t *h_pxNetworkTask;
+//TaskHandle_t *h_pxNetworkTask;
 TaskHandle_t *h_pxblueToothTask;
 nvsSystemSet systemDefaultValue;
 ThreeWire myWire(13, 14, 33); // IO, SCLK, CE
@@ -40,6 +46,7 @@ ModbusServerRTU extrtu485(2000,EXT_485EN_1);
 uint8_t selecectedCellNumber =0;
 
 _cell_value cellvalue[MAX_INSTALLED_CELLS];
+
 
 void pinsetup()
 {
@@ -282,7 +289,7 @@ void setupModbusAgentForLcd(){
   // cellModbus.suspendTask();
 };
 ExtendSerial extendSerial;
-int readRelayResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len){
+int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len){
   uint16_t timeout;
   timeout = 300;
   uint16_t readCount=0;
@@ -305,14 +312,14 @@ int readRelayResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_
       else{
         //ESP_LOGI("REV"," modbusId %d funcCode %d  validCRC %x",buf[0] ,buf[1], RTUutils::validCRC(buf,len));
         data_ready = false;
-        delay(3000);
+        //delay(3000);
         break;
       }
     }
   }
   if (data_ready)
   {
-    ESP_LOGI("main","Data Good Recieved");
+    //ESP_LOGI("main","Data Good Recieved");
   }
   else
   {
@@ -355,11 +362,9 @@ bool sendSelectBattery(uint8_t modbusId)
 
   selecectedCellNumber = modbusId;
   uint16_t checkSum ;
-  ESP_LOGI("main","request");
   rtu485.suspendTask();
   uint8_t buf[256];
 
-  ESP_LOGI("main","전체 릴레이를 끄자(%d)",buf[3]);
   //makeRelayControllData(buf,0xFF,05,0,0xFF00); // 0xff BROADCAST
   makeRelayControllData(buf,0xFF,05,0,0x00); // 0xff BROADCAST
   delay(100);
@@ -369,11 +374,11 @@ bool sendSelectBattery(uint8_t modbusId)
   makeRelayControllData(buf,modbusId,01,0,2); // Read coil data 2 개 
 
   extendSerial.selectCellModule(false);  //읽기 모드로 전환
-  uint16_t readCount = readRelayResponseData(modbusId,1, buf,6); //buf[3]이 Relay 데이타 이다.
+  uint16_t readCount = readResponseData(modbusId,1, buf,6); //buf[3]이 Relay 데이타 이다.
 
-  makeRelayControllData(buf,modbusId,05,0,0xFF00); // 0xff BROADCAST
+  makeRelayControllData(buf,modbusId,05,0,0xFF00); // 해당 셀을 ON 시킨다 
   delay(100);
-  makeRelayControllData(buf,modbusId+1,05,1,0xFF00); // 0xff BROADCAST
+  makeRelayControllData(buf,modbusId+1,05,1,0xFF00); // 해당 셀을 ON 시킨다 
   delay(200);
 
   extendSerial.selectLcd();
@@ -404,44 +409,13 @@ int makeTemperatureData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t
 bool sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
 {
   uint16_t checkSum ;
-  ESP_LOGI("main","request");
+  //ESP_LOGI("main","request");
   rtu485.suspendTask();
   uint8_t buf[256];
   data_ready = false;
   makeTemperatureData(buf,modbusId,fCode,0,2);
-  // buf[0] =modbusId;
-  // buf[1] = fCode;
-  // buf[2] = 0;
-  // buf[3] = 0;
-  // buf[4] = 0;
-  // buf[5] = 2;
-  // checkSum =  RTUutils::calcCRC(buf,6);
-  // buf[6] = checkSum & 0x00FF;
-  // buf[7] = checkSum >> 8    ;
-
   extendSerial.selectCellModule(false);
-  uint16_t readCount = readRelayResponseData(modbusId,1, buf,9); //buf[3]이 Relay 데이타 이다.
-  // while(Serial2.available())Serial2.read();
-  // extendSerial.selectCellModule(true);
-  // Serial2.write(buf,8);
-  // Serial2.flush();
-  // extendSerial.selectCellModule(false);
-  // uint16_t timeout;
-  // timeout = 100;
-  // while (timeout--)
-  // {
-  //   if (Serial2.available())
-  //   {
-  //     buf[readCount++] = Serial2.read();
-  //   };
-  //   delay(1);
-  //   if (readCount == 9){
-  //     if(buf[0] ==modbusId && buf[1] == fCode &&  RTUutils::validCRC(buf,6)){
-  //     data_ready = true;
-  //     break;
-  //     }
-  //   }
-  // }
+  uint16_t readCount = readResponseData(modbusId,fCode, buf,9); 
   if (data_ready)
   {
     uint16_t value = buf[3]*256  + buf[4] ;
@@ -495,9 +469,17 @@ void setup(){
   AD5940_Main_init();
   delay(1000);
   ESP_LOGI(TAG, "System Started");
-
+  esp_task_wdt_init(WDT_TIMEOUT ,true);
+  esp_task_wdt_add(NULL); 
+  //esp_task_wdt_reset();
+  //esp_task_wdt_init(5, true); // WDT를 활성화하고, panic 핸들러를 사용하여 리셋합니다.
+  //esp_task_wdt_add(NULL); // 현재 태스크를 WDT에 추가합니다.
   //xTaskCreate(NetworkTask,"NetworkTask",5000,NULL,1,h_pxNetworkTask); //PCB 패턴문제로 사용하지 않는다.
-  xTaskCreate(blueToothTask,"blueToothTask",5000,NULL,1,h_pxblueToothTask);
+  //xTaskCreate(blueToothTask,"blueToothTask",5000,NULL,1,h_pxblueToothTask);
+    ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
+    for(int i=1;i<INSTALLED_CELLS;i++){
+      sendGetMoubusTemperature(i,04);
+    }
 };
 static unsigned long previousSecondmills = 0;
 static int everySecondInterval = 1000;
@@ -519,48 +501,54 @@ static unsigned long now;
 
 uint8_t modbusId=1;
 BatDeviceInterface batDevice;
+uint8_t impedanceCellPosition=1;
 void loop(void)
 {
+  bool bRet;
   void *parameters;
   now = millis(); 
+  esp_task_wdt_reset();
   if ((now - previousSecondmills > everySecondInterval))
   {
-    ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
+    ESP_LOGI(TAG, "step");
     previousSecondmills = now;
   }
-  bool bRet;
   if ((now - previous_3Secondmills > Interval_3Second))
   {
+    ESP_LOGI(TAG, "step 1");
     previous_3Secondmills= now;
   }
   if ((now - previous_5Secondmills > Interval_5Second))
   {
-    for(int i=1;i<INSTALLED_CELLS;i++){
-      sendGetMoubusTemperature(i,04);
+    ESP_LOGI(TAG, "step 5");
+    for(int i=1;i<=INSTALLED_CELLS;i++){
+      esp_task_wdt_reset();
       sendSelectBattery(i);
-      // AD5940_Main(parameters);  //for test 무한 루프
-      // time_t startRead = millis();
-      float batVoltage =  batDevice.readBatAdcValue(600);
-      cellvalue[i - 1].voltage= batVoltage ;  //구조체에 값을 적어 넣는다
-      // time_t endRead = millis();// take 300ms
-      // ESP_LOGI("Voltage","Bat Voltage is : %3.3f (%ldmilisecond)",batVoltage,endRead-startRead);
+      AD5940_Main(parameters);  //for test 무한 루프
+      time_t startRead = millis();
+      float batVoltage= 0.0;
+       batVoltage =  batDevice.readBatAdcValue(600);
+        cellvalue[i - 1].voltage= batVoltage ;  //구조체에 값을 적어 넣는다
+      time_t endRead = millis();// take 300ms
+      ESP_LOGI("Voltage","Bat Voltage is : %3.3f (%ldmilisecond)",batVoltage,endRead-startRead);
+    delay(1000);
     }
     //modbusId = modbusId > 4 ? 1:modbusId;
     previous_5Secondmills= now;
   }
   if ((now - previous_30Secondmills > Interval_30Second))
   {
-
+    ESP_LOGI(TAG, "step 30");
     previous_30Secondmills= now;
   }
   if ((now - previous_60Secondmills > Interval_60Second))
   {
-    for(int i=1;i< INSTALLED_CELLS;i++)
-    {
-      sendGetMoubusTemperature(i,04);
-    }
-    // sendSelectBattery(1);
-    // AD5940_Main(parameters);  //for test 무한 루프
+    // ESP_LOGI(TAG, "step 60");
+    // sendGetMoubusTemperature(impedanceCellPosition,04);
+    // sendSelectBattery(impedanceCellPosition);//selecectedCellNumber를 변화 시킨다
+    // AD5940_Main(parameters);  
+    // impedanceCellPosition++;
+    // if(impedanceCellPosition >= INSTALLED_CELLS)impedanceCellPosition =1;
     previous_60Secondmills= now;
   }
   delay(10);

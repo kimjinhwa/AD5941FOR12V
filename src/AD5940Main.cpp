@@ -24,18 +24,18 @@ Analog Devices Software License Agreement.
 #include "BATImpedance.h"
 #include "ad5940.h"
 
+#define MAX_LOOP_COUNT 30
 #define APPBUFF_SIZE 512
 uint32_t AppBuff[APPBUFF_SIZE];
 char TAG[] = "AD5940";
 
 extern uint8_t selecectedCellNumber ;
 extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
-fImpCar_Type pImpResult[30];
-fImpCar_Type Average;
-
 /* It's your choice here how to do with the data. Here is just an example to print them to UART */
 void addResult(uint32_t *pData, uint32_t DataCount)
 {
+  fImpCar_Type Average;
+  fImpCar_Type pImpResult[31];
   fImpCar_Type *pImp = (fImpCar_Type *)pData;
   if(DataCount==10) {
     Average.Real=pImp->Real;Average.Image=pImp->Image;
@@ -50,11 +50,11 @@ void addResult(uint32_t *pData, uint32_t DataCount)
       Average.Image/= 2.0;
     }
     ESP_LOGI("AVERAGE","Average(real, image) = , %f ,%f ,%f mOhm \n", Average.Real,Average.Image,AD5940_ComplexMag(&Average));
-    if(DataCount == 29){
-      cellvalue[selecectedCellNumber].impendance = AD5940_ComplexMag(&Average) ;
+    if(DataCount == (MAX_LOOP_COUNT-1)){
+    //selecectedCellNumber 는 모드버스아이디와 같아서 하나를 줄여준다.
+      cellvalue[selecectedCellNumber-1].impendance = AD5940_ComplexMag(&Average) ;
     }
   }
-  //pImp[0].Real, pImp[0].Image;
 }
 int32_t BATShowResult(uint32_t *pData, uint32_t DataCount)
 {
@@ -167,7 +167,6 @@ void AD5940_Main_init()
   // vTaskDelay(50);
   // ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
 }
-
 void AD5940_Main(void *parameters)
 {
   uint32_t temp;
@@ -175,7 +174,7 @@ void AD5940_Main(void *parameters)
   // AD5940BATStructInit(); /* Configure your parameters in this function */
   // AppBATInit(AppBuff, APPBUFF_SIZE);    /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
   //
-  ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
+  //ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
   AD5940_AGPIOToggle(AGPIO_Pin2);
   AppBATCfg.RcalVolt.Real = -107659;
   AppBATCfg.RcalVolt.Image = 112141; 
@@ -197,12 +196,16 @@ void AD5940_Main(void *parameters)
   // };
   //
   //AppBATCtrl(BATCTRL_MRCAL, 0);     /* Measur RCAL each point in sweep */
+  AD5940BATStructInit();             /* Configure your parameters in this function */
+
+  AD5940Err error = AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
+  ESP_LOGI(TAG, "AppBATInit %d %s ",error ,error == AD5940ERR_OK ?"성공":"실패");
   digitalWrite(AD636_SEL,HIGH);
   //30개를 읽고 
   //앞의 10개는 버리고 
   //뒤의 20개는 평균을 내서 
   uint16_t loopCount ;
-  for(loopCount =0;loopCount < 30;loopCount++ )
+  for(loopCount =0;loopCount < MAX_LOOP_COUNT ;loopCount++ )
   {
     /* Check if interrupt flag which will be set when interrupt occurred. */
 
