@@ -28,7 +28,34 @@ Analog Devices Software License Agreement.
 uint32_t AppBuff[APPBUFF_SIZE];
 char TAG[] = "AD5940";
 
+extern uint8_t selecectedCellNumber ;
+extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
+fImpCar_Type pImpResult[30];
+fImpCar_Type Average;
+
 /* It's your choice here how to do with the data. Here is just an example to print them to UART */
+void addResult(uint32_t *pData, uint32_t DataCount)
+{
+  fImpCar_Type *pImp = (fImpCar_Type *)pData;
+  if(DataCount==10) {
+    Average.Real=pImp->Real;Average.Image=pImp->Image;
+  }
+  pImpResult[DataCount].Real = pImp->Real;
+  pImpResult[DataCount].Image= pImp->Image;
+  if(DataCount >= 10){
+    for(int16_t i=DataCount; i <= DataCount;i++){
+      Average.Real += pImpResult[i].Real;
+      Average.Real /= 2.0;
+      Average.Image+= pImpResult[i].Image;
+      Average.Image/= 2.0;
+    }
+    ESP_LOGI("AVERAGE","Average(real, image) = , %f ,%f ,%f mOhm \n", Average.Real,Average.Image,AD5940_ComplexMag(&Average));
+    if(DataCount == 29){
+      cellvalue[selecectedCellNumber].impendance = AD5940_ComplexMag(&Average) ;
+    }
+  }
+  //pImp[0].Real, pImp[0].Image;
+}
 int32_t BATShowResult(uint32_t *pData, uint32_t DataCount)
 {
   fImpCar_Type *pImp = (fImpCar_Type*)pData;
@@ -171,7 +198,11 @@ void AD5940_Main(void *parameters)
   //
   //AppBATCtrl(BATCTRL_MRCAL, 0);     /* Measur RCAL each point in sweep */
   digitalWrite(AD636_SEL,HIGH);
-  while(1)
+  //30개를 읽고 
+  //앞의 10개는 버리고 
+  //뒤의 20개는 평균을 내서 
+  uint16_t loopCount ;
+  for(loopCount =0;loopCount < 30;loopCount++ )
   {
     /* Check if interrupt flag which will be set when interrupt occurred. */
 
@@ -186,6 +217,7 @@ void AD5940_Main(void *parameters)
 	      AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);
 				AppBATISR(AppBuff, &temp); 			/* Deal with it and provide a buffer to store data we got */
 				AD5940_Delay10us(100000);
+        addResult(AppBuff, loopCount);
 				BATShowResult(AppBuff, temp);		/* Print measurement results over UART */		
 				AD5940_SEQMmrTrig(SEQID_0);  		/* Trigger next measurement ussing MMR write*/      
    }

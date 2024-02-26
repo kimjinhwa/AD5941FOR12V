@@ -38,6 +38,7 @@ RtcDS1302<ThreeWire> Rtc(myWire);
 ModbusServerRTU rtu485(2000,CELL485_DE);// LCD를 위하여 사용한다.
 ModbusServerRTU extrtu485(2000,EXT_485EN_1);
 //ModbusClientRTU cellModbus(CELL485_DE);
+uint8_t selecectedCellNumber =0;
 
 _cell_value cellvalue[MAX_INSTALLED_CELLS];
 
@@ -347,6 +348,7 @@ bool sendSelectBattery(uint8_t modbusId)
   //4. modbusID+1를 켠다 
   //5. 제대로 켜졌는지 다시 읽어본다. 
 
+  selecectedCellNumber = modbusId;
   uint16_t checkSum ;
   Serial.printf("\nrequest\n");
   rtu485.suspendTask();
@@ -539,12 +541,12 @@ void loop(void)
   {
     for(int i=1;i<INSTALLED_CELLS;i++){
       sendSelectBattery(i);
+      AD5940_Main(parameters);  //for test 무한 루프
       time_t startRead = millis();
       float batVoltage =  batDevice.readBatAdcValue(600);
       cellvalue[i - 1].temperature = batVoltage ;  //구조체에 값을 적어 넣는다
       time_t endRead = millis();// take 300ms
       ESP_LOGI("Voltage","Bat Voltage is : %3.3f (%ldmilisecond)",batVoltage,endRead-startRead);
-      AD5940_Main(parameters);  //for test 무한 루프
     }
     //modbusId = modbusId > 4 ? 1:modbusId;
     previous_5Secondmills= now;
@@ -560,6 +562,8 @@ void loop(void)
     {
       sendGetMoubusTemperature(i,04);
     }
+    sendSelectBattery(1);
+    AD5940_Main(parameters);  //for test 무한 루프
     previous_60Secondmills= now;
   }
   delay(10);

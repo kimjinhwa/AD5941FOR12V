@@ -28,7 +28,7 @@ float BatDeviceInterface::readBatAdcValue(float filter)
   uint32_t voltage = esp_adc_cal_raw_to_voltage((uint32_t)batVoltageAdcValue , adc_chars);
   batVoltageAdcValue = voltage*((5.1+1)/1);
   batVoltageAdcValue  /= 1000.0;
-  if(batVoltageAdcValue < 1.0 ) batVoltageAdcValue = 0; 
+  if(batVoltageAdcValue < 1.3 ) batVoltageAdcValue = 0; 
 // 이후, adc_chars를 esp_adc_cal_raw_to_voltage() 함수와 함께 사용
 //   else  //이미 읽고 있다면.. 
 //   {
