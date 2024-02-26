@@ -32,28 +32,25 @@ char TAG[] = "AD5940";
 extern uint8_t selecectedCellNumber ;
 extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
 /* It's your choice here how to do with the data. Here is just an example to print them to UART */
+fImpCar_Type pImpResult[31];
 void addResult(uint32_t *pData, uint32_t DataCount)
 {
   fImpCar_Type Average;
-  fImpCar_Type pImpResult[31];
   fImpCar_Type *pImp = (fImpCar_Type *)pData;
   if(DataCount==10) {
     Average.Real=pImp->Real;Average.Image=pImp->Image;
   }
   pImpResult[DataCount].Real = pImp->Real;
   pImpResult[DataCount].Image= pImp->Image;
-  if(DataCount >= 10){
-    for(int16_t i=DataCount; i <= DataCount;i++){
+  if(DataCount == 29){
+    for(int16_t i=10; i < DataCount;i++){
       Average.Real += pImpResult[i].Real;
       Average.Real /= 2.0;
       Average.Image+= pImpResult[i].Image;
       Average.Image/= 2.0;
     }
     ESP_LOGI("AVERAGE","Average(real, image) = , %f ,%f ,%f mOhm \n", Average.Real,Average.Image,AD5940_ComplexMag(&Average));
-    if(DataCount == (MAX_LOOP_COUNT-1)){
-    //selecectedCellNumber 는 모드버스아이디와 같아서 하나를 줄여준다.
-      cellvalue[selecectedCellNumber-1].impendance = AD5940_ComplexMag(&Average) ;
-    }
+    cellvalue[selecectedCellNumber-1].impendance = AD5940_ComplexMag(&Average) ;
   }
 }
 int32_t BATShowResult(uint32_t *pData, uint32_t DataCount)
