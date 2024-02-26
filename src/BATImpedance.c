@@ -109,6 +109,7 @@ AD5940Err AppBATCtrl(int32_t BatCtrl, void *pPara)
       if(AppBATCfg.BATInited == bFALSE)
         return AD5940ERR_APPERROR;
       AD5940_WriteReg(REG_AFE_SWMUX, 1<<0); 				/* control ADG636 to measure battery */
+      digitalWrite(AD636_SEL,HIGH);
 			AD5940_WriteReg(REG_AFE_SYNCEXTDEVICE, 0x0);
       PreCharge(PRECHARGE_BAT);
       PreCharge(PRECHARGE_AMP);
@@ -165,16 +166,18 @@ AD5940Err AppBATCtrl(int32_t BatCtrl, void *pPara)
         return AD5940ERR_WAKEUP;
     //Settle input RC filter.
     AD5940_WriteReg(REG_AFE_SWMUX, 0); //control ADG636 to measure rcal
+    digitalWrite(AD636_SEL,LOW);
 		AD5940_WriteReg(REG_AFE_SYNCEXTDEVICE, 0x4);
     PreCharge(PRECHARGE_RCAL);
     PreCharge(PRECHARGE_AMP);
     AD5940_FIFOCtrlS(FIFOSRC_DFT, bFALSE);
 		AD5940_FIFOThrshSet(2);
+
     AD5940_FIFOCtrlS(FIFOSRC_DFT, bTRUE); //enable FIFO
 		AD5940_AFECtrlS(AFECTRL_HPREFPWR|AFECTRL_INAMPPWR|AFECTRL_EXTBUFPWR|\
                 AFECTRL_WG|AFECTRL_DACREFPWR|AFECTRL_HSDACPWR|\
                 AFECTRL_SINC2NOTCH, bTRUE);
-		AD5940_Delay10us(10000);
+		AD5940_Delay10us(10000); // 100000us 100ms
 		AppBATMeasureRCAL();
     break;
     default:
@@ -332,7 +335,10 @@ static AD5940Err AppBATSeqMeasureGen(void)
   /* Start sequence generator here */
   AD5940_SEQGenCtrl(bTRUE);
   AD5940_SEQGenInsert(SEQ_WAIT(16*250));  /* wait 250us for reference power up from hibernate mode. */
-  AD5940_AFECtrlS(AFECTRL_WG|AFECTRL_ADCPWR|AFECTRL_SINC2NOTCH, bTRUE);  /* Enable Waveform generator, ADC power */
+  //AD5940_AFECtrlS(AFECTRL_WG|AFECTRL_ADCPWR|AFECTRL_SINC2NOTCH, bTRUE);  /* Enable Waveform generator, ADC power */
+		AD5940_AFECtrlS(AFECTRL_HPREFPWR|AFECTRL_ADCPWR|AFECTRL_INAMPPWR|AFECTRL_EXTBUFPWR|\
+                AFECTRL_WG|AFECTRL_DACREFPWR|AFECTRL_HSDACPWR|\
+                AFECTRL_SINC2NOTCH, bTRUE);
   AD5940_SEQGenInsert(SEQ_WAIT(16*50000));   /* Wait for ADC ready. */
   AD5940_AFECtrlS(AFECTRL_ADCCNV|AFECTRL_DFT, bTRUE);  /* Start ADC convert and DFT */
   AD5940_SEQGenInsert(SEQ_WAIT(WaitClks));  /* wait for first data ready */  
@@ -615,7 +621,8 @@ AD5940Err AppBATISR(void *pBuff, uint32_t *pCount)
     AD5940_INTCClrFlag(AFEINTSRC_DATAFIFOTHRESH);
     AppBATRegModify(pBuff, &FifoCnt);   /* If there is need to do AFE re-configure, do it here when AFE is in active state */
     //AD5940_EnterSleepS();  /* Manually put AFE back to hibernate mode. */
-    AD5940_SleepKeyCtrlS(SLPKEY_UNLOCK);  /* Allow AFE to enter hibernate mode */
+    //죽지마라..
+    //AD5940_SleepKeyCtrlS(SLPKEY_UNLOCK);  /* Allow AFE to enter hibernate mode */
     /* Process data */ 
     AppBATDataProcess((int32_t*)pBuff,&FifoCnt); 
     *pCount = FifoCnt;
@@ -630,31 +637,39 @@ AD5940Err AppBATMeasureRCAL(void)
 	uint32_t buff[100];
 	uint32_t temp;
 	AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bFALSE); /* Disable INT0 interrupt for RCAL measurement. */
+  while(1){
 	AppBATCfg.state = STATE_RCAL;
-	if(AppBATCfg.SweepCfg.SweepEn)
 	{
-		uint32_t i;
-    for(i=0;i<AppBATCfg.SweepCfg.SweepPoints;i++)
-    {
-      AD5940_SEQMmrTrig(SEQID_0);
-			while(AD5940_INTCTestFlag(AFEINTC_1, AFEINTSRC_DATAFIFOTHRESH) == bFALSE);
-			printf("i: %d   Freq: %.2f ",AppBATCfg.SweepCfg.SweepIndex, AppBATCfg.SweepCurrFreq);
-			AppBATISR(buff, &temp);
-			AppBATCfg.RcalVoltTable[i][0] = AppBATCfg.RcalVolt.Real;
-			AppBATCfg.RcalVoltTable[i][1] = AppBATCfg.RcalVolt.Image;
-			printf(" RcalVolt:(%f,%f)\n",  AppBATCfg.RcalVoltTable[i][0], AppBATCfg.RcalVoltTable[i][1]);
-			AD5940_Delay10us(10000);
-    }
-		AppBATCfg.RcalVolt.Real = AppBATCfg.RcalVoltTable[0][0];
-		AppBATCfg.RcalVolt.Image = AppBATCfg.RcalVoltTable[0][1];
-	}else
-	{
-		AD5940_SEQMmrTrig(SEQID_0);
+		AD5940_SEQMmrTrig(SEQID_0); //여기서 DAC출력은 종료된다.
 		while(AD5940_INTCTestFlag(AFEINTC_1, AFEINTSRC_DATAFIFOTHRESH) == bFALSE);
 		AppBATISR(buff, &temp);
+    ESP_LOGI("TEST","FOR TEST");
 	}
+  }
 	AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);
 	return 0;
+    //여기서 신호가 출력된다.
+    // while(1){   
+    //  
+    //   delay(3000);
+    // }
+	// if(AppBATCfg.SweepCfg.SweepEn)
+	// {
+	// 	uint32_t i;
+  //   for(i=0;i<AppBATCfg.SweepCfg.SweepPoints;i++)
+  //   {
+  //     AD5940_SEQMmrTrig(SEQID_0);
+	// 		while(AD5940_INTCTestFlag(AFEINTC_1, AFEINTSRC_DATAFIFOTHRESH) == bFALSE);
+	// 		printf("i: %d   Freq: %.2f ",AppBATCfg.SweepCfg.SweepIndex, AppBATCfg.SweepCurrFreq);
+	// 		AppBATISR(buff, &temp);
+	// 		AppBATCfg.RcalVoltTable[i][0] = AppBATCfg.RcalVolt.Real;
+	// 		AppBATCfg.RcalVoltTable[i][1] = AppBATCfg.RcalVolt.Image;
+	// 		printf(" RcalVolt:(%f,%f)\n",  AppBATCfg.RcalVoltTable[i][0], AppBATCfg.RcalVoltTable[i][1]);
+	// 		AD5940_Delay10us(10000);
+  //   }
+	// 	AppBATCfg.RcalVolt.Real = AppBATCfg.RcalVoltTable[0][0];
+	// 	AppBATCfg.RcalVolt.Image = AppBATCfg.RcalVoltTable[0][1];
+	// }else
 }
 
 /**

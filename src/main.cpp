@@ -22,7 +22,7 @@
 #define VSPI_MISO   MISO  // IO19
 #define VSPI_MOSI   MOSI  // IO 23
 #define VSPI_SCLK   SCK   // IO 18
-#define VSPI_SS     SS    // IO 5
+#define VSPI_SS     15    // IO 15
 
 // //SPIClass * vspi = NULL;
 
@@ -63,6 +63,7 @@ void pinsetup()
     pinMode(CELL485_DE, OUTPUT);
 
 
+    digitalWrite(AD636_SEL,LOW );//REFERANCE
     digitalWrite(CS_5940, HIGH);
 };
 
@@ -281,45 +282,6 @@ void setupModbusAgentForLcd(){
   // cellModbus.suspendTask();
 };
 ExtendSerial extendSerial;
-void setup(){
-  EEPROM.begin(1000);
-  readnWriteEEProm();
-  pinsetup();
-  Serial.begin(BAUDRATE);
-  // 내부의 LCD와 셀의 온도및 릴레이를 위해 사용한다.
-  Serial1.begin(BAUDRATE,SERIAL_8N1,SERIAL_RX1 ,SERIAL_TX1 );
-  //외부 485통신에 사용한다.
-  Serial2.begin(BAUDRATE,SERIAL_8N1,SERIAL_RX2 ,SERIAL_TX2 );
-  //ExtendSerial.selectCellModule(true);
-  extendSerial.selectLcd();  //232통신이다 
-                             // 485가 enable가 된다고 해도 
-                             // 그쪽으로는 출력이 되지 않으므로 상관이 없다.
-
-  for(int i=0;i<40;i++){
-    cellvalue[i].voltage = 10+i;
-    cellvalue[i].impendance= 20+i;
-    cellvalue[i].voltageCompensation= i;
-    cellvalue[i].impendanceCompensation= i;
-  }
-
-  setupModbusAgentForLcd();
-  SerialBT.begin("TIMP_Device_1");
-  wifiApmodeConfig();
-  lsFile.littleFsInitFast(0);
-  setRtc();
-  SPI.setFrequency(spiClk );
-  SPI.begin(SCK,MISO,MOSI,CS_5940);
-  pinMode(SS, OUTPUT); //VSPI SS
-
-  AD5940_MCUResourceInit(0);
-  AD5940_Main_init();
-  delay(1000);
-  ESP_LOGI(TAG, "System Started");
-
-  //xTaskCreate(NetworkTask,"NetworkTask",5000,NULL,1,h_pxNetworkTask); //PCB 패턴문제로 사용하지 않는다.
-  xTaskCreate(blueToothTask,"blueToothTask",5000,NULL,1,h_pxblueToothTask);
-
-};
 int readData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len){
   uint16_t timeout;
   timeout = 300;
@@ -495,23 +457,45 @@ bool sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
   rtu485.resumeTask();
   return data_ready;
 
-  //cellModbus.resumeTask();
-  // data_ready = false;
-  // uint16_t retryCount = 5;
-  // while (!data_ready && retryCount--)
-  // {
-  //   //Error err = cellModbus.addRequest((uint32_t)millis(), modbusId, READ_INPUT_REGISTER, 0, 2);
-  //   while (!data_ready && timeout)
-  //   {
-  //     timeout--;
-  //     delay(1);
-  //   }
-  //}
-  // Serial.print("\nData Received %d",);
-  // //cellModbus.suspendTask();
-  // extendSerial.selectLcd();
-  // return data_ready;
-}
+};
+void setup(){
+  EEPROM.begin(1000);
+  readnWriteEEProm();
+  pinsetup();
+  Serial.begin(BAUDRATE);
+  // 내부의 LCD와 셀의 온도및 릴레이를 위해 사용한다.
+  Serial1.begin(BAUDRATE,SERIAL_8N1,SERIAL_RX1 ,SERIAL_TX1 );
+  //외부 485통신에 사용한다.
+  Serial2.begin(BAUDRATE,SERIAL_8N1,SERIAL_RX2 ,SERIAL_TX2 );
+  //ExtendSerial.selectCellModule(true);
+  extendSerial.selectLcd();  //232통신이다 
+                             // 485가 enable가 된다고 해도 
+                             // 그쪽으로는 출력이 되지 않으므로 상관이 없다.
+
+  for(int i=0;i<40;i++){
+    cellvalue[i].voltage = 10+i;
+    cellvalue[i].impendance= 20+i;
+    cellvalue[i].voltageCompensation= i;
+    cellvalue[i].impendanceCompensation= i;
+  }
+
+  setupModbusAgentForLcd();
+  SerialBT.begin("TIMP_Device_1");
+  wifiApmodeConfig();
+  lsFile.littleFsInitFast(0);
+  setRtc();
+  SPI.setFrequency(spiClk );
+  SPI.begin(SCK,MISO,MOSI,CS_5940);
+  pinMode(SS, OUTPUT); //VSPI SS -> 아니다..이것은 리셋용이다.
+
+  AD5940_MCUResourceInit(0);
+  AD5940_Main_init();
+  delay(1000);
+  ESP_LOGI(TAG, "System Started");
+
+  //xTaskCreate(NetworkTask,"NetworkTask",5000,NULL,1,h_pxNetworkTask); //PCB 패턴문제로 사용하지 않는다.
+  xTaskCreate(blueToothTask,"blueToothTask",5000,NULL,1,h_pxblueToothTask);
+};
 static unsigned long previousSecondmills = 0;
 static int everySecondInterval = 1000;
 
@@ -520,6 +504,9 @@ static unsigned long previous_3Secondmills = 0;
 
 static int Interval_5Second = 5000;
 static unsigned long previous_5Secondmills = 0;
+
+static int Interval_30Second = 30000;
+static unsigned long previous_30Secondmills = 0;
 
 static int Interval_60Second = 60000;
 static unsigned long previous_60Secondmills = 0;
@@ -531,6 +518,7 @@ uint8_t modbusId=1;
 BatDeviceInterface batDevice;
 void loop(void)
 {
+  void *parameters;
   now = millis(); 
   if ((now - previousSecondmills > everySecondInterval))
   {
@@ -553,12 +541,18 @@ void loop(void)
       sendSelectBattery(i);
       time_t startRead = millis();
       float batVoltage =  batDevice.readBatAdcValue(600);
+      cellvalue[i - 1].temperature = batVoltage ;  //구조체에 값을 적어 넣는다
       time_t endRead = millis();// take 300ms
       ESP_LOGI("Voltage","Bat Voltage is : %3.3f (%ldmilisecond)",batVoltage,endRead-startRead);
+      AD5940_Main(parameters);  //for test 무한 루프
     }
     //modbusId = modbusId > 4 ? 1:modbusId;
-
     previous_5Secondmills= now;
+  }
+  if ((now - previous_30Secondmills > Interval_30Second))
+  {
+
+    previous_30Secondmills= now;
   }
   if ((now - previous_60Secondmills > Interval_60Second))
   {
@@ -768,3 +762,19 @@ int UrtCfg(int iBaud)
   //   // }
   //   delay(1000);
   // }
+  //cellModbus.resumeTask();
+  // data_ready = false;
+  // uint16_t retryCount = 5;
+  // while (!data_ready && retryCount--)
+  // {
+  //   //Error err = cellModbus.addRequest((uint32_t)millis(), modbusId, READ_INPUT_REGISTER, 0, 2);
+  //   while (!data_ready && timeout)
+  //   {
+  //     timeout--;
+  //     delay(1);
+  //   }
+  //}
+  // Serial.print("\nData Received %d",);
+  // //cellModbus.suspendTask();
+  // extendSerial.selectLcd();
+  // return data_ready;

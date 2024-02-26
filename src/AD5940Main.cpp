@@ -98,23 +98,24 @@ static int32_t AD5940PlatformCfg(void)
   return 0;
 }
 
+extern AppBATCfg_Type AppBATCfg ; 
 void AD5940BATStructInit(void)
 {
   AppBATCfg_Type *pBATCfg;
   AppBATGetCfg(&pBATCfg);
   pBATCfg->SeqStartAddr = 0;
   pBATCfg->MaxSeqLen = 512;
-  pBATCfg->RcalVal = 50.0;  							/* Value of RCAL on EVAL-AD5941BATZ board is 50mOhm */
+  pBATCfg->RcalVal = 56.0;  							/* Value of RCAL on EVAL-AD5941BATZ board is 50mOhm */
   pBATCfg->ACVoltPP = 300.0f;							/* Pk-pk amplitude is 300mV */
   pBATCfg->DCVolt = 1200.0f;							/* Offset voltage of 1.2V*/
   pBATCfg->DftNum = DFTNUM_8192;
   
   pBATCfg->FifoThresh = 2;      					/* 2 results in FIFO, real and imaginary part. */
 	
-	pBATCfg->SinFreq = 200;									/* Sin wave frequency. THis value has no effect if sweep is enabled */
+	pBATCfg->SinFreq = 1000;									/* Sin wave frequency. THis value has no effect if sweep is enabled */
 	
-	pBATCfg->SweepCfg.SweepEn = bTRUE;			/* Set to bTRUE to enable sweep function */
-	pBATCfg->SweepCfg.SweepStart = 1.0f;		/* Start sweep at 1Hz  */
+	pBATCfg->SweepCfg.SweepEn = bFALSE;			/* Set to bTRUE to enable sweep function */
+	pBATCfg->SweepCfg.SweepStart = 900.0f;		/* Start sweep at 1Hz  */
 	pBATCfg->SweepCfg.SweepStop = 1000.0f;	/* Finish sweep at 1000Hz */
 	pBATCfg->SweepCfg.SweepPoints = 20;			/* 100 frequencies in the sweep */
 	pBATCfg->SweepCfg.SweepLog = bTRUE;			/* Set to bTRUE to use LOG scale. Set bFALSE to use linear scale */
@@ -128,6 +129,12 @@ void AD5940_Main_init()
   uint32_t startTime;
   ESP_LOGI(TAG, "AD5940_Main_init\n");
   AD5940PlatformCfg();
+  AD5940BATStructInit();             /* Configure your parameters in this function */
+
+  AD5940Err error = AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
+  ESP_LOGI(TAG, "AppBATInit %d %s ",error ,error == AD5940ERR_OK ?"성공":"실패");
+
+
   // iCount = AD5940_WakeUp(50);
   // ESP_LOGI(TAG, "AD5940_Wakeup count is %d ",iCount);
   // vTaskDelay(50);
@@ -137,22 +144,45 @@ void AD5940_Main_init()
 void AD5940_Main(void *parameters)
 {
   uint32_t temp;
-  AD5940PlatformCfg();
-  
-  AD5940BATStructInit(); /* Configure your parameters in this function */
-  
-  AppBATInit(AppBuff, APPBUFF_SIZE);    /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
-  AppBATCtrl(BATCTRL_MRCAL, 0);     /* Measur RCAL each point in sweep */
-	AppBATCtrl(BATCTRL_START, 0); 
+  // AD5940PlatformCfg();
+  // AD5940BATStructInit(); /* Configure your parameters in this function */
+  // AppBATInit(AppBuff, APPBUFF_SIZE);    /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
+  //
+    ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
+    AD5940_AGPIOToggle(AGPIO_Pin2);
+  while (1)
+  {
+    ESP_LOGI(TAG, "AppBATCtrl(BATCTRL_MRCAL, 0)\n");
+    time_t startTime = millis();
+    if (AD5940ERR_WAKEUP == AppBATCtrl(BATCTRL_MRCAL, 0))
+    {
+      ESP_LOGW(TAG, "\nWakeup Error..retry...");
+    }; /* Measur RCAL each point in sweep */
+    time_t endTime = millis();
+    ESP_LOGI("IMP", "RcalVolt Real Image IMP:%f\t %f\t %f (%dmills)",
+             AppBATCfg.RcalVolt.Real,
+             AppBATCfg.RcalVolt.Image,
+             AD5940_ComplexMag(&AppBATCfg.RcalVolt),endTime-startTime);
+    delay(100);
+  };
+  //
+  //AppBATCtrl(BATCTRL_MRCAL, 0);     /* Measur RCAL each point in sweep */
+  digitalWrite(AD636_SEL,HIGH);
   while(1)
   {
     /* Check if interrupt flag which will be set when interrupt occurred. */
+
+	  AppBATCtrl(BATCTRL_START, 0); 
+		//while(AD5940_INTCTestFlag(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH) == bFALSE);
     if(AD5940_GetMCUIntFlag())
     {
+
+        AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
 				AD5940_ClrMCUIntFlag(); 				/* Clear this flag */
 				temp = APPBUFF_SIZE;
+	      AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);
 				AppBATISR(AppBuff, &temp); 			/* Deal with it and provide a buffer to store data we got */
-				AD5940_Delay10us(100000);
+				//AD5940_Delay10us(100000);
 				BATShowResult(AppBuff, temp);		/* Print measurement results over UART */		
 				AD5940_SEQMmrTrig(SEQID_0);  		/* Trigger next measurement ussing MMR write*/      
    }
