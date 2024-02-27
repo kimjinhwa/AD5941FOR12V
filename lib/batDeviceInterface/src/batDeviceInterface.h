@@ -14,7 +14,7 @@ class BatDeviceInterface
     float getBatVoltage(float batVoltageAdcValue);
     float batVoltageAdcValue ;
     private:
-        esp_adc_cal_characteristics_t *adc_chars;
+        esp_adc_cal_characteristics_t adc_chars;
 };
 
 #endif

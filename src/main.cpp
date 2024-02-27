@@ -366,19 +366,19 @@ bool sendSelectBattery(uint8_t modbusId)
   uint8_t buf[256];
 
   //makeRelayControllData(buf,0xFF,05,0,0xFF00); // 0xff BROADCAST
-  makeRelayControllData(buf,0xFF,05,0,0x00); // 0xff BROADCAST
+  makeRelayControllData(buf,0xFF,WRITE_COIL,0,0x00); // 0xff BROADCAST
   delay(100);
   //makeRelayControllData(buf,0xFF,05,1,0xFF00); // 0xff BROADCAST
-  makeRelayControllData(buf,0xFF,05,1,0x00); // 0xff BROADCAST
+  makeRelayControllData(buf,0xFF,WRITE_COIL,1,0x00); // 0xff BROADCAST
   delay(500);
-  makeRelayControllData(buf,modbusId,01,0,2); // Read coil data 2 개 
+  makeRelayControllData(buf,modbusId,READ_COIL,0,2); // Read coil data 2 개 
 
   extendSerial.selectCellModule(false);  //읽기 모드로 전환
   uint16_t readCount = readResponseData(modbusId,1, buf,6); //buf[3]이 Relay 데이타 이다.
 
-  makeRelayControllData(buf,modbusId,05,0,0xFF00); // 해당 셀을 ON 시킨다 
+  makeRelayControllData(buf,modbusId,WRITE_COIL,0,0xFF00); // 해당 셀을 ON 시킨다 
   delay(100);
-  makeRelayControllData(buf,modbusId+1,05,1,0xFF00); // 해당 셀을 ON 시킨다 
+  makeRelayControllData(buf,modbusId+1,WRITE_COIL,1,0xFF00); // 해당 셀을 ON 시킨다 
   delay(200);
 
   extendSerial.selectLcd();
@@ -510,18 +510,16 @@ void loop(void)
   esp_task_wdt_reset();
   if ((now - previousSecondmills > everySecondInterval))
   {
-    ESP_LOGI(TAG, "step");
     previousSecondmills = now;
   }
   if ((now - previous_3Secondmills > Interval_3Second))
   {
-    ESP_LOGI(TAG, "step 1");
     previous_3Secondmills= now;
   }
   if ((now - previous_5Secondmills > Interval_5Second))
   {
-    ESP_LOGI(TAG, "step 5");
     for(int i=1;i<=INSTALLED_CELLS;i++){
+      sendGetMoubusTemperature(i,READ_INPUT_REGISTER);
       esp_task_wdt_reset();
       sendSelectBattery(i);
       AD5940_Main(parameters);  //for test 무한 루프
@@ -538,12 +536,10 @@ void loop(void)
   }
   if ((now - previous_30Secondmills > Interval_30Second))
   {
-    ESP_LOGI(TAG, "step 30");
     previous_30Secondmills= now;
   }
   if ((now - previous_60Secondmills > Interval_60Second))
   {
-    // ESP_LOGI(TAG, "step 60");
     // sendGetMoubusTemperature(impedanceCellPosition,04);
     // sendSelectBattery(impedanceCellPosition);//selecectedCellNumber를 변화 시킨다
     // AD5940_Main(parameters);  

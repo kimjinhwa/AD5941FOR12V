@@ -4,9 +4,9 @@ BatDeviceInterface::BatDeviceInterface(){
         batVoltageAdcValue = 0.0;
         adc1_config_width(ADC_WIDTH_BIT_12);
         adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
-        adc_chars =(esp_adc_cal_characteristics_t *)calloc(1, sizeof(esp_adc_cal_characteristics_t));
+        //adc_chars =(esp_adc_cal_characteristics_t *)calloc(1, sizeof(esp_adc_cal_characteristics_t));
         // ADC 설정 초기화 (예: ADC1, 12비트 해상도, 11dB 감쇠, 1100mV Vref)
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, adc_chars);
+        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
 
 
 };
@@ -25,7 +25,7 @@ float BatDeviceInterface::readBatAdcValue(float filter)
     batVoltageAdcValue = batVoltageAdcValue/filter ;
   }
   batVoltageAdcValue += VOLTAGE_OFFSET;
-  uint32_t voltage = esp_adc_cal_raw_to_voltage((uint32_t)batVoltageAdcValue , adc_chars);
+  uint32_t voltage = esp_adc_cal_raw_to_voltage((uint32_t)batVoltageAdcValue , &adc_chars);
   batVoltageAdcValue = voltage*((5.1+1)/1);
   batVoltageAdcValue  /= 1000.0;
   if(batVoltageAdcValue < 1.3 ) batVoltageAdcValue = 0; 

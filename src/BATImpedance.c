@@ -583,7 +583,7 @@ static AD5940Err AppBATDataProcess(int32_t * const pData, uint32_t *pDataCount)
       BatImp.Image *= AppBATCfg.RcalVal;
       BatImp.Real *= AppBATCfg.RcalVal;
       pOut[i] = BatImp;
-		  ESP_LOGI("RCAL","i: %d , %.2f , %.2f , %.2f , %.2f , %.2f , %.2f , %.2f\n",
+		  //ESP_LOGI("RCAL","i: %d , %.2f , %.2f , %.2f , %.2f , %.2f , %.2f , %.2f\n",
           AppBATCfg.SweepCfg.SweepIndex, 
           AppBATCfg.SweepCurrFreq, 
           BatImp.Real, 
@@ -591,7 +591,7 @@ static AD5940Err AppBATDataProcess(int32_t * const pData, uint32_t *pDataCount)
           AppBATCfg.RcalVolt.Real, 
           AppBATCfg.RcalVolt.Image,
           AppBATCfg.RcalVoltTable[AppBATCfg.SweepCfg.SweepIndex][0], 
-          AppBATCfg.RcalVoltTable[AppBATCfg.SweepCfg.SweepIndex][1]);
+          AppBATCfg.RcalVoltTable[AppBATCfg.SweepCfg.SweepIndex][1];
     }
     *pDataCount = DftResCount;
   }
