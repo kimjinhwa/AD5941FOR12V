@@ -43,12 +43,12 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   sendValue[123]=now.Hour();
   sendValue[124]=now.Minute();
   sendValue[125]=now.Second();
-  sendValue[126]=2;
-  sendValue[127]=20;
-  sendValue[128]=150;
-  sendValue[129]=1450;
-  sendValue[130]=850;
-  sendValue[131]=10000;
+  sendValue[126]= systemDefaultValue.modbusId ;
+  sendValue[127]= systemDefaultValue.TotalCellCount ;
+  sendValue[128]= systemDefaultValue.AlarmTemperature;
+  sendValue[129]= systemDefaultValue.alarmHighCellVoltage ;
+  sendValue[130]=systemDefaultValue.alarmLowCellVoltage;
+  sendValue[131]= systemDefaultValue.AlarmAmpere ;  // 200A
 }
 ModbusMessage FC03(ModbusMessage request) {
   uint16_t address;           // requested register address
@@ -165,18 +165,18 @@ ModbusMessage FC06(ModbusMessage request)
   uint16_t value;
   uint16_t sendValue[256];
   memset(sendValue, 0x00, 256);
-  setSendbuffer(03,sendValue);
+  setSendbuffer(03, sendValue);
   // get request values
   request.get(2, address);
   request.get(4, value);
-  uint16_t writeAddress = (0x00FF & address );
+  uint16_t writeAddress = (0x00FF & address);
 
   struct timeval tmv;
   gettimeofday(&tmv, NULL);
   RtcDateTime now;
   now = RtcDateTime(tmv.tv_sec);
 
-  if (writeAddress  > 255)
+  if (writeAddress > 255)
   {
     response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
     return response;
@@ -184,25 +184,28 @@ ModbusMessage FC06(ModbusMessage request)
   response.add(request.getServerID(), request.getFunctionCode(), 2);
   response.add(value);
 
-  if( writeAddress  <40){
-    systemDefaultValue.voltageCompensation[writeAddress  ]=value;
-    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
-    EEPROM.commit();
-    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
-    Serial.printf("\nFunction code 06 %d[%d] %d ",address,writeAddress,value);
-    Serial.printf("\nWrite and read %d ",systemDefaultValue.voltageCompensation[writeAddress]);
-  }
-  if( writeAddress>=40 &&  writeAddress  < 80){
-  }
-  if( writeAddress>=80 &&  writeAddress  < 120){
-    systemDefaultValue.impendanceCompensation[writeAddress-80] = value; 
+  ESP_LOGI("MODBUS", "\nFunction code 06 address(%d) writeAddress(%d) value(%d) ", address, writeAddress, value);
+  ESP_LOGI("MODBUS", "Write and read %d ", systemDefaultValue.voltageCompensation[writeAddress]);
+  if (writeAddress < 40)
+  {
+    systemDefaultValue.voltageCompensation[writeAddress] = value;
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
   }
-  if (writeAddress  >= 120 && writeAddress  < 126)
+  if (writeAddress >= 40 && writeAddress < 80)
+  {
+  }
+  if (writeAddress >= 80 && writeAddress < 120)
+  {
+    systemDefaultValue.impendanceCompensation[writeAddress - 80] = value;
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.commit();
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  }
+  if (writeAddress >= 120 && writeAddress < 126)
   { // 시간을 설정한다.
-    switch (writeAddress  )
+    switch (writeAddress)
     {
     case 120:
       now = RtcDateTime(value, now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second());
@@ -226,10 +229,42 @@ ModbusMessage FC06(ModbusMessage request)
     default:
       break;
     }
+
     tmv.tv_sec = now.TotalSeconds();
     tmv.tv_usec = 0;
     settimeofday(&tmv, NULL);
     setRtcNewTime(now);
+  }
+  if (writeAddress >= 126 && writeAddress < 132)
+  {
+
+    switch (writeAddress)
+    {
+    case 126:
+      systemDefaultValue.modbusId = value;
+      break;
+    case 127:
+      systemDefaultValue.TotalCellCount = value;
+      break;
+    case 128:
+      systemDefaultValue.AlarmTemperature = value;
+      break;
+    case 129:
+      systemDefaultValue.alarmHighCellVoltage = value;
+      break;
+    case 130:
+      systemDefaultValue.alarmLowCellVoltage = value;
+      break;
+    case 131:
+      systemDefaultValue.AlarmAmpere = value;
+      break;
+    default:
+      break;
+    };
+    ESP_LOGI("MODUBS", "Write EEPROM");
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.commit();
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
   }
   return response;
 };

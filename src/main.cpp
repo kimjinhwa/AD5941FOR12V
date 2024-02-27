@@ -86,11 +86,11 @@ void readnWriteEEProm()
   uint8_t ipaddr1;
   if (EEPROM.read(0) != 0x55)
   {
-    systemDefaultValue.AlarmAmpere = 200;
-    systemDefaultValue.alarmDiffCellVoltage = 200;
-    systemDefaultValue.alarmHighCellVoltage = 14500;
-    systemDefaultValue.alarmLowCellVoltage = 8500;
-    systemDefaultValue.AlarmTemperature = 65;
+    systemDefaultValue.AlarmAmpere = 2000;  // 200A
+    systemDefaultValue.alarmDiffCellVoltage = 200;  //200mV
+    systemDefaultValue.alarmHighCellVoltage = 1450;  //14.5V
+    systemDefaultValue.alarmLowCellVoltage = 850; //8.5V
+    systemDefaultValue.AlarmTemperature = 65+40;
     systemDefaultValue.cutoffHighCellVoltage = 14800;
     systemDefaultValue.cutoffLowCellVoltage = 6500;
     systemDefaultValue.GATEWAY =(uint32_t)IPAddress(192, 168, 0, 1); 
