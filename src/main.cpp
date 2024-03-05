@@ -475,7 +475,7 @@ void setup(){
   //esp_task_wdt_init(5, true); // WDT를 활성화하고, panic 핸들러를 사용하여 리셋합니다.
   //esp_task_wdt_add(NULL); // 현재 태스크를 WDT에 추가합니다.
   //xTaskCreate(NetworkTask,"NetworkTask",5000,NULL,1,h_pxNetworkTask); //PCB 패턴문제로 사용하지 않는다.
-  //xTaskCreate(blueToothTask,"blueToothTask",5000,NULL,1,h_pxblueToothTask);
+  xTaskCreate(blueToothTask,"blueToothTask",5000,NULL,1,h_pxblueToothTask);
     ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
     for(int i=1;i<INSTALLED_CELLS;i++){
       sendGetMoubusTemperature(i,04);
@@ -522,13 +522,14 @@ void loop(void)
       sendGetMoubusTemperature(i,READ_INPUT_REGISTER);
       esp_task_wdt_reset();
       sendSelectBattery(i);
-      AD5940_Main(parameters);  //for test 무한 루프
-      time_t startRead = millis();
-      float batVoltage= 0.0;
+      time_t startRead = millis(); float batVoltage= 0.0;
        batVoltage =  batDevice.readBatAdcValue(600);
         cellvalue[i - 1].voltage= batVoltage ;  //구조체에 값을 적어 넣는다
       time_t endRead = millis();// take 300ms
       ESP_LOGI("Voltage","Bat Voltage is : %3.3f (%ldmilisecond)",batVoltage,endRead-startRead);
+      if(batVoltage>2.0){
+      AD5940_Main(parameters);  //for test 무한 루프
+      }
     delay(1000);
     }
     //modbusId = modbusId > 4 ? 1:modbusId;
