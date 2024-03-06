@@ -33,7 +33,6 @@
 #define ESP_INTR_FLAG_DEFAULT 0
 
 #define MAX_INSTALLED_CELLS 50
-#define INSTALLED_CELLS 3 // 
 
 typedef struct
 {
@@ -46,7 +45,7 @@ typedef struct
     uint32_t GATEWAY;     // 54 + 4 = 58
     uint32_t SUBNETMASK;  // 58 + 4 = 62
     uint8_t modbusId;     // 62 + 1 = 63
-    uint16_t TotalCellCount;     // 63 + 2 = 65
+    uint16_t installed_cells;     // 63 + 2 = 65
     uint16_t AlarmTemperature;    // 65 + 2 = 67
     uint16_t AlarmAmpere;    // 69
     uint16_t alarmHighCellVoltage;    // 71 

@@ -44,7 +44,7 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   sendValue[124]=now.Minute();
   sendValue[125]=now.Second();
   sendValue[126]= systemDefaultValue.modbusId ;
-  sendValue[127]= systemDefaultValue.TotalCellCount ;
+  sendValue[127]= systemDefaultValue.installed_cells;
   sendValue[128]= systemDefaultValue.AlarmTemperature;
   sendValue[129]= systemDefaultValue.alarmHighCellVoltage ;
   sendValue[130]=systemDefaultValue.alarmLowCellVoltage;
@@ -244,7 +244,7 @@ ModbusMessage FC06(ModbusMessage request)
       systemDefaultValue.modbusId = value;
       break;
     case 127:
-      systemDefaultValue.TotalCellCount = value;
+      systemDefaultValue.installed_cells= value;
       break;
     case 128:
       systemDefaultValue.AlarmTemperature = value;

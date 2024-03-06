@@ -111,6 +111,23 @@ void cat_configCallback(cmd *cmdPtr)
 uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumberL);
 
 float AD5940_calibration(float *real , float *image,Print *outputStream );
+
+void batnumber_configCallback(cmd *cmdPtr)
+{
+  Command cmd(cmdPtr);
+  Argument arg = cmd.getArgument(0);
+  String argVal = arg.getValue();
+  simpleCli.outputStream->printf("\nEEPROM installed Bat number %d", systemDefaultValue.installed_cells);
+  if (argVal.length() == 0)
+  {
+    return;
+  }
+  systemDefaultValue.installed_cells = argVal.toInt();
+  EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  EEPROM.commit();
+  EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  simpleCli.outputStream->printf("\nChanged EEPROM installed Bat number %d", systemDefaultValue.installed_cells);
+}
 void calibration_configCallback(cmd *cmdPtr){
   Command cmd(cmdPtr);
   Argument arg = cmd.getArgument(0);
@@ -313,6 +330,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config.addFlagArg("off");
   cmd_config = addSingleArgCmd("mode", mode_configCallback);
   cmd_config = addSingleArgCmd("cal/ibration", calibration_configCallback);
+  cmd_config = addSingleArgCmd("bat/number", batnumber_configCallback);
   //cmd_config.addArgument("off","");
   cmd_config.setDescription("relay on off controll \r\n relay -s/el [1] [-off]");
 

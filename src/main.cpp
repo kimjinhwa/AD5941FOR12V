@@ -100,7 +100,7 @@ void readnWriteEEProm()
     strncpy(systemDefaultValue.ssid ,"iptime_mbhong",20);
     strncpy(systemDefaultValue.ssid_password,"",10);
     systemDefaultValue.SUBNETMASK =(uint32_t)IPAddress(255, 255, 255, 0); 
-    systemDefaultValue.TotalCellCount = 40;
+    systemDefaultValue.installed_cells= 40;
     strncpy(systemDefaultValue.userid,"admin",10);
     strncpy(systemDefaultValue.userpassword,"admin",10);
     for(int i=0;i<40;i++){
@@ -477,26 +477,28 @@ bool sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
   return data_ready;
 
 };
-void setup(){
+void setup()
+{
   EEPROM.begin(1000);
   readnWriteEEProm();
   pinsetup();
   Serial.begin(BAUDRATE);
   // 내부의 LCD와 셀의 온도및 릴레이를 위해 사용한다.
-  Serial1.begin(BAUDRATE,SERIAL_8N1,SERIAL_RX1 ,SERIAL_TX1 );
-  //외부 485통신에 사용한다.
-  Serial2.begin(BAUDRATE,SERIAL_8N1,SERIAL_RX2 ,SERIAL_TX2 );
-  //ExtendSerial.selectCellModule(true);
-  extendSerial.selectLcd();  //232통신이다 
-                             // 485가 enable가 된다고 해도 
-                             // 그쪽으로는 출력이 되지 않으므로 상관이 없다.
+  Serial1.begin(BAUDRATE, SERIAL_8N1, SERIAL_RX1, SERIAL_TX1);
+  // 외부 485통신에 사용한다.
+  Serial2.begin(BAUDRATE, SERIAL_8N1, SERIAL_RX2, SERIAL_TX2);
+  // ExtendSerial.selectCellModule(true);
+  extendSerial.selectLcd(); // 232통신이다
+                            //  485가 enable가 된다고 해도
+                            //  그쪽으로는 출력이 되지 않으므로 상관이 없다.
 
-  for(int i=0;i<40;i++){
+  for (int i = 0; i < 40; i++)
+  {
     cellvalue[i].voltage = 0;
-    cellvalue[i].impendance=0; 
-    cellvalue[i].temperature =0;
-    cellvalue[i].voltageCompensation= 0;
-    cellvalue[i].impendanceCompensation= 0;
+    cellvalue[i].impendance = 0;
+    cellvalue[i].temperature = 0;
+    cellvalue[i].voltageCompensation = 0;
+    cellvalue[i].impendanceCompensation = 0;
   }
 
   setupModbusAgentForLcd();
@@ -504,25 +506,27 @@ void setup(){
   wifiApmodeConfig();
   lsFile.littleFsInitFast(0);
   setRtc();
-  SPI.setFrequency(spiClk );
-  SPI.begin(SCK,MISO,MOSI,CS_5940);
-  pinMode(SS, OUTPUT); //VSPI SS -> 아니다..이것은 리셋용이다.
+  SPI.setFrequency(spiClk);
+  SPI.begin(SCK, MISO, MOSI, CS_5940);
+  pinMode(SS, OUTPUT); // VSPI SS -> 아니다..이것은 리셋용이다.
 
   AD5940_MCUResourceInit(0);
   AD5940_Main_init();
   delay(1000);
-  ESP_LOGI(TAG, "System Started at %s mode", systemDefaultValue.runMode==0 ? "Manual" : "Auto"); 
-  esp_task_wdt_init(WDT_TIMEOUT ,true);
-  esp_task_wdt_add(NULL); 
-  //esp_task_wdt_reset();
-  //esp_task_wdt_init(5, true); // WDT를 활성화하고, panic 핸들러를 사용하여 리셋합니다.
-  //esp_task_wdt_add(NULL); // 현재 태스크를 WDT에 추가합니다.
-  //xTaskCreate(NetworkTask,"NetworkTask",5000,NULL,1,h_pxNetworkTask); //PCB 패턴문제로 사용하지 않는다.
-  xTaskCreate(blueToothTask,"blueToothTask",5000,NULL,1,h_pxblueToothTask);
-    ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
-    for(int i=1;i<INSTALLED_CELLS;i++){
-      sendGetMoubusTemperature(i,04);
-    }
+  ESP_LOGI(TAG, "System Started at %s mode", systemDefaultValue.runMode == 0 ? "Manual" : "Auto");
+  ESP_LOGI(TAG,"\nEEPROM installed Bat number %d", systemDefaultValue.installed_cells);
+  esp_task_wdt_init(WDT_TIMEOUT, true);
+  esp_task_wdt_add(NULL);
+  // esp_task_wdt_reset();
+  // esp_task_wdt_init(5, true); // WDT를 활성화하고, panic 핸들러를 사용하여 리셋합니다.
+  // esp_task_wdt_add(NULL); // 현재 태스크를 WDT에 추가합니다.
+  // xTaskCreate(NetworkTask,"NetworkTask",5000,NULL,1,h_pxNetworkTask); //PCB 패턴문제로 사용하지 않는다.
+  xTaskCreate(blueToothTask, "blueToothTask", 5000, NULL, 1, h_pxblueToothTask);
+  ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
+  for (int i = 1; i < systemDefaultValue.installed_cells; i++)
+  {
+    sendGetMoubusTemperature(i, 04);
+  }
 };
 static unsigned long previousSecondmills = 0;
 static int everySecondInterval = 1000;
@@ -542,7 +546,7 @@ static unsigned long previous_60Secondmills = 0;
 static unsigned long now;
 //각각의 시간은 병렬로 수행된다.
 
-uint8_t modbusId=1;
+//uint8_t globalModbusId =1;
 BatDeviceInterface batDevice;
 uint8_t impedanceCellPosition=1;
 void loop(void)
@@ -561,23 +565,27 @@ void loop(void)
   }
   if ((now - previous_5Secondmills > Interval_5Second))
   {
-    // for(int i=1;i<=INSTALLED_CELLS;i++){
-    //   sendGetMoubusTemperature(i,READ_INPUT_REGISTER);
-    //   esp_task_wdt_reset();
-    //   sendSelectBattery(i);
-    //   time_t startRead = millis(); float batVoltage= 0.0;
-    //    batVoltage =  batDevice.readBatAdcValue(600);
-    //     cellvalue[i - 1].voltage= batVoltage ;  //구조체에 값을 적어 넣는다
-    //   time_t endRead = millis();// take 300ms
-    //   ESP_LOGI("Voltage","Bat Voltage is : %3.3f (%ldmilisecond)",batVoltage,endRead-startRead);
-    //   if(batVoltage>2.0){
-    if(systemDefaultValue.runMode==3)
-      AD5940_Main(parameters);  //for test 무한 루프
-    //   }
-    // delay(1000);
-    // }
-    modbusId = modbusId > 4 ? 1:modbusId;
-    previous_5Secondmills= now;
+    if (systemDefaultValue.runMode != 0)  // 자동 모드에서만 실행한다
+    for (int i = 1; i <= systemDefaultValue.installed_cells ; i++)
+    {
+      sendGetMoubusTemperature(i, READ_INPUT_REGISTER);
+      esp_task_wdt_reset();
+      sendSelectBattery(i);
+      time_t startRead = millis();
+      float batVoltage = 0.0;
+      batVoltage = batDevice.readBatAdcValue(600);
+      cellvalue[i - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
+      time_t endRead = millis();             // take 300ms
+      ESP_LOGI("Voltage", "Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
+      if (batVoltage > 2.0)
+      {
+        if (systemDefaultValue.runMode == 3)
+          AD5940_Main(parameters); // for test 무한 루프
+      }
+      delay(1000);
+    }
+ //   globalModbusId = globalModbusId > 4 ? 1 : globalModbusId ;
+    previous_5Secondmills = now;
   }
   if ((now - previous_30Secondmills > Interval_30Second))
   {
