@@ -6,16 +6,27 @@
 
 #include "SimpleCLI.h"
 #include <RtcDS1302.h>
+#include "mainGrobal.h"
+#include "batDeviceInterface.h"
+#include "ModbusTypeDefs.h"
+#include "EEPROM.h"
 
 LittleFileSystem lsFile;
 SimpleCLI simpleCli;
+extern BatDeviceInterface batDevice;
+extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
+
 extern "C" {
 #include "c/cmd.h"       // cmd
 #include "c/parser.h"    // parse_lines
 #include "c/cmd_error.h" // cmd_error_destroy
 }
+int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t len);
+int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len,uint16_t timeout);
 void setRtcNewTime(RtcDateTime rtc);
+void readnWriteEEProm();
 RtcDateTime getDs1302GetRtcTime();
+bool sendSelectBattery(uint8_t modbusId);
 void getTime(){
 
   RtcDateTime now;
@@ -94,6 +105,106 @@ void cat_configCallback(cmd *cmdPtr)
   argVal = String("/spiffs/") + argVal;
 
   lsFile.cat(argVal);
+}
+
+
+uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumberL);
+
+float AD5940_calibration(float *real , float *image,Print *outputStream );
+void calibration_configCallback(cmd *cmdPtr){
+  Command cmd(cmdPtr);
+  Argument arg = cmd.getArgument(0);
+  String argVal = arg.getValue();
+  simpleCli.outputStream->printf("\r\n%s",argVal.c_str());
+
+  uint8_t relayPos;
+  float real , image;
+  EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  simpleCli.outputStream->printf("\nEEPROM Real Image IMP:%6.2f\t %6.2f\t ",
+      systemDefaultValue.real_Cal,systemDefaultValue.image_Cal);
+
+  if(systemDefaultValue.runMode != 0 ){
+    simpleCli.outputStream->printf("\r\nMust run at manual mode");
+    return;
+  }
+  simpleCli.outputStream->printf("\nNow Start calibrating...Wait...");
+  float ImpMagnitude = AD5940_calibration(&real , &image,simpleCli.outputStream);
+  simpleCli.outputStream->printf("\nRcalVolt Real Image IMP:%6.2f\t %6.2f\t %6.2f (%dmills)",
+    real,image,ImpMagnitude);
+  if(argVal.equals("save")  ){
+    systemDefaultValue.image_Cal = image;
+    systemDefaultValue.real_Cal  = real;
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.commit();
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    simpleCli.outputStream->printf("\nEEPROM Real Image IMP:%6.2f\t %6.2f\t ",
+      systemDefaultValue.real_Cal,systemDefaultValue.image_Cal);
+    simpleCli.outputStream->printf("\r\nyou must reboot system for appply");
+  } 
+
+}
+void mode_configCallback(cmd *cmdPtr){
+  Command cmd(cmdPtr);
+  Argument arg = cmd.getArgument(0);
+  String argVal = arg.getValue();
+  if (argVal.length() == 0){
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    simpleCli.outputStream->printf("\r\nPlease Input Mode ");
+    simpleCli.outputStream->printf("\r\n0 : manual mode  1: Voltage only auto 3: Vol & Imp Auto");
+    simpleCli.outputStream->printf("\r\nCurrent mode %d",systemDefaultValue.runMode );
+    simpleCli.outputStream->printf("\r\nyou must reboot system for appply");
+    return;
+  }
+  int8_t mode = argVal.toInt(); 
+  if(mode == 0 || mode == 1 || mode == 3){
+    systemDefaultValue.runMode = mode; 
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.commit();
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    simpleCli.outputStream->printf("\r\nmode Changed %d",systemDefaultValue.runMode );
+  }
+}
+
+void relay_configCallback(cmd *cmdPtr){
+  Command cmd(cmdPtr);
+  Argument arg ;
+  String strValue ;
+  uint8_t relayPos;
+  uint8_t buf[64];
+  arg = cmd.getArgument("sel");
+
+  if (arg.isSet())
+  {
+      strValue = arg.getValue();
+      relayPos = strValue.toInt();
+      uint16_t readCount;
+      if (relayPos == 0)
+      {
+          makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
+          delay(100);
+          makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
+          delay(100);
+          simpleCli.outputStream->printf("\nAll relay offed..");
+      }
+      else if (relayPos >= 1 || relayPos <= 40)
+      {
+          simpleCli.outputStream->printf("\nRelay %d Selecet", relayPos);
+          sendSelectBattery(relayPos);
+          time_t startRead = millis();
+          float batVoltage = 0.0;
+          batVoltage = batDevice.readBatAdcValue(600);
+          cellvalue[relayPos - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
+          time_t endRead = millis();                    // take 300ms
+          simpleCli.outputStream->printf("Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
+      }
+  }
+  arg = cmd.getArgument("off");
+  if(arg.isSet()){
+    uint32_t failedBatteryH,failedBatteryL;
+    uint16_t retValue;
+      retValue=checkAlloff(&failedBatteryH,&failedBatteryL);
+      simpleCli.outputStream->printf("retValue :0x%02x 0x%04x%04x\n",retValue,failedBatteryH,failedBatteryL);
+  }
 }
 void time_configCallback(cmd *cmdPtr){
   RtcDateTime now;
@@ -196,6 +307,15 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config.setDescription(" Get Time or set \r\n time -y 2024 or time -M 11,..., Month is M , minute is m ");
   cmd_config = addCommand("df", df_configCallback);
   cmd_config = addSingleArgCmd("reboot", reboot_configCallback);
+
+  cmd_config = addCommand("relay", relay_configCallback);
+  cmd_config.addArgument("s/el","");
+  cmd_config.addFlagArg("off");
+  cmd_config = addSingleArgCmd("mode", mode_configCallback);
+  cmd_config = addSingleArgCmd("cal/ibration", calibration_configCallback);
+  //cmd_config.addArgument("off","");
+  cmd_config.setDescription("relay on off controll \r\n relay -s/el [1] [-off]");
+
   simpleCli.setOnError(errorCallback);
   cmd_config= addCommand("help",help_Callback);
 }

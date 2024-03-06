@@ -106,18 +106,15 @@ static int32_t AD5940PlatformCfg(void)
   AD5940_INTCCfg(AFEINTC_1, AFEINTSRC_ALLINT, bTRUE);           /* Enable all interrupt in Interrupt Controller 1, so we can check INTC flags */
   AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);   /* Interrupt Controller 0 will control GP0 to generate interrupt to MCU */
   AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
-  /* Step4: Reconfigure GPIO */
-  ESP_LOGI(TAG,"Step4: Reconfigure GPIO ");
   gpio_cfg.FuncSet = GP0_INT|GP2_SYNC;
   gpio_cfg.InputEnSet = AGPIO_Pin2;
-  gpio_cfg.OutputEnSet = AGPIO_Pin0|AGPIO_Pin2;
+  gpio_cfg.OutputEnSet = AGPIO_Pin0|AGPIO_Pin2 | AGPIO_Pin1;
   gpio_cfg.OutVal = 0;
   gpio_cfg.PullEnSet = 0;
-  ESP_LOGI(TAG,"AD5940_AGPIOCfg() ");
   AD5940_AGPIOCfg(&gpio_cfg);
+  AD5940_SleepKeyCtrlS(SLPKEY_UNLOCK);  /* Allow AFE to enter sleep mode. */
+  //AD5940_SleepKeyCtrlS(SLPKEY_LOCK);  /* Allow AFE to enter sleep mode. */
   ESP_LOGI(TAG,"AD5940_SleepKeyCtrlS() ");
-  //AD5940_SleepKeyCtrlS(SLPKEY_UNLOCK);  /* Allow AFE to enter sleep mode. */
-  AD5940_SleepKeyCtrlS(SLPKEY_LOCK);  /* Allow AFE to enter sleep mode. */
   delayMicroseconds(1000);
   return 0;
 }
@@ -164,6 +161,45 @@ void AD5940_Main_init()
   // vTaskDelay(50);
   // ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
 }
+
+/* Return RcalVolt magnitude 
+* 
+*/
+float AD5940_calibration(float *real , float *image,Print *outputStream ){
+  uint16_t loopCount=100 ;
+  AD5940PlatformCfg();
+  AD5940BATStructInit(); /* Configure your parameters in this function */
+  AppBATInit(AppBuff, APPBUFF_SIZE);    /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
+  *real  = 0.0f; *image = 0.0f;
+  while (loopCount--)
+  {
+    ESP_LOGI(TAG, "AppBATCtrl(BATCTRL_MRCAL, 0)\n");
+    time_t startTime = millis();
+    if (AD5940ERR_WAKEUP == AppBATCtrl(BATCTRL_MRCAL, 0))
+    {
+      ESP_LOGW(TAG, "\nWakeup Error..retry...");
+    }; /* Measur RCAL each point in sweep */
+    time_t endTime = millis();
+    // ESP_LOGI("IMP", "RcalVolt Real Image IMP:%f\t %f\t %f (%dmills)",
+    //          AppBATCfg.RcalVolt.Real,
+    //          AppBATCfg.RcalVolt.Image,
+    //          AD5940_ComplexMag(&AppBATCfg.RcalVolt),endTime-startTime);
+    if(outputStream != nullptr)
+    outputStream->printf("\r\n%d: R I Mag:%6.2f\t %6.2f\t %6.2f (%dmills)", 
+             loopCount,
+             AppBATCfg.RcalVolt.Real,
+             AppBATCfg.RcalVolt.Image,
+             AD5940_ComplexMag(&AppBATCfg.RcalVolt),endTime-startTime);
+    delay(100);
+    if(loopCount < 10){
+      *real += AppBATCfg.RcalVolt.Real;
+      *image += AppBATCfg.RcalVolt.Image;
+    }
+  };
+  *real /= 10.0f;
+  *image /=10.0f;
+  return AD5940_ComplexMag(&AppBATCfg.RcalVolt);
+}
 void AD5940_Main(void *parameters)
 {
   uint32_t temp;
@@ -172,9 +208,11 @@ void AD5940_Main(void *parameters)
   // AppBATInit(AppBuff, APPBUFF_SIZE);    /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
   //
   //ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
-  AD5940_AGPIOToggle(AGPIO_Pin2);
-  AppBATCfg.RcalVolt.Real = -107659;
-  AppBATCfg.RcalVolt.Image = 112141; 
+  // AppBATCfg.RcalVolt.Real = -107659;
+  // AppBATCfg.RcalVolt.Image = 112141; 
+
+  AppBATCfg.RcalVolt.Real = systemDefaultValue.real_Cal;
+  AppBATCfg.RcalVolt.Image = systemDefaultValue.image_Cal; 
 
   // while (1)
   // {
@@ -189,7 +227,7 @@ void AD5940_Main(void *parameters)
   //            AppBATCfg.RcalVolt.Real,
   //            AppBATCfg.RcalVolt.Image,
   //            AD5940_ComplexMag(&AppBATCfg.RcalVolt),endTime-startTime);
-  //   //delay(100);
+  //   delay(100);
   // };
   //
   //AppBATCtrl(BATCTRL_MRCAL, 0);     /* Measur RCAL each point in sweep */
@@ -206,21 +244,23 @@ void AD5940_Main(void *parameters)
   {
     /* Check if interrupt flag which will be set when interrupt occurred. */
 
-	  AppBATCtrl(BATCTRL_START, 0); 
-		while(AD5940_INTCTestFlag(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH) == bFALSE);
-    //if(AD5940_GetMCUIntFlag())
+    AppBATCtrl(BATCTRL_START, 0);
+    while (AD5940_INTCTestFlag(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH) == bFALSE)
+      ;
+    // if(AD5940_GetMCUIntFlag())
     {
 
-        AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
-				AD5940_ClrMCUIntFlag(); 				/* Clear this flag */
-				temp = APPBUFF_SIZE;
-	      AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);
-				AppBATISR(AppBuff, &temp); 			/* Deal with it and provide a buffer to store data we got */
-				AD5940_Delay10us(100000);
-        addResult(AppBuff, loopCount);
-				BATShowResult(AppBuff, temp);		/* Print measurement results over UART */		
-				AD5940_SEQMmrTrig(SEQID_0);  		/* Trigger next measurement ussing MMR write*/      
-   }
+      AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
+      AD5940_ClrMCUIntFlag(); /* Clear this flag */
+      temp = APPBUFF_SIZE;
+      AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);
+      AppBATISR(AppBuff, &temp); /* Deal with it and provide a buffer to store data we got */
+      AD5940_Delay10us(100000);
+      addResult(AppBuff, loopCount);
+      BATShowResult(AppBuff, temp); /* Print measurement results over UART */
+      AD5940_SEQMmrTrig(SEQID_0);   /* Trigger next measurement ussing MMR write*/
+    }
+    AD5940_AGPIOToggle(AGPIO_Pin1);
   }
 }
 

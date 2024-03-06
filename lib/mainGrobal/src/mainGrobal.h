@@ -40,7 +40,8 @@ typedef struct
     char ssid[20];
     char ssid_password[10];
     char userid[10];
-    char userpassword[10];
+    char userpassword[10];                        
+    uint8_t runMode; // 0: manual 1 : auto
     uint32_t IPADDRESS;   // 50 + 4 =54
     uint32_t GATEWAY;     // 54 + 4 = 58
     uint32_t SUBNETMASK;  // 58 + 4 = 62
@@ -52,9 +53,11 @@ typedef struct
     uint16_t alarmLowCellVoltage;    // 73
     uint16_t cutoffHighCellVoltage;    // 75 
     uint16_t cutoffLowCellVoltage;    // 77
-    uint16_t alarmDiffCellVoltage;    // 75
-    int16_t voltageCompensation[40];// 2byte
-    int16_t impendanceCompensation[40];// 2byte
+    uint16_t alarmDiffCellVoltage;    // 75 + 1 = 76
+    int16_t voltageCompensation[40];// 76 + 80 =  156byte 
+    int16_t impendanceCompensation[40];// 156 + 80 = 236
+    float real_Cal;  // 236+4 = 240
+    float image_Cal; // 240 + 4 = 248
 } nvsSystemSet;
 extern nvsSystemSet systemDefaultValue;
 

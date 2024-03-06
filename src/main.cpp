@@ -86,6 +86,7 @@ void readnWriteEEProm()
   uint8_t ipaddr1;
   if (EEPROM.read(0) != 0x55)
   {
+    systemDefaultValue.runMode = 0;  // 0: manual 0x01 : onlyVoltate Audo, 0x03 : Voltage & Impedance 
     systemDefaultValue.AlarmAmpere = 2000;  // 200A
     systemDefaultValue.alarmDiffCellVoltage = 200;  //200mV
     systemDefaultValue.alarmHighCellVoltage = 1450;  //14.5V
@@ -106,6 +107,8 @@ void readnWriteEEProm()
       systemDefaultValue.voltageCompensation[i]=0;
       systemDefaultValue.impendanceCompensation[i]=0;
     }
+    systemDefaultValue.real_Cal = -33410.0f;
+    systemDefaultValue.image_Cal = 35511.0f;
     EEPROM.writeByte(0, 0x55);
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
@@ -289,9 +292,9 @@ void setupModbusAgentForLcd(){
   // cellModbus.suspendTask();
 };
 ExtendSerial extendSerial;
-int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len){
-  uint16_t timeout;
-  timeout = 300;
+int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len,uint16_t timeout){
+  //uint16_t timeout;
+  //timeout = 300;
   uint16_t readCount=0;
   data_ready = false;
   while (timeout--)
@@ -350,7 +353,47 @@ int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16
   extendSerial.selectCellModule(false);
   return 1;
 }
-
+/* All Off will return 0  
+*   else return value;
+*/
+uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumberL)
+{
+  uint16_t  totalRelayCount;
+  uint16_t isOK ;
+  uint32_t temp32H,temp32L;
+  *failedBatteryNumberH= 0;
+  *failedBatteryNumberL= 0;
+  rtu485.suspendTask();
+  uint8_t buf[64];
+  for (int modbusId = 1; modbusId <= 41; modbusId++)
+  {
+    makeRelayControllData(buf, modbusId, READ_COIL, 0, 2);     // Read coil data 2 개
+    extendSerial.selectCellModule(false);                      // 읽기 모드로 전환
+    isOK = readResponseData(modbusId, READ_COIL, buf, 6, 200); // buf[3]이 Relay 데이타 이다.
+    if (isOK == 1)
+    {
+      if (modbusId < 32)
+      {
+        temp32L = 1;
+        temp32L = temp32L << (modbusId - 1);
+        *failedBatteryNumberL |= temp32L;
+      }
+      else
+      {
+        temp32H = 1;
+        temp32H = temp32H << (modbusId - 1);
+        *failedBatteryNumberH |= temp32H;
+      }
+    }
+    else
+    {
+      ESP_LOGI("OFF RELAY","%d battery not response..", modbusId);
+    }
+    totalRelayCount += buf[3];
+  }
+  rtu485.resumeTask();
+  return totalRelayCount;
+}
 bool sendSelectBattery(uint8_t modbusId)
 {
   //Coil 명령를 사용하며 
@@ -363,7 +406,7 @@ bool sendSelectBattery(uint8_t modbusId)
   selecectedCellNumber = modbusId;
   uint16_t checkSum ;
   rtu485.suspendTask();
-  uint8_t buf[256];
+  uint8_t buf[64];
 
   //makeRelayControllData(buf,0xFF,05,0,0xFF00); // 0xff BROADCAST
   makeRelayControllData(buf,0xFF,WRITE_COIL,0,0x00); // 0xff BROADCAST
@@ -374,7 +417,7 @@ bool sendSelectBattery(uint8_t modbusId)
   makeRelayControllData(buf,modbusId,READ_COIL,0,2); // Read coil data 2 개 
 
   extendSerial.selectCellModule(false);  //읽기 모드로 전환
-  uint16_t readCount = readResponseData(modbusId,1, buf,6); //buf[3]이 Relay 데이타 이다.
+  uint16_t readCount = readResponseData(modbusId,READ_COIL, buf,6,300); //buf[3]이 Relay 데이타 이다.
 
   makeRelayControllData(buf,modbusId,WRITE_COIL,0,0xFF00); // 해당 셀을 ON 시킨다 
   delay(100);
@@ -411,11 +454,11 @@ bool sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
   uint16_t checkSum ;
   //ESP_LOGI("main","request");
   rtu485.suspendTask();
-  uint8_t buf[256];
+  uint8_t buf[64];
   data_ready = false;
   makeTemperatureData(buf,modbusId,fCode,0,2);
   extendSerial.selectCellModule(false);
-  uint16_t readCount = readResponseData(modbusId,fCode, buf,9); 
+  uint16_t readCount = readResponseData(modbusId,fCode, buf,9,300); 
   if (data_ready)
   {
     uint16_t value = buf[3]*256  + buf[4] ;
@@ -468,7 +511,7 @@ void setup(){
   AD5940_MCUResourceInit(0);
   AD5940_Main_init();
   delay(1000);
-  ESP_LOGI(TAG, "System Started");
+  ESP_LOGI(TAG, "System Started at %s mode", systemDefaultValue.runMode==0 ? "Manual" : "Auto"); 
   esp_task_wdt_init(WDT_TIMEOUT ,true);
   esp_task_wdt_add(NULL); 
   //esp_task_wdt_reset();
@@ -518,21 +561,22 @@ void loop(void)
   }
   if ((now - previous_5Secondmills > Interval_5Second))
   {
-    for(int i=1;i<=INSTALLED_CELLS;i++){
-      sendGetMoubusTemperature(i,READ_INPUT_REGISTER);
-      esp_task_wdt_reset();
-      sendSelectBattery(i);
-      time_t startRead = millis(); float batVoltage= 0.0;
-       batVoltage =  batDevice.readBatAdcValue(600);
-        cellvalue[i - 1].voltage= batVoltage ;  //구조체에 값을 적어 넣는다
-      time_t endRead = millis();// take 300ms
-      ESP_LOGI("Voltage","Bat Voltage is : %3.3f (%ldmilisecond)",batVoltage,endRead-startRead);
-      if(batVoltage>2.0){
+    // for(int i=1;i<=INSTALLED_CELLS;i++){
+    //   sendGetMoubusTemperature(i,READ_INPUT_REGISTER);
+    //   esp_task_wdt_reset();
+    //   sendSelectBattery(i);
+    //   time_t startRead = millis(); float batVoltage= 0.0;
+    //    batVoltage =  batDevice.readBatAdcValue(600);
+    //     cellvalue[i - 1].voltage= batVoltage ;  //구조체에 값을 적어 넣는다
+    //   time_t endRead = millis();// take 300ms
+    //   ESP_LOGI("Voltage","Bat Voltage is : %3.3f (%ldmilisecond)",batVoltage,endRead-startRead);
+    //   if(batVoltage>2.0){
+    if(systemDefaultValue.runMode==3)
       AD5940_Main(parameters);  //for test 무한 루프
-      }
-    delay(1000);
-    }
-    //modbusId = modbusId > 4 ? 1:modbusId;
+    //   }
+    // delay(1000);
+    // }
+    modbusId = modbusId > 4 ? 1:modbusId;
     previous_5Secondmills= now;
   }
   if ((now - previous_30Secondmills > Interval_30Second))

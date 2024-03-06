@@ -63,3 +63,13 @@
     - 43 : Hour
     - 44 : Minute 
     - 45 : Second
+## BLUETOOTH COMMAND
+  - relay -s [Cell no] -off 
+    - off : check if all cell is offed 
+    - Cell no : 0 All Off, 
+      number : Set Relay On the number and +1 relay on 
+  - cal/ibration 기준 임피던스를 구한다. 
+    cal save 캘리브레이션 된 값을 EEPROM에 저장한다
+  - mode  자동으로 임피던스를 읽을 것인지 아닌지를 결정한다. 
+          Calibration을 수행하기 위해서는 이것이 수동으로 설정 되어 있어야 한다.;
+  
