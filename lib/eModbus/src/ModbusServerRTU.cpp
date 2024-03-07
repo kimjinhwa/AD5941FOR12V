@@ -251,7 +251,7 @@ void ModbusServerRTU::serve(ModbusServerRTU *myServer) {
       if (request[0] != TIMEOUT) {
         // Any other error could be important for debugging, so print it
         ModbusError me((Error)request[0]);
-        LOG_E("RTU receive: %02X - %s\n", (int)me, (const char *)me);
+        //LOG_E("RTU receive: %02X - %s\n", (int)me, (const char *)me);
       }
     }
     // Give scheduler room to breathe

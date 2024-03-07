@@ -41,7 +41,7 @@ nvsSystemSet systemDefaultValue;
 ThreeWire myWire(13, 14, 33); // IO, SCLK, CE
 RtcDS1302<ThreeWire> Rtc(myWire);
 ModbusServerRTU LcdCell485(2000,CELL485_DE);// LCD를 위하여 사용한다.
-ModbusServerRTU extrtu485(2000,EXT_485EN_1);
+ModbusServerRTU external485(2000,EXT_485EN_1);
 //ModbusClientRTU cellModbus(CELL485_DE);
 uint8_t selecectedCellNumber =0;
 
@@ -279,10 +279,10 @@ void setupModbusAgentForLcd(){
   LcdCell485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
   LcdCell485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
   
-  extrtu485.begin(Serial1,BAUDRATE,1);
-  extrtu485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
-  extrtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
-  extrtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
+  external485.begin(Serial1,BAUDRATE,1);
+  external485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
+  external485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
+  external485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
 
   // cellModbus.onDataHandler(&handleData);
   // cellModbus.onErrorHandler(&handleError);
@@ -528,8 +528,8 @@ void setup()
   }
 
   setupModbusAgentForLcd();
-  SerialBT.begin("TIMP_Device_1");
-  wifiApmodeConfig();
+  String bleName ="TIMP_Device_"; 
+  bleName += systemDefaultValue.modbusId;
   lsFile.littleFsInitFast(0);
   setRtc();
   SPI.setFrequency(spiClk);

@@ -40,22 +40,27 @@
 ### Modbus Address function 4(3000)
 
 ### Modbus Address function 3,4
-    - 0~0xff: CellVolage * 100 
-    - 0~0x1ff: temperature + 40
-    - 0~0x2ff: impedance * 100 
-    - 0~0x3ff: 예약 
-    - 0x400 : year
-    - 0x401 : Month 
-    - 0x402 : day 
-    - 0x403 : Hour
-    - 0x404 : Minute 
-    - 0x405 : Second
-    - 0x406: sendValue[0]=2;
-    - 0x407: sendValue[1]=20;
-    - 0x408: sendValue[2]=150;
-    - 0x409: sendValue[3]=1450;
-    - 0x40A: sendValue[4]=850;
-    - 0x40B: sendValue[7]=10000;
+#### Fcode 04
+    - 0~39: CellVolage * 100 
+    - 40~79: temperature + 40
+    - 80~119: impedance * 100 
+#### Fcode 04
+    - 0~39:  전압보정값
+    - 40~79: not use 
+    - 80~119: 임피던스보정값 
+
+    - 120: year
+    - 121: Month 
+    - 122: day 
+    - 123: Hour
+    - 124: Minute 
+    - 125: Second
+    - 126: ModbusID
+    - 127: installed_cells 
+    - 128: AlarmTemperature 
+    - 129: alarmHighCellVoltage 
+    - 130: alarmLowCellVoltage 
+    - 131: AlarmAmpere 
     #### function 6
     - 40 : year
     - 41 : Month 
