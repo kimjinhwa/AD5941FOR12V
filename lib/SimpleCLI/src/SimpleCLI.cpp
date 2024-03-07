@@ -10,12 +10,14 @@
 #include "batDeviceInterface.h"
 #include "ModbusTypeDefs.h"
 #include "EEPROM.h"
+#include "ModbusServerRTU.h"
 
 LittleFileSystem lsFile;
 SimpleCLI simpleCli;
+extern ModbusServerRTU LcdCell485;
 extern BatDeviceInterface batDevice;
 extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
-static char *TAG ="CLI" ;
+static char TAG[] ="CLI" ;
 extern "C" {
 #include "c/cmd.h"       // cmd
 #include "c/parser.h"    // parse_lines
@@ -243,7 +245,9 @@ void relay_configCallback(cmd *cmdPtr){
   if(arg.isSet()){
     uint32_t failedBatteryH,failedBatteryL;
     uint16_t retValue;
+  LcdCell485.suspendTask();
       retValue=checkAlloff(&failedBatteryH,&failedBatteryL);
+  LcdCell485.resumeTask();
       simpleCli.outputStream->printf("retValue :0x%02x 0x%04x%04x\n",retValue,failedBatteryH,failedBatteryL);
   }
 }

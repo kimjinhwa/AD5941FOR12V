@@ -39,6 +39,10 @@ public:
     //vTaskSuspend( serverTask);
     stopReceive = 1;
   }
+   int isSuspendedTask(){
+    //vTaskSuspend( serverTask);
+    return stopReceive ;
+  }
   void resumeTask(){
     //vTaskResume( serverTask);
     stopReceive = 0;

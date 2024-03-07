@@ -52,9 +52,6 @@ void AD5940_ShutDown();
 void pinsetup()
 {
     pinMode(READ_BATVOL, INPUT);
-    // pinMode(SCK, OUTPUT);
-    // pinMode(MISO, OUTPUT);
-    // pinMode(MOSI, OUTPUT);
 
     pinMode(AD5940_ISR, OUTPUT);
     pinMode(SERIAL_SEL_ADDR0, OUTPUT);
@@ -130,10 +127,6 @@ void setRtcNewTime(RtcDateTime rtc){
   }
   else 
     printf("RTC was actively status running \r\n");
-  // struct timeval tmv;
-  // tmv.tv_usec = 0;
-  // tmv.tv_sec = 0;
-  //RtcDateTime now(tmv.tv_sec);
   Rtc.SetDateTime(rtc);
   myWire.end();
   SPI.begin(SCK,MISO,MOSI,CS_5940);
@@ -194,8 +187,7 @@ void setRtc()
   printf("\r\nnow time is %d/%d/%d %d:%d:%d\r\n",now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
   if (now < compiled)
   {
-    printf("\r\nSet data with compiled time");
-    //Rtc.SetDateTime(compiled);
+    printf("\r\nSet data with compiled time"); //Rtc.SetDateTime(compiled);
   }
   struct timeval tmv;
   tmv.tv_sec = now.TotalSeconds();
@@ -246,30 +238,9 @@ class ExtendSerial//: public HardwareSerial
 };
 #define NUM_VALUES 21
 uint32_t request_time;
-bool data_ready = false;
+//bool data_ready = false;
 uint16_t values[2];
 uint16_t cellModbusIdReceived;
-void handleData(ModbusMessage response, uint32_t token) 
-{
-  // First value is on pos 3, after server ID, function code and length byte
-  uint16_t offs = 3;
-  // The device has values all as IEEE754 float32 in two consecutive registers
-  // Read the requested in a loop
-  for (uint8_t i = 0; i < 2; ++i) {
-    offs = response.get(offs, values[i]);
-    //Serial.printf("\n%Temperature %d",values[i]);
-  }
-  // Signal "data is complete"
-  request_time = token;
-  data_ready = true;
-}
-void handleError(Error error, uint32_t token) 
-{
-  // ModbusError wraps the error code and provides a readable error message for it
-  ModbusError me(error);
-  //LOG_E("Error response: %02X - %s\n", (int)me, (const char *)me);
-  data_ready = false;
-}
 
 void setupModbusAgentForLcd(){
   //address는 항상 1이다.
@@ -284,16 +255,12 @@ void setupModbusAgentForLcd(){
   external485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
   external485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
 
-  // cellModbus.onDataHandler(&handleData);
-  // cellModbus.onErrorHandler(&handleError);
-  // cellModbus.setTimeout(2000);
-  // cellModbus.begin(Serial2);
 };
 ExtendSerial extendSerial;
 int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len,uint16_t timeout){
-  //uint16_t timeout;
-  //timeout = 300;
+  //uint16_t timeout; //timeout = 300;
   uint16_t readCount=0;
+  bool data_ready = false;
   data_ready = false;
   while (timeout--)
   {
@@ -337,10 +304,10 @@ int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len
     ESP_LOGI(TAG,"Garbage Date : %02x",c);
     delay(1);
   }
-
   return data_ready;
 };
-int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t len){
+int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t len)
+{
   uint16_t checkSum ;
   buf[0] =modbusId; buf[1] = funcCode;
   buf[2] = (uint8_t)((address & 0xff00) >>8 ); 
@@ -352,7 +319,7 @@ int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16
   buf[7] = checkSum >> 8    ;
 
   extendSerial.selectCellModule(false);//change to read Mode
-  while(Serial2.available())Serial2.read();// clear comm buffer
+  while(Serial2.available()){Serial2.read();delay(1);};// clear comm buffer
   extendSerial.selectCellModule(true); delay(1);
   Serial2.write(buf,8);
   Serial2.flush();
@@ -369,7 +336,6 @@ uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumbe
   uint32_t temp32H,temp32L;
   *failedBatteryNumberH= 0;
   *failedBatteryNumberL= 0;
-  LcdCell485.suspendTask();
   uint8_t buf[64];
   for (int modbusId = 1; modbusId <= systemDefaultValue.installed_cells; modbusId++)
   {
@@ -410,44 +376,76 @@ uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumbe
     }
     totalRelayCount += buf[3];
   }
-  LcdCell485.resumeTask();
   return totalRelayCount;
 }
+/* 셀을 선택한다. modbusId는 1부터 시작하며 설치되어 있는 배터리의 수보다 작아야 한다. 
+* 
+*/
 bool sendSelectBattery(uint8_t modbusId)
 {
-  //Coil 명령를 사용하며 
-  //1. 0xFF 명령으로 전체 OUT명령을 준다. 
-  //2. modbusID를 켠다. 
-  //3. 제대로 켜졌는지 다시 읽어본다. 
-  //4. modbusID+1를 켠다 
-  //5. 제대로 켜졌는지 다시 읽어본다. 
-
-  AD5940_ShutDown();
+  // Coil 명령를 사용하며
+  // 1. 0xFF 명령으로 전체 OUT명령을 준다.
+  // 2. 현재 설치되어 있는 모든셀들이 통신 가능하여야 하고 릴레이 설정값을 0 을 갖고 있어야 한다.  
+  // 3. modbusID를 켠다
+  // 4. modbusID+1를 켠다
+  // 에러가 없다면 정상적으로 켜졌을 것이고, 확인 루틴은 다음번에 셀을 선택할 때 한다 
+  AD5940_ShutDown();  // 전류의 흐름을 없애기 위하여 혹시 파형을 출력 중이면 정지 시킨다.
   selecectedCellNumber = modbusId;
-  uint16_t checkSum ;
+  uint16_t checkSum;
   LcdCell485.suspendTask();
   uint8_t buf[64];
 
-  //makeRelayControllData(buf,0xFF,05,0,0xFF00); // 0xff BROADCAST
-  makeRelayControllData(buf,0xFF,WRITE_COIL,0,0x00); // 0xff BROADCAST
+  makeRelayControllData(buf, 0xFF, WRITE_COIL, 0, 0x00); // 0xff BROADCAST
   delay(100);
-  //makeRelayControllData(buf,0xFF,05,1,0xFF00); // 0xff BROADCAST
-  makeRelayControllData(buf,0xFF,WRITE_COIL,1,0x00); // 0xff BROADCAST
+  
+  makeRelayControllData(buf, 0xFF, WRITE_COIL, 1, 0x00); // 0xff BROADCAST
   delay(500);
-  makeRelayControllData(buf,modbusId,READ_COIL,0,2); // Read coil data 2 개 
+  makeRelayControllData(buf, modbusId, READ_COIL, 0, 2); // Read coil data 2 개
 
-  extendSerial.selectCellModule(false);  //읽기 모드로 전환
-  uint16_t readCount = readResponseData(modbusId,READ_COIL, buf,6,3000); //buf[3]이 Relay 데이타 이다.
+  extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
+  uint16_t readCount = readResponseData(modbusId, READ_COIL, buf, 6, 3000); // buf[3]이 Relay 데이타 이다.
 
-  makeRelayControllData(buf,modbusId,WRITE_COIL,0,0xFF00); // 해당 셀을 ON 시킨다 
-  delay(100);
-  makeRelayControllData(buf,modbusId+1,WRITE_COIL,1,0xFF00); // 해당 셀을 ON 시킨다 
-  delay(200);
-
+  uint32_t failedBatteryH, failedBatteryL;
+  uint16_t retValue;
+  retValue = checkAlloff(&failedBatteryH, &failedBatteryL);
+  extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
+  delay(100);  //이값을 주고 나서야 릴레이가 제대로 동작하였다.
+  // retValue는 반드시 0이어야 하고...
+  // 총셀은 20셀으므로 상위 바이트는 0X000F
+  //  하위 바이트는 0XFFFF이어야 한다.
+  uint32_t checkH = 0;
+  uint32_t checkL = 0;
+  for (int i = 0; i < systemDefaultValue.installed_cells; i++)
+  {
+    if (i < 32)
+      checkL |= (1U << i);
+    else
+      checkH |= (1U << i);
+  }
+  ESP_LOGI(TAG, "Relay ON State :%d %04x %04x %04x %04x", retValue, checkH, checkL, failedBatteryH, failedBatteryL);
+  if (retValue == 0 && checkH == failedBatteryH && checkL == failedBatteryL)
+  {
+    makeRelayControllData(buf, modbusId, WRITE_COIL, 0, 0xFF00); // 해당 셀을 ON 시킨다
+    extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
+    readCount = readResponseData(modbusId, WRITE_COIL, buf, 8, 3000); // buf[3]이 Relay 데이타 이다.
+    if(readCount == 1){
+      ESP_LOGI(TAG,"relay %d Minus(-) ON ",modbusId);
+    }
+    delay(100);
+    makeRelayControllData(buf, modbusId + 1, WRITE_COIL, 1, 0xFF00); // 해당 셀을 ON 시킨다
+    readCount = readResponseData(modbusId+1, WRITE_COIL, buf, 8, 3000); // buf[3]이 Relay 데이타 이다.
+    if(readCount == 1){
+      ESP_LOGI(TAG,"relay %d Plus(+) ON ",modbusId+1);
+    }
+    delay(200);
+  }
+  else
+  {
+    ESP_LOGI(TAG,"All relay off fail or communication fails ");
+  }
   extendSerial.selectLcd();
   LcdCell485.resumeTask();
-  return data_ready;
-
+  return readCount ;
 }
 int makeTemperatureData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t len){
   uint16_t checkSum ;
@@ -478,6 +476,7 @@ uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
 {
   uint16_t checkSum ;
   uint16_t value ;
+  bool data_ready = false;
   //ESP_LOGI("main","request");
   LcdCell485.suspendTask();
   delay(100);
@@ -528,8 +527,10 @@ void setup()
   }
 
   setupModbusAgentForLcd();
-  String bleName ="TIMP_Device_"; 
+  String bleName ="TIMP_Dev_"; 
   bleName += systemDefaultValue.modbusId;
+  SerialBT.begin(bleName.c_str() );
+  wifiApmodeConfig();
   lsFile.littleFsInitFast(0);
   setRtc();
   SPI.setFrequency(spiClk);
@@ -630,3 +631,36 @@ void loop(void)
   }
   delay(10);
 }
+
+    // pinMode(SCK, OUTPUT);
+    // pinMode(MISO, OUTPUT);
+    // pinMode(MOSI, OUTPUT);
+  // struct timeval tmv;
+  // tmv.tv_usec = 0;
+  // tmv.tv_sec = 0;
+  //RtcDateTime now(tmv.tv_sec);
+// void handleData(ModbusMessage response, uint32_t token) 
+// {
+//   // First value is on pos 3, after server ID, function code and length byte
+//   uint16_t offs = 3;
+//   // The device has values all as IEEE754 float32 in two consecutive registers
+//   // Read the requested in a loop
+//   for (uint8_t i = 0; i < 2; ++i) {
+//     offs = response.get(offs, values[i]);
+//     //Serial.printf("\n%Temperature %d",values[i]);
+//   }
+//   // Signal "data is complete"
+//   request_time = token;
+//   data_ready = true;
+// }
+// void handleError(Error error, uint32_t token) 
+// {
+//   // ModbusError wraps the error code and provides a readable error message for it
+//   ModbusError me(error);
+//   //LOG_E("Error response: %02X - %s\n", (int)me, (const char *)me);
+//   data_ready = false;
+// }
+  // cellModbus.onDataHandler(&handleData);
+  // cellModbus.onErrorHandler(&handleError);
+  // cellModbus.setTimeout(2000);
+  // cellModbus.begin(Serial2);
