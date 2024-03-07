@@ -128,6 +128,21 @@ void batnumber_configCallback(cmd *cmdPtr)
   EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
   simpleCli.outputStream->printf("\nChanged EEPROM installed Bat number %d", systemDefaultValue.installed_cells);
 }
+
+void AD5940_Main(void *parameters);
+uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode);
+
+void temperature_configCallback(cmd *cmdPtr){
+  uint16_t  batTemperature;
+  for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
+  {
+    batTemperature = sendGetMoubusTemperature(i, 04);
+    simpleCli.outputStream->printf("\r\n[%d]Bat Temperature : %3.2f",i,batTemperature/100.0f);
+  }
+}
+void impedance_configCallback(cmd *cmdPtr){
+  AD5940_Main(simpleCli.outputStream);
+}
 void calibration_configCallback(cmd *cmdPtr){
   Command cmd(cmdPtr);
   Argument arg = cmd.getArgument(0);
@@ -328,11 +343,13 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config = addCommand("relay", relay_configCallback);
   cmd_config.addArgument("s/el","");
   cmd_config.addFlagArg("off");
+  cmd_config.setDescription("relay on off controll \r\n relay -s/el [1] [-off]");
   cmd_config = addSingleArgCmd("mode", mode_configCallback);
   cmd_config = addSingleArgCmd("cal/ibration", calibration_configCallback);
   cmd_config = addSingleArgCmd("bat/number", batnumber_configCallback);
+  cmd_config = addCommand("imp/edance", impedance_configCallback);
+  cmd_config = addCommand("temp/erature", temperature_configCallback);
   //cmd_config.addArgument("off","");
-  cmd_config.setDescription("relay on off controll \r\n relay -s/el [1] [-off]");
 
   simpleCli.setOnError(errorCallback);
   cmd_config= addCommand("help",help_Callback);

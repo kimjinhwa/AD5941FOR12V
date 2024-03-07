@@ -53,6 +53,20 @@ void addResult(uint32_t *pData, uint32_t DataCount)
     cellvalue[selecectedCellNumber-1].impendance = AD5940_ComplexMag(&Average) ;
   }
 }
+
+int32_t BATShowResultBLE(uint32_t *pData, uint32_t DataCount,Print *outputStream )
+{
+  fImpCar_Type *pImp = (fImpCar_Type*)pData;
+	float freq;
+	AppBATCtrl(BATCTRL_GETFREQ, &freq);
+  /*Process data*/
+  for(int i=0;i<DataCount;i++)
+  {
+    outputStream->printf("Freq: %6.3f (real, image) = ,%6.3f , %6.3f ,%6.3f mOhm \n",freq, pImp[i].Real,pImp[i].Image,AD5940_ComplexMag(&pImp[i]));
+  }
+  return 0;
+
+}
 int32_t BATShowResult(uint32_t *pData, uint32_t DataCount)
 {
   fImpCar_Type *pImp = (fImpCar_Type*)pData;
@@ -61,7 +75,7 @@ int32_t BATShowResult(uint32_t *pData, uint32_t DataCount)
   /*Process data*/
   for(int i=0;i<DataCount;i++)
   {
-    printf("Freq: %f (real, image) = ,%f , %f ,%f mOhm \n",freq, pImp[i].Real,pImp[i].Image,AD5940_ComplexMag(&pImp[i]));
+    printf("Freq: %f (real, image) = ,%6.3f , %6.3f ,%6.3f mOhm \n",freq, pImp[i].Real,pImp[i].Image,AD5940_ComplexMag(&pImp[i]));
   }
   return 0;
 }
@@ -142,6 +156,9 @@ void AD5940BATStructInit(void)
 	pBATCfg->SweepCfg.SweepLog = bTRUE;			/* Set to bTRUE to use LOG scale. Set bFALSE to use linear scale */
 	
 }
+void AD5940_ShutDown(){
+  AppBATCtrl(BATCTRL_SHUTDOWN,0);
+}
 void AD5940_Main_init()
 {
   uint16_t temp;
@@ -203,7 +220,11 @@ float AD5940_calibration(float *real , float *image,Print *outputStream ){
 void AD5940_Main(void *parameters)
 {
   uint32_t temp;
-  // AD5940PlatformCfg();
+  Print *outputStream=NULL ;
+  if(parameters != nullptr)
+    outputStream  = static_cast<Print *>(parameters);
+
+  // AD5940PlatformCfg()
   // AD5940BATStructInit(); /* Configure your parameters in this function */
   // AppBATInit(AppBuff, APPBUFF_SIZE);    /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
   //
@@ -235,6 +256,8 @@ void AD5940_Main(void *parameters)
 
   AD5940Err error = AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
   ESP_LOGI(TAG, "AppBATInit %d %s ",error ,error == AD5940ERR_OK ?"성공":"실패");
+  if(outputStream != nullptr)
+  outputStream->printf( "AppBATInit %d %s ",error ,error == AD5940ERR_OK ?"성공":"실패");
   digitalWrite(AD636_SEL,HIGH);
   //30개를 읽고 
   //앞의 10개는 버리고 
@@ -258,6 +281,9 @@ void AD5940_Main(void *parameters)
       AD5940_Delay10us(100000);
       addResult(AppBuff, loopCount);
       BATShowResult(AppBuff, temp); /* Print measurement results over UART */
+      if(outputStream != nullptr)
+        BATShowResultBLE(AppBuff, temp,outputStream); /* Print measurement results over UART */
+
       AD5940_SEQMmrTrig(SEQID_0);   /* Trigger next measurement ussing MMR write*/
     }
     AD5940_AGPIOToggle(AGPIO_Pin1);

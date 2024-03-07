@@ -11,12 +11,12 @@ ModbusMessage FC06(ModbusMessage request) ;
 // //사용법
 // //#include "modbusRtu.h"
 // //전역
-// //modbusRtu rtu485;
+// //modbusRtu LcdCellRtu485;
 // //setup
-// // rtu485.modbusInit();
+// // LcdCellRtu485.modbusInit();
 // //  pinMode(OP_LED , OUTPUT);
 // //loop
-// //  rtu485.receiveData();
+// //  LcdCellRtu485.receiveData();
 
 // enum Error : uint8_t {
 //   SUCCESS                = 0x00,
