@@ -38,6 +38,7 @@ ModbusServerRTU::ModbusServerRTU(uint32_t timeout, int rtsPin) :
   } else {
     MRTSrts = RTUutils::RTSauto;
   }
+  stopReceive=false;
 }
 
 // Constructor with RTS callback
@@ -143,7 +144,6 @@ void ModbusServerRTU::registerSniffer(MSRlistener worker) {
   sniffer = worker;
   LOG_D("Registered sniffer\n");
 }
-
 // serve: loop until killed and receive messages from the RTU interface
 void ModbusServerRTU::serve(ModbusServerRTU *myServer) {
   ModbusMessage request;                // received request message
@@ -158,7 +158,6 @@ void ModbusServerRTU::serve(ModbusServerRTU *myServer) {
     request.clear();
     response.clear();
     m.clear();
-
     // Wait for and read an request
     request = RTUutils::receive(
       'S',

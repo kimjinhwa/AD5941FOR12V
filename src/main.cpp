@@ -40,7 +40,7 @@ TaskHandle_t *h_pxblueToothTask;
 nvsSystemSet systemDefaultValue;
 ThreeWire myWire(13, 14, 33); // IO, SCLK, CE
 RtcDS1302<ThreeWire> Rtc(myWire);
-ModbusServerRTU LcdCellRtu485(2000,CELL485_DE);// LCD를 위하여 사용한다.
+ModbusServerRTU LcdCell485(2000,CELL485_DE);// LCD를 위하여 사용한다.
 ModbusServerRTU extrtu485(2000,EXT_485EN_1);
 //ModbusClientRTU cellModbus(CELL485_DE);
 uint8_t selecectedCellNumber =0;
@@ -274,23 +274,20 @@ void handleError(Error error, uint32_t token)
 void setupModbusAgentForLcd(){
   //address는 항상 1이다.
   uint8_t address_485 = 1; 
-  LcdCellRtu485.begin(Serial2,BAUDRATESERIAL1,1);
-  LcdCellRtu485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
-  LcdCellRtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
-  LcdCellRtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
-  //LcdCellRtu485.suspendTask();
+  LcdCell485.begin(Serial2,BAUDRATESERIAL1,1);
+  LcdCell485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
+  LcdCell485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
+  LcdCell485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
   
   extrtu485.begin(Serial1,BAUDRATE,1);
   extrtu485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
   extrtu485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
   extrtu485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
-  //extrtu485.suspendTask();
 
   // cellModbus.onDataHandler(&handleData);
   // cellModbus.onErrorHandler(&handleError);
   // cellModbus.setTimeout(2000);
   // cellModbus.begin(Serial2);
-  // cellModbus.suspendTask();
 };
 ExtendSerial extendSerial;
 int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len,uint16_t timeout){
@@ -305,7 +302,7 @@ int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len
       buf[readCount++] = Serial2.read();
       //ESP_LOGI("REV","%02x ",buf[readCount -1]);
     };
-    delay(1);
+    delayMicroseconds(100);
     if (readCount == len){
       //data를 받았다. 이제 id, command ,checksum 체크섬이 같은지 보자.
       //ESP_LOGI("REV","data received len is %02x ",len);
@@ -327,9 +324,19 @@ int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len
   }
   else
   {
-    ESP_LOGI("main","Receive Failed");
+    for (int i = 0; i < readCount; i++)
+    {
+      Serial.printf("%d:%02x ",i ,buf[readCount]);
+    }
+    ESP_LOGI("main", "Receive Failed %d received",readCount);
   }
-  while(Serial2.available())Serial2.read();
+  //리턴하기 전에 Garbage가 있으면 정리한다.
+  while(Serial2.available())
+  {
+    int c = Serial2.read();
+    ESP_LOGI(TAG,"Garbage Date : %02x",c);
+    delay(1);
+  }
 
   return data_ready;
 };
@@ -362,14 +369,14 @@ uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumbe
   uint32_t temp32H,temp32L;
   *failedBatteryNumberH= 0;
   *failedBatteryNumberL= 0;
-  LcdCellRtu485.suspendTask();
+  LcdCell485.suspendTask();
   uint8_t buf[64];
   for (int modbusId = 1; modbusId <= systemDefaultValue.installed_cells; modbusId++)
   {
     delay(10);
     makeRelayControllData(buf, modbusId, READ_COIL, 0, 2);     // Read coil data 2 개
     extendSerial.selectCellModule(false);                      // 읽기 모드로 전환
-    isOK = readResponseData(modbusId, READ_COIL, buf, 6, 300); // buf[3]이 Relay 데이타 이다.
+    isOK = readResponseData(modbusId, READ_COIL, buf, 6, 3000); // buf[3]이 Relay 데이타 이다.
     if (isOK == 1)
     {
       if (modbusId < 32)
@@ -403,7 +410,7 @@ uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumbe
     }
     totalRelayCount += buf[3];
   }
-  LcdCellRtu485.resumeTask();
+  LcdCell485.resumeTask();
   return totalRelayCount;
 }
 bool sendSelectBattery(uint8_t modbusId)
@@ -418,7 +425,7 @@ bool sendSelectBattery(uint8_t modbusId)
   AD5940_ShutDown();
   selecectedCellNumber = modbusId;
   uint16_t checkSum ;
-  LcdCellRtu485.suspendTask();
+  LcdCell485.suspendTask();
   uint8_t buf[64];
 
   //makeRelayControllData(buf,0xFF,05,0,0xFF00); // 0xff BROADCAST
@@ -430,7 +437,7 @@ bool sendSelectBattery(uint8_t modbusId)
   makeRelayControllData(buf,modbusId,READ_COIL,0,2); // Read coil data 2 개 
 
   extendSerial.selectCellModule(false);  //읽기 모드로 전환
-  uint16_t readCount = readResponseData(modbusId,READ_COIL, buf,6,300); //buf[3]이 Relay 데이타 이다.
+  uint16_t readCount = readResponseData(modbusId,READ_COIL, buf,6,3000); //buf[3]이 Relay 데이타 이다.
 
   makeRelayControllData(buf,modbusId,WRITE_COIL,0,0xFF00); // 해당 셀을 ON 시킨다 
   delay(100);
@@ -438,7 +445,7 @@ bool sendSelectBattery(uint8_t modbusId)
   delay(200);
 
   extendSerial.selectLcd();
-  LcdCellRtu485.resumeTask();
+  LcdCell485.resumeTask();
   return data_ready;
 
 }
@@ -455,8 +462,13 @@ int makeTemperatureData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t
   buf[7] = checkSum >> 8    ;
 
   extendSerial.selectCellModule(false);
-  while(Serial2.available())Serial2.read();
+  while(Serial2.available()){
+    int c = Serial2.read();
+    ESP_LOGI(TAG,"Garbage Date : %02x",c);
+    delay(1);
+  }
   extendSerial.selectCellModule(true);
+  delay(5);
   Serial2.write(buf,8);
   Serial2.flush();
   extendSerial.selectCellModule(false);
@@ -467,12 +479,13 @@ uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
   uint16_t checkSum ;
   uint16_t value ;
   //ESP_LOGI("main","request");
-  LcdCellRtu485.suspendTask();
+  LcdCell485.suspendTask();
+  delay(100);
   uint8_t buf[64];
   data_ready = false;
   makeTemperatureData(buf,modbusId,fCode,0,2);
   extendSerial.selectCellModule(false);
-  data_ready  = readResponseData(modbusId,fCode, buf,9,300); 
+  data_ready  = readResponseData(modbusId,fCode, buf,9,3000); 
   if (data_ready)
   {
     value = buf[3]*256  + buf[4] ;
@@ -486,7 +499,7 @@ uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
   }
   // while(Serial2.available())Serial2.read();
   extendSerial.selectLcd();
-  LcdCellRtu485.resumeTask();
+  LcdCell485.resumeTask();
   return value;
 
 };
@@ -536,10 +549,11 @@ void setup()
   // xTaskCreate(NetworkTask,"NetworkTask",5000,NULL,1,h_pxNetworkTask); //PCB 패턴문제로 사용하지 않는다.
   xTaskCreate(blueToothTask, "blueToothTask", 5000, NULL, 1, h_pxblueToothTask);
   ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
-  for (int i = 1; i < systemDefaultValue.installed_cells; i++)
-  {
-    sendGetMoubusTemperature(i, 04);
-  }
+  // for (int i = 1; i < systemDefaultValue.installed_cells; i++)
+  // {
+  //   sendGetMoubusTemperature(i, 04);
+  //   ESP_LOGI(TAG,"Selecet Module %d",i);
+  // }
   AD5940_ShutDown();
 };
 static unsigned long previousSecondmills = 0;

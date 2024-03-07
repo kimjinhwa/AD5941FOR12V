@@ -22,6 +22,7 @@ extern "C" {
 // Specal function signature for broadcast or sniffer listeners
 using MSRlistener = std::function<void(ModbusMessage msg)>;
 
+extern int stopReceive;
 class ModbusServerRTU : public ModbusServer {
 public:
   // Constructors
@@ -35,10 +36,12 @@ public:
   void begin(Stream& serial, uint32_t baudRate, int coreID = -1);
   void begin(HardwareSerial& serial, int coreID = -1);
   void suspendTask(){
-    vTaskSuspend( serverTask);
+    //vTaskSuspend( serverTask);
+    stopReceive = 1;
   }
   void resumeTask(){
-    vTaskResume( serverTask);
+    //vTaskResume( serverTask);
+    stopReceive = 0;
   }
   
 

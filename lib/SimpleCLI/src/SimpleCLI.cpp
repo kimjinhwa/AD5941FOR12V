@@ -15,7 +15,7 @@ LittleFileSystem lsFile;
 SimpleCLI simpleCli;
 extern BatDeviceInterface batDevice;
 extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
-
+static char *TAG ="CLI" ;
 extern "C" {
 #include "c/cmd.h"       // cmd
 #include "c/parser.h"    // parse_lines
@@ -134,6 +134,15 @@ uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode);
 
 void temperature_configCallback(cmd *cmdPtr){
   uint16_t  batTemperature;
+  Command cmd(cmdPtr);
+  Argument arg = cmd.getArgument(0);
+  String argVal = arg.getValue();
+  simpleCli.outputStream->printf("\r\n%s",argVal.c_str());
+  if(argVal.length() > 0 ){
+    batTemperature = sendGetMoubusTemperature(argVal.toInt(), 04);
+    simpleCli.outputStream->printf("\r\n[%d]Bat Temperature : %3.2f",argVal.toInt(),batTemperature/100.0f);
+    return;
+  }
   for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
   {
     batTemperature = sendGetMoubusTemperature(i, 04);
@@ -348,7 +357,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config = addSingleArgCmd("cal/ibration", calibration_configCallback);
   cmd_config = addSingleArgCmd("bat/number", batnumber_configCallback);
   cmd_config = addCommand("imp/edance", impedance_configCallback);
-  cmd_config = addCommand("temp/erature", temperature_configCallback);
+  cmd_config = addSingleArgCmd("temp/erature", temperature_configCallback);
   //cmd_config.addArgument("off","");
 
   simpleCli.setOnError(errorCallback);

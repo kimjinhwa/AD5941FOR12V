@@ -181,6 +181,7 @@ void RTUutils::send(Stream& serial, unsigned long& lastMicros, uint32_t interval
 }
 
 // receive: get (any) message from Serial, taking care of timeout and interval
+int stopReceive =0;
 ModbusMessage RTUutils::receive(uint8_t caller, Stream& serial, uint32_t timeout, unsigned long& lastMicros, uint32_t interval, bool ASCIImode, bool skipLeadingZeroBytes) {
   // Allocate initial receive buffer size: 1 block of BUFBLOCKSIZE bytes
   const uint16_t BUFBLOCKSIZE(512);
@@ -210,7 +211,7 @@ ModbusMessage RTUutils::receive(uint8_t caller, Stream& serial, uint32_t timeout
     // interval tracker 
     lastMicros = micros();
   
-    while (state != FINISHED) {
+    while (state != FINISHED &&  stopReceive == 0) {
       switch (state) {
       // WAIT_DATA: await first data byte, but watch timeout
       case WAIT_DATA:
