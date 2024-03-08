@@ -22,10 +22,11 @@ extern "C" {
 // Specal function signature for broadcast or sniffer listeners
 using MSRlistener = std::function<void(ModbusMessage msg)>;
 
-extern int stopReceive;
+extern uint16_t stopReceive;
 class ModbusServerRTU : public ModbusServer {
 public:
   // Constructors
+  uint16_t useStopControll=0;
   explicit ModbusServerRTU(uint32_t timeout, int rtsPin = -1);
   ModbusServerRTU(uint32_t timeout, RTScallback rts);
 
@@ -35,6 +36,7 @@ public:
   // begin: create task with RTU server to accept requests
   void begin(Stream& serial, uint32_t baudRate, int coreID = -1);
   void begin(HardwareSerial& serial, int coreID = -1);
+
   void suspendTask(){
     //vTaskSuspend( serverTask);
     stopReceive = 1;
@@ -45,7 +47,7 @@ public:
   }
   void resumeTask(){
     //vTaskResume( serverTask);
-    stopReceive = 0;
+    stopReceive  = 0;
   }
   
 
@@ -99,6 +101,7 @@ protected:
 
   // serve: loop function for server task
   static void serve(ModbusServerRTU *myself);
+  static void serveExt(ModbusServerRTU *myself);
 };
 
 #endif  // HAS_FREERTOS

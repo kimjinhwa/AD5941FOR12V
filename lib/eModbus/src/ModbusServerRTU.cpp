@@ -12,6 +12,7 @@
 
 // Init number of created ModbusServerRTU objects
 uint8_t ModbusServerRTU::instanceCounter = 0;
+extern uint16_t stopReceive;
 
 // Constructor with RTS pin GPIO (or -1)
 ModbusServerRTU::ModbusServerRTU(uint32_t timeout, int rtsPin) :
@@ -91,7 +92,10 @@ void ModbusServerRTU::doBegin(uint32_t baudRate, int coreID) {
   snprintf(taskName, 18, "MBsrv%02XRTU", instanceCounter);
 
   // Start task to handle the client
-  xTaskCreatePinnedToCore((TaskFunction_t)&serve, taskName, 4096, this, 8, &serverTask, coreID >= 0 ? coreID : NULL);
+  if(useStopControll==1)
+    xTaskCreatePinnedToCore((TaskFunction_t)&serveExt, taskName, 4096, this, 8, &serverTask, coreID >= 0 ? coreID : NULL);
+  else 
+    xTaskCreatePinnedToCore((TaskFunction_t)&serve, taskName, 4096, this, 8, &serverTask, coreID >= 0 ? coreID : NULL);
 
   LOG_D("Server task %d started. Interval=%d\n", (uint32_t)serverTask, MSRinterval);
 }
@@ -160,6 +164,119 @@ void ModbusServerRTU::serve(ModbusServerRTU *myServer) {
     m.clear();
     // Wait for and read an request
     request = RTUutils::receive(
+      'S',
+      *(myServer->MSRserial), 
+      myServer->serverTimeout, 
+      myServer->MSRlastMicros, 
+      myServer->MSRinterval, 
+      myServer->MSRuseASCII, 
+      myServer->MSRskipLeadingZeroByte);
+
+    // Request longer than 1 byte (that will signal an error in receive())? 
+    if (request.size() > 1) {
+      //LOG_D("Request received.\n");
+
+      // Yes. 
+      // Do we have a sniffer listening?
+      if (myServer->sniffer) {
+        // Yes. call it
+        myServer->sniffer(request);
+      }
+      // Is it a broadcast?
+      if (request[0] == 0) {
+        // Yes. Do we have a listener?
+        if (myServer->listener) {
+          // Yes. call it
+          myServer->listener(request);
+        }
+        // else we simply ignore it
+      } else {
+        // No Broadcast. 
+        // Do we have a callback function registered for it?
+        MBSworker callBack = myServer->getWorker(request[0], request[1]);
+        if (callBack) {
+          //LOG_D("Callback found.\n");
+          // Yes, we do. Count the message
+          {
+            LOCK_GUARD(cntLock, myServer->m);
+            myServer->messageCount++;
+          }
+          // Get the user's response
+          //LOG_D("Callback called.\n");
+          m = callBack(request);
+          HEXDUMP_V("Callback response", m.data(), m.size());
+
+          // Process Response. Is it one of the predefined types?
+          if (m[0] == 0xFF && (m[1] == 0xF0 || m[1] == 0xF1)) {
+            // Yes. Check it
+            switch (m[1]) {
+            case 0xF0: // NIL
+              response.clear();
+              break;
+            case 0xF1: // ECHO
+              response = request;
+              if (request.getFunctionCode() == WRITE_MULT_REGISTERS ||
+                  request.getFunctionCode() == WRITE_MULT_COILS) {
+                response.resize(6);
+              }
+              break;
+            default:   // Will not get here, but lint likes it!
+              break;
+            }
+          } else {
+            // No predefined. User provided data in free format
+            response = m;
+          }
+        } else {
+          // No callback. Is at least the serverID valid and no broadcast?
+          if (myServer->isServerFor(request[0]) && request[0] != 0x00) {
+            // Yes. Send back a ILLEGAL_FUNCTION error
+            response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_FUNCTION);
+          }
+          // Else we will ignore the request, as it is not meant for us and we do not deal with broadcasts!
+        }
+        // Do we have gathered a valid response now?
+        if (response.size() >= 3) {
+          // Yes. send it back.
+          //digitalWrite(CELL485_DE, 1);
+          RTUutils::send(*(myServer->MSRserial), myServer->MSRlastMicros, myServer->MSRinterval, myServer->MRTSrts, response, myServer->MSRuseASCII);
+          //digitalWrite(CELL485_DE, 0);
+          //LOG_D("Response sent.\n");
+          // Count it, in case we had an error response
+          if (response.getError() != SUCCESS) {
+            LOCK_GUARD(errorCntLock, myServer->m);
+            myServer->errorCount++;
+          }
+        }
+      }
+    } else {
+      // No, we got a 1-byte request, meaning an error has happened in receive()
+      // This is a server, so we will ignore TIMEOUT.
+      if (request[0] != TIMEOUT) {
+        // Any other error could be important for debugging, so print it
+        ModbusError me((Error)request[0]);
+        //LOG_E("RTU receive: %02X - %s\n", (int)me, (const char *)me);
+      }
+    }
+    // Give scheduler room to breathe
+    delay(1);
+  }
+}
+void ModbusServerRTU::serveExt(ModbusServerRTU *myServer) {
+  ModbusMessage request;                // received request message
+  ModbusMessage m;                      // Application's response data
+  ModbusMessage response;               // Response proper to be sent
+
+  // init microseconds timer
+  myServer->MSRlastMicros = micros();
+
+  while (true) {
+    // Initialize all temporary vectors
+    request.clear();
+    response.clear();
+    m.clear();
+    // Wait for and read an request
+    request = RTUutils::receiveExt(
       'S',
       *(myServer->MSRserial), 
       myServer->serverTimeout, 
