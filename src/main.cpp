@@ -89,7 +89,7 @@ void readnWriteEEProm()
     systemDefaultValue.alarmDiffCellVoltage = 200;  //200mV
     systemDefaultValue.alarmHighCellVoltage = 1450;  //14.5V
     systemDefaultValue.alarmLowCellVoltage = 850; //8.5V
-    systemDefaultValue.AlarmTemperature = 65+40;
+    systemDefaultValue.AlarmTemperature = 65;
     systemDefaultValue.cutoffHighCellVoltage = 14800;
     systemDefaultValue.cutoffLowCellVoltage = 6500;
     systemDefaultValue.GATEWAY =(uint32_t)IPAddress(192, 168, 0, 1); 
@@ -464,7 +464,7 @@ int makeTemperatureData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t
   extendSerial.selectCellModule(false);
   while(Serial2.available()){
     int c = Serial2.read();
-    ESP_LOGI(TAG,"Garbage Date : %02x",c);
+    ESP_LOGI(TAG,"Garbage Data : %02x",c);
     vTaskDelay(1);
   }
   extendSerial.selectCellModule(true);
@@ -527,6 +527,7 @@ void setup()
     cellvalue[i].voltageCompensation = 0;
     cellvalue[i].impendanceCompensation = 0;
   }
+
 
   setupModbusAgentForLcd();
   String bleName ="TIMP_Dev_"; 
@@ -666,3 +667,19 @@ void loop(void)
   // cellModbus.onErrorHandler(&handleError);
   // cellModbus.setTimeout(2000);
   // cellModbus.begin(Serial2);
+
+  //   extendSerial.selectLcd();
+  // while(1){
+  //   // if(Serial2.available()){
+  //     while (Serial2.available())
+  //     {
+  //       int c = Serial2.read();
+  //       Serial.printf(" %02x",c);
+  //   //    delay(1);
+  //     }
+  //   //   Serial.println();
+  //   // }
+  //   // Serial.printf("\r\nLcd Test");
+  //   // Serial2.printf("\r\nLcd Test");
+  //   //delay(1000);
+  // }

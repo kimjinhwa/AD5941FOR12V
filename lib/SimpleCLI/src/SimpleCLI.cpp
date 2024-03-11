@@ -186,6 +186,24 @@ void calibration_configCallback(cmd *cmdPtr){
   } 
 
 }
+void id_configCallback(cmd *cmdPtr){
+  Command cmd(cmdPtr);
+  Argument arg = cmd.getArgument(0);
+  String argVal = arg.getValue();
+  if (argVal.length() == 0){
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    simpleCli.outputStream->printf("\r\nmode id is  %d",systemDefaultValue.modbusId);
+    return;
+  }
+  int8_t mod_id = argVal.toInt(); 
+  if(mod_id > 0 && mod_id <= 247){
+    systemDefaultValue.modbusId= mod_id; 
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.commit();
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    simpleCli.outputStream->printf("\r\nmodbus is Changed to %d",systemDefaultValue.modbusId);
+  }
+}
 void mode_configCallback(cmd *cmdPtr){
   Command cmd(cmdPtr);
   Argument arg = cmd.getArgument(0);
@@ -353,11 +371,12 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config = addCommand("df", df_configCallback);
   cmd_config = addSingleArgCmd("reboot", reboot_configCallback);
 
-  cmd_config = addCommand("relay", relay_configCallback);
+  cmd_config = addCommand("r/elay", relay_configCallback);
   cmd_config.addArgument("s/el","");
   cmd_config.addFlagArg("off");
   cmd_config.setDescription("relay on off controll \r\n relay -s/el [1] [-off]");
   cmd_config = addSingleArgCmd("mode", mode_configCallback);
+  cmd_config = addSingleArgCmd("id", id_configCallback);
   cmd_config = addSingleArgCmd("cal/ibration", calibration_configCallback);
   cmd_config = addSingleArgCmd("bat/number", batnumber_configCallback);
   cmd_config = addCommand("imp/edance", impedance_configCallback);
