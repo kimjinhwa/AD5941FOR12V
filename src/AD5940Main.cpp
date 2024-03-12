@@ -50,7 +50,10 @@ void addResult(uint32_t *pData, uint32_t DataCount)
       Average.Image/= 2.0;
     }
     ESP_LOGI("AVERAGE","Average(real, image) = , %f ,%f ,%f mOhm \n", Average.Real,Average.Image,AD5940_ComplexMag(&Average));
+    // 보정값을 적용하여 주자 
     cellvalue[selecectedCellNumber-1].impendance = AD5940_ComplexMag(&Average) ;
+    cellvalue[selecectedCellNumber-1].impendance += 
+            systemDefaultValue.impendanceCompensation[selecectedCellNumber-1]/100.0;
   }
 }
 

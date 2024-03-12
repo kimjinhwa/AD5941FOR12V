@@ -134,6 +134,22 @@ void batnumber_configCallback(cmd *cmdPtr)
 void AD5940_Main(void *parameters);
 uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode);
 
+void impoffset_configCallback(cmd *cmdPtr){
+  // Command cmd(cmdPtr);
+  // Argument arg = cmd.getArgument("year");
+  // String strValue ;
+  // if(arg.isSet()){
+  //   strValue = arg.getValue();
+  //   simpleCli.outputStream->printf("\nTime will Set to %d/%d/%d %d:%d:%d ",strValue.toInt(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
+  //   now = RtcDateTime(strValue.toInt(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
+  //   setRtcNewTime(now);
+  //   now = getDs1302GetRtcTime();
+  //   simpleCli.outputStream->printf("\nNow New time is set to %d/%d/%d %d:%d:%d ",now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
+  //   return ;
+  //}
+  // arg = cmd.getArgument("Month");
+  // return;
+}
 void temperature_configCallback(cmd *cmdPtr){
   uint16_t  batTemperature;
   Command cmd(cmdPtr);
@@ -381,7 +397,10 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config = addSingleArgCmd("bat/number", batnumber_configCallback);
   cmd_config = addCommand("imp/edance", impedance_configCallback);
   cmd_config = addSingleArgCmd("temp/erature", temperature_configCallback);
-  //cmd_config.addArgument("off","");
+
+  cmd_config = addCommand("impoffset",impoffset_configCallback);
+  cmd_config.addArgument("s/el","");
+  cmd_config.addArgument("v/alue","");
 
   simpleCli.setOnError(errorCallback);
   cmd_config= addCommand("help",help_Callback);

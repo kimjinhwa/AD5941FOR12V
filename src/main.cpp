@@ -271,7 +271,7 @@ int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len
       buf[readCount++] = Serial2.read();
       //ESP_LOGI("REV","%02x ",buf[readCount -1]);
     };
-    delayMicroseconds(100);
+    delay(500.0/BAUDRATESERIAL1 );  //4800일때 약 1ms이된다.
     if (readCount == len){
       //data를 받았다. 이제 id, command ,checksum 체크섬이 같은지 보자.
       //ESP_LOGI("REV","data received len is %02x ",len);
@@ -333,18 +333,25 @@ int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16
 */
 uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumberL)
 {
-  uint16_t  totalRelayCount;
+  uint16_t  totalRelayStatusValue;
   uint16_t isOK ;
   uint32_t temp32H,temp32L;
   *failedBatteryNumberH= 0;
   *failedBatteryNumberL= 0;
   uint8_t buf[64];
+  uint16_t retryCount=5;
+
+  ESP_LOGI("modbus","checkAllOff");
   for (int modbusId = 1; modbusId <= systemDefaultValue.installed_cells; modbusId++)
   {
-    vTaskDelay(10);
-    makeRelayControllData(buf, modbusId, READ_COIL, 0, 2);     // Read coil data 2 개
-    extendSerial.selectCellModule(false);                      // 읽기 모드로 전환
-    isOK = readResponseData(modbusId, READ_COIL, buf, 6, 3000); // buf[3]이 Relay 데이타 이다.
+    retryCount=5;
+    while(retryCount--){
+      vTaskDelay(100);
+      makeRelayControllData(buf, modbusId, READ_COIL, 0, 2);     // Read coil data 2 개
+      extendSerial.selectCellModule(false);                      // 읽기 모드로 전환
+      isOK = readResponseData(modbusId, READ_COIL, buf, 6, 3000); // * 100 즉 0.3초 us buf[3]이 Relay 데이타 이다.
+      if(isOK)break;
+    }
     if (isOK == 1)
     {
       if (modbusId < 32)
@@ -376,9 +383,9 @@ uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumbe
       }
       ESP_LOGI("OFF RELAY","%d battery not response..", modbusId);
     }
-    totalRelayCount += buf[3];
+    totalRelayStatusValue += buf[3];
   }
-  return totalRelayCount;
+  return totalRelayStatusValue;
 }
 /* 셀을 선택한다. modbusId는 1부터 시작하며 설치되어 있는 배터리의 수보다 작아야 한다. 
 * 
@@ -486,6 +493,7 @@ uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
   data_ready = false;
   makeTemperatureData(buf,modbusId,fCode,0,2);
   extendSerial.selectCellModule(false);
+  ESP_LOGI("modbus","getTemp");
   data_ready  = readResponseData(modbusId,fCode, buf,9,3000); 
   if (data_ready)
   {
@@ -606,6 +614,7 @@ void loop(void)
       time_t startRead = millis();
       float batVoltage = 0.0;
       batVoltage = batDevice.readBatAdcValue(600);
+      if(batVoltage > 18.0)batVoltage = 0.0;
       cellvalue[i - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
       time_t endRead = millis();             // take 300ms
       ESP_LOGI("Voltage", "Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);

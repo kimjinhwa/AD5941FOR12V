@@ -1,4 +1,5 @@
 #include "batDeviceInterface.h"
+#include "mainGrobal.h"
 
 BatDeviceInterface::BatDeviceInterface(){
         batVoltageAdcValue = 0.0;
@@ -24,8 +25,9 @@ float BatDeviceInterface::readBatAdcValue(float filter)
     }
     batVoltageAdcValue = batVoltageAdcValue/filter ;
   }
-  batVoltageAdcValue += VOLTAGE_OFFSET;
+  batVoltageAdcValue += systemDefaultValue.voltageCompensation[0];
   uint32_t voltage = esp_adc_cal_raw_to_voltage((uint32_t)batVoltageAdcValue , &adc_chars);
+  
   batVoltageAdcValue = voltage*((5.1+0.05567+1)/1);
   batVoltageAdcValue  /= 1000.0;
   if(batVoltageAdcValue < 1.3 ) batVoltageAdcValue = 0; 

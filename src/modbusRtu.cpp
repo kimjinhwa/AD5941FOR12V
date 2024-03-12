@@ -186,17 +186,17 @@ ModbusMessage FC06(ModbusMessage request)
 
   ESP_LOGI("MODBUS", "\nFunction code 06 address(%d) writeAddress(%d) value(%d) ", address, writeAddress, value);
   ESP_LOGI("MODBUS", "Write and read %d ", systemDefaultValue.voltageCompensation[writeAddress]);
-  if (writeAddress < 40)
+  if (writeAddress < 40)  // voltage compensation
   {
     systemDefaultValue.voltageCompensation[writeAddress] = value;
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
   }
-  if (writeAddress >= 40 && writeAddress < 80)
+  if (writeAddress >= 40 && writeAddress < 80) // temperature
   {
   }
-  if (writeAddress >= 80 && writeAddress < 120)
+  if (writeAddress >= 80 && writeAddress < 120)  //impedance compensation
   {
     systemDefaultValue.impendanceCompensation[writeAddress - 80] = value;
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));

@@ -46,6 +46,8 @@
     - 80~119: impedance * 100 
 #### Fcode 04
     - 0~39:  전압보정값
+      전압 보정은 옵셋값으로 주며 0 번지에만 준다. 
+      1옵셋당 약 9mv에 해당한다.
     - 40~79: not use 
     - 80~119: 임피던스보정값 
 
@@ -74,6 +76,7 @@
     - Cell no : 0 All Off, 
       number : Set Relay On the number and +1 relay on 
   - cal/ibration 기준 임피던스를 구한다. 
+    cal save : 값을 읽고 저장한다.
     cal save 캘리브레이션 된 값을 EEPROM에 저장한다
   - mode  자동으로 임피던스를 읽을 것인지 아닌지를 결정한다. 
           Calibration을 수행하기 위해서는 이것이 수동으로 설정 되어 있어야 한다.;
