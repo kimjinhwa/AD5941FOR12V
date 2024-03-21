@@ -134,11 +134,62 @@ void batnumber_configCallback(cmd *cmdPtr)
 void AD5940_Main(void *parameters);
 uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode);
 
-void impoffset_configCallback(cmd *cmdPtr){
-  // Command cmd(cmdPtr);
-  // Argument arg = cmd.getArgument("year");
+    // simpleCli.outputStream->printf("\ncount is %d",cmd.countArgs()); 
+    // simpleCli.outputStream->printf("\nfirst arg is %s",cmd.getArgument(0).getName()); 
+    // simpleCli.outputStream->printf("\nfirst arg is %s",cmd.getArgument(0).getValue()); 
+    // simpleCli.outputStream->printf("\nsecond arg is %s",cmd.getArgument(1).getName()); 
+    // simpleCli.outputStream->printf("\nsecond arg is %s",cmd.getArgument(1).getValue()); 
+    // simpleCli.outputStream->printf("\nthird arg is %s",cmd.getArgument(2).getName()); 
+    // simpleCli.outputStream->printf("\nthird arg is %s",cmd.getArgument(2).getValue()); 
+    // simpleCli.outputStream->printf("\nforth arg is %s",cmd.getArgument(3).getName()); 
+    // simpleCli.outputStream->printf("\nforth arg is %s",cmd.getArgument(3).getValue()); 
+  // cmd_config.addFlagArgument("i");
+  // cmd_config.addFlagArgument("v");
+  // cmd_config.addPositionalArgument("num");
+  // cmd_config.addPositionalArgument("value");
+void offset_configCallback(cmd *cmdPtr){
+  Command cmd(cmdPtr);
+  Argument arg = cmd.getArgument("i");
+  int16_t number;
+  int16_t value;
+  EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  if(arg.isSet()){  // Impedance
+    if(cmd.countArgs() <4 ){
+      simpleCli.outputStream->printf("\n You have to input number and value like as \noffset 1 100"); 
+      return;
+    }
+    number = cmd.getArgument(2).getValue().toInt();
+    value = cmd.getArgument(3).getValue().toInt();
+    if(number == 0 || number > systemDefaultValue.installed_cells){
+      simpleCli.outputStream->printf("\n Cell(%d) number Must be less then Installed cell(%d)\n",number,systemDefaultValue.installed_cells); 
+      return;
+    }
+    systemDefaultValue.impendanceCompensation[number -1] = value;
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.commit();
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    simpleCli.outputStream->printf("\nWrite Ok to IMP EEPROM %d : %d",number,systemDefaultValue.impendanceCompensation[number -1]);
+  }
+  arg = cmd.getArgument("v");
+  if(arg.isSet()){  // Voltage 
+    if(cmd.countArgs() <4 ){
+      simpleCli.outputStream->printf("\n You have to input number and value like as \noffset 1 100"); 
+      return;
+    }
+    number = cmd.getArgument(2).getValue().toInt();
+    value = cmd.getArgument(3).getValue().toInt();
+    if(number == 0 || number > systemDefaultValue.installed_cells){
+      simpleCli.outputStream->printf("\n Cell(%d) number Must be less then Installed cell(%d)\n",number,systemDefaultValue.installed_cells); 
+      return;
+    }
+    systemDefaultValue.voltageCompensation[number -1] = value;
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.commit();
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    simpleCli.outputStream->printf("\nWrite Ok to VOL EEPROM %d : %d",number,systemDefaultValue.voltageCompensation[number -1]);
+  }
+
   // String strValue ;
-  // if(arg.isSet()){
   //   strValue = arg.getValue();
   //   simpleCli.outputStream->printf("\nTime will Set to %d/%d/%d %d:%d:%d ",strValue.toInt(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
   //   now = RtcDateTime(strValue.toInt(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
@@ -269,7 +320,7 @@ void relay_configCallback(cmd *cmdPtr){
           sendSelectBattery(relayPos);
           time_t startRead = millis();
           float batVoltage = 0.0;
-          batVoltage = batDevice.readBatAdcValue(600);
+          batVoltage = batDevice.readBatAdcValue(relayPos ,600);
           cellvalue[relayPos - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
           time_t endRead = millis();                    // take 300ms
           simpleCli.outputStream->printf("Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
@@ -398,9 +449,19 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config = addCommand("imp/edance", impedance_configCallback);
   cmd_config = addSingleArgCmd("temp/erature", temperature_configCallback);
 
-  cmd_config = addCommand("impoffset",impoffset_configCallback);
-  cmd_config.addArgument("s/el","");
-  cmd_config.addArgument("v/alue","");
+  cmd_config = addCommand("offset",offset_configCallback);
+  cmd_config.addFlagArgument("i");
+  cmd_config.addFlagArgument("v");
+  cmd_config.addPositionalArgument("num");
+  cmd_config.addPositionalArgument("value");
+  cmd_config.setDescription("\nFor impdance and voltage compansation value\n  \
+    Usage: offset [-i (cellnumber) (value)] [-v (cellnumber) (value)]\n    \
+                [-ia][-va]  \
+           flag: -ia  [ for set to samevalue to First impedance value]\n   \
+           flag: -iv  [ for set to samevalue to First voltage value]\n     \
+           For set IMP input, value is 100 times.\n, \
+           For set Vol input, value is for use offset. So not multiples.\n, \
+             ");
 
   simpleCli.setOnError(errorCallback);
   cmd_config= addCommand("help",help_Callback);

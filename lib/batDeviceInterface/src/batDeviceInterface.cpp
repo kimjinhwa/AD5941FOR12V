@@ -11,6 +11,12 @@ BatDeviceInterface::BatDeviceInterface(){
 
 
 };
+
+float BatDeviceInterface::readBatAdcValue(uint16_t cellNumbver, float filter)
+{
+  this->_cellNumbver = cellNumbver;
+  readBatAdcValue(filter);
+}
 float BatDeviceInterface::readBatAdcValue(float filter)
 {
   batVoltageAdcValue =0;
@@ -25,7 +31,7 @@ float BatDeviceInterface::readBatAdcValue(float filter)
     }
     batVoltageAdcValue = batVoltageAdcValue/filter ;
   }
-  batVoltageAdcValue += systemDefaultValue.voltageCompensation[0];
+  batVoltageAdcValue += systemDefaultValue.voltageCompensation[_cellNumbver-1];
   uint32_t voltage = esp_adc_cal_raw_to_voltage((uint32_t)batVoltageAdcValue , &adc_chars);
   
   batVoltageAdcValue = voltage*((5.1+0.05567+1)/1);

@@ -24,7 +24,7 @@ Analog Devices Software License Agreement.
 #include "BATImpedance.h"
 #include "ad5940.h"
 
-#define MAX_LOOP_COUNT 30
+#define MAX_LOOP_COUNT 40
 #define APPBUFF_SIZE 512
 uint32_t AppBuff[APPBUFF_SIZE];
 char TAG[] = "AD5940";
@@ -42,8 +42,10 @@ void addResult(uint32_t *pData, uint32_t DataCount)
   }
   pImpResult[DataCount].Real = pImp->Real;
   pImpResult[DataCount].Image= pImp->Image;
-  if(DataCount == 29){
-    for(int16_t i=10; i < DataCount;i++){
+  if(DataCount == (MAX_LOOP_COUNT -1) )
+  {
+    //MAX_LOOP_COUNT가 30이라면 20부터 시작해서 29까지 이나까.. 10개의 평균이다.
+    for(int16_t i=MAX_LOOP_COUNT-10 ; i < MAX_LOOP_COUNT ;i++){
       Average.Real += pImpResult[i].Real;
       Average.Real /= 2.0;
       Average.Image+= pImpResult[i].Image;

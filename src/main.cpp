@@ -613,7 +613,7 @@ void loop(void)
       sendSelectBattery(i);
       time_t startRead = millis();
       float batVoltage = 0.0;
-      batVoltage = batDevice.readBatAdcValue(600);
+      batVoltage = batDevice.readBatAdcValue(i,600);
       if(batVoltage > 18.0)batVoltage = 0.0;
       cellvalue[i - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
       time_t endRead = millis();             // take 300ms
