@@ -15,7 +15,12 @@ BatDeviceInterface::BatDeviceInterface(){
 float BatDeviceInterface::readBatAdcValue(uint16_t cellNumbver, float filter)
 {
   this->_cellNumbver = cellNumbver;
-  readBatAdcValue(filter);
+  if(this->_cellNumbver<1 || this->_cellNumbver > systemDefaultValue.installed_cells )
+  {
+    ESP_LOGE("Error", "Bat number is : %d ", this->_cellNumbver);
+    return 0.0f;
+  }
+  return readBatAdcValue(filter);
 }
 float BatDeviceInterface::readBatAdcValue(float filter)
 {
