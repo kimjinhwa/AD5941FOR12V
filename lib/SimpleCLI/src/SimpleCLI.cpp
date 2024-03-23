@@ -471,7 +471,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config = addSingleArgCmd("format", format_configCallback);
   cmd_config = addCommand("time", time_configCallback);
   cmd_config.addArgument("y/ear","");
-  cmd_config.addArgument("M/onth","");
+  cmd_config.addArgument("mo/nth","");
   cmd_config.addArgument("d/ay","");
   cmd_config.addArgument("h/our","");
   cmd_config.addArgument("m/inute","");

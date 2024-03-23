@@ -264,27 +264,56 @@ int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len
   uint16_t readCount=0;
   bool data_ready = false;
   data_ready = false;
-  while (timeout--)
+  //우선 타임아웃정에 데이타가 도착하는지를 확인한다.
+  unsigned long fTimeOut = millis();
+  while (!Serial2.available())
+  {
+    delay(1);
+    if (millis() - fTimeOut > timeout)
+    {
+      vTaskDelay(1);
+      ESP_LOGI("REV", "It's timeout error");
+      return data_ready;
+    }
+  };
+  //문자간 interval 계산은 최소 3.5배가 되어야 한다. 
+  // interval = 35000000 / baudrate
+  // 3.5 * 10 bits * 1000us * 1000ms / baudrate
+  // so 7291 ,  
+  // uint32_t interval = 7300;
+  uint32_t interval = 10000; //좀 늘려 보자
+  unsigned long lastMicros = micros();
+  while (micros() - lastMicros < interval)  //이제 데이타는 있으므로 시작한다.
   {
     if (Serial2.available())
     {
       buf[readCount++] = Serial2.read();
-      //ESP_LOGI("REV","%02x ",buf[readCount -1]);
+      lastMicros = micros();
+      // ESP_LOGI("REV","%02x ",buf[readCount -1]);
     };
-    delay(500.0/BAUDRATESERIAL1 );  //4800일때 약 1ms이된다.
-    if (readCount == len){
-      //data를 받았다. 이제 id, command ,checksum 체크섬이 같은지 보자.
-      //ESP_LOGI("REV","data received len is %02x ",len);
-      if(buf[0] ==modbusId && buf[1] == funcCode &&  RTUutils::validCRC(buf,len)){
+    // delay(500.0/BAUDRATESERIAL1 );  //4800일때 약 1ms이된다.
+    if (readCount == len)
+    {
+      // data를 받았다. 이제 id, command ,checksum 체크섬이 같은지 보자.
+      // ESP_LOGI("REV","data received len is %02x ",len);
+      if (buf[0] == modbusId && buf[1] == funcCode && RTUutils::validCRC(buf, len))
+      {
         data_ready = true;
         break;
       }
-      else{
-        //ESP_LOGI("REV"," modbusId %d funcCode %d  validCRC %x",buf[0] ,buf[1], RTUutils::validCRC(buf,len));
+      else
+      {
+        // ESP_LOGI("REV"," modbusId %d funcCode %d  validCRC %x",buf[0] ,buf[1], RTUutils::validCRC(buf,len));
         data_ready = false;
-        //vTaskDelay(3000);
+        // vTaskDelay(3000);
         break;
       }
+    }
+    if (micros() - lastMicros > interval)
+    {
+      ESP_LOGI("RECEIVE","Time to retch lastMisros %ld  %ld",micros(),lastMicros);
+      data_ready = false;
+      break;
     }
   }
   if (data_ready)
@@ -300,11 +329,21 @@ int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len
     ESP_LOGI("main", "Receive Failed %d received",readCount);
   }
   //리턴하기 전에 Garbage가 있으면 정리한다.
+  if(Serial2.available())ESP_LOGI(TAG,"Garbage Data : ");
+  int c;
   while(Serial2.available())
   {
-    int c = Serial2.read();
-    ESP_LOGI(TAG,"Garbage Date : %02x",c);
-    vTaskDelay(1);
+    while (Serial2.available())
+    {
+      Serial2.read();
+      ESP_LOGI(TAG, ".");
+    }
+    if (Serial2.available())
+    {
+      c = Serial2.read();
+      ESP_LOGI(TAG, " %02x", c);
+    }
+    vTaskDelay(5);
   }
   return data_ready;
 };
@@ -349,7 +388,7 @@ uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumbe
       vTaskDelay(100);
       makeRelayControllData(buf, modbusId, READ_COIL, 0, 2);     // Read coil data 2 개
       extendSerial.selectCellModule(false);                      // 읽기 모드로 전환
-      isOK = readResponseData(modbusId, READ_COIL, buf, 6, 3000); // * 100 즉 0.3초 us buf[3]이 Relay 데이타 이다.
+      isOK = readResponseData(modbusId, READ_COIL, buf, 6, 500); // * 100 즉 0.3초 us buf[3]이 Relay 데이타 이다.
       if(isOK)break;
     }
     if (isOK == 1)
@@ -412,7 +451,7 @@ bool sendSelectBattery(uint8_t modbusId)
   makeRelayControllData(buf, modbusId, READ_COIL, 0, 2); // Read coil data 2 개
 
   extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
-  uint16_t readCount = readResponseData(modbusId, READ_COIL, buf, 6, 3000); // buf[3]이 Relay 데이타 이다.
+  uint16_t readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
 
   uint32_t failedBatteryH, failedBatteryL;
   uint16_t retValue;
@@ -436,13 +475,13 @@ bool sendSelectBattery(uint8_t modbusId)
   {
     makeRelayControllData(buf, modbusId, WRITE_COIL, 0, 0xFF00); // 해당 셀을 ON 시킨다
     extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
-    readCount = readResponseData(modbusId, WRITE_COIL, buf, 8, 3000); // buf[3]이 Relay 데이타 이다.
+    readCount = readResponseData(modbusId, WRITE_COIL, buf, 8, 500); // buf[3]이 Relay 데이타 이다.
     if(readCount == 1){
       ESP_LOGI(TAG,"relay %d Minus(-) ON ",modbusId);
     }
     vTaskDelay(100);
     makeRelayControllData(buf, modbusId + 1, WRITE_COIL, 1, 0xFF00); // 해당 셀을 ON 시킨다
-    readCount = readResponseData(modbusId+1, WRITE_COIL, buf, 8, 3000); // buf[3]이 Relay 데이타 이다.
+    readCount = readResponseData(modbusId+1, WRITE_COIL, buf, 8, 500); // buf[3]이 Relay 데이타 이다.
     if(readCount == 1){
       ESP_LOGI(TAG,"relay %d Plus(+) ON ",modbusId+1);
     }
@@ -494,7 +533,7 @@ uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
   makeTemperatureData(buf,modbusId,fCode,0,2);
   extendSerial.selectCellModule(false);
   ESP_LOGI("modbus","getTemp");
-  data_ready  = readResponseData(modbusId,fCode, buf,9,3000); 
+  data_ready  = readResponseData(modbusId,fCode, buf,9,500); 
   if (data_ready)
   {
     value = buf[3]*256  + buf[4] ;

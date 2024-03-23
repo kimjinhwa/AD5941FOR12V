@@ -1,4 +1,28 @@
 ## TIA Resistance Measurement System.
+## BLUETOOTH COMMAND
+  - relay -s [Cell no] -off 
+    - off : check if all cell is offed 
+    - Cell no : 0 All Off, 
+      number : Set Relay On the number and +1 relay on 
+  - cal/ibration 기준 임피던스를 구한다. 
+    cal save : 값을 읽고 저장한다.
+    cal save 캘리브레이션 된 값을 EEPROM에 저장한다
+  - mode  자동으로 임피던스를 읽을 것인지 아닌지를 결정한다. 
+          Calibration을 수행하기 위해서는 이것이 수동으로 설정 되어 있어야 한다.
+    - mode 0 :수동
+    - mode 1 : 전압만 자동
+    - mode 3 : 전압과 임피던스 자동 
+  - bat/number [40]: 설치되어있는 배터리숫자를 기록한다
+  - temp/erature : 전체의 온도를 읽는 루틴이다.
+  - time : 현재의 시간을 표시한다. 
+    time -y , -mo , -d , -h , -m , -s 
+  - df 현재 시스템의 파일시스템 상태를 보여준다.
+  - id : mode bus id를 보여준다. 변경시에는 뒤에 원하는 :ID를 적는다.
+  - offset -i -v num value 
+    임피던스 옵셋을 변경하고자 하면 
+    offset -i 10 100을 적어 넣으면 1/100이 반영되며, -값은 "-100" 과 같이 적는다.
+  
+
 ### Debugging Info.
 - RTC Battery +, - Terminal SWAP
 - USB-C type VCC Jumper to +5V and P5V
@@ -70,16 +94,3 @@
     - 43 : Hour
     - 44 : Minute 
     - 45 : Second
-## BLUETOOTH COMMAND
-  - relay -s [Cell no] -off 
-    - off : check if all cell is offed 
-    - Cell no : 0 All Off, 
-      number : Set Relay On the number and +1 relay on 
-  - cal/ibration 기준 임피던스를 구한다. 
-    cal save : 값을 읽고 저장한다.
-    cal save 캘리브레이션 된 값을 EEPROM에 저장한다
-  - mode  자동으로 임피던스를 읽을 것인지 아닌지를 결정한다. 
-          Calibration을 수행하기 위해서는 이것이 수동으로 설정 되어 있어야 한다.;
-  - batnumber [40]: 설치되어있는 배터리숫자를 기록한다
-  - temp/erature : 전체의 온도를 읽는 루틴이다.
-  
