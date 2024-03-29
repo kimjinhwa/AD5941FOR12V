@@ -24,7 +24,7 @@
                                 // TEST OK
 #define AD5940_ISR          32  // OK  RTC 칩을 Enable한다.
 #define RTC1305_EN          33 // OK  RTC 칩을 Enable한다.
-#define LED_OP 25 // OK  RTC 칩을 Enable한다.
+#define LED_OP              25 // system operating 상태 
 
 #define GPIO_INTERRUPT32  GPIO_NUM_32
 #define ESP_INTR_FLAG_DEFAULT 0

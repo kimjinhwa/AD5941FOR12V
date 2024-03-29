@@ -243,6 +243,26 @@ void offset_configCallback(cmd *cmdPtr)
   // arg = cmd.getArgument("Month");
   // return;
 }
+
+uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode);
+uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode);
+void moduleid_configCallback(cmd *cmdPtr){
+  uint16_t  moduleId;
+  Command cmd(cmdPtr);
+  Argument arg = cmd.getArgument(0);
+  String argVal = arg.getValue();
+  simpleCli.outputStream->printf("\r\n%s",argVal.c_str());
+  if(argVal.length() > 0 ){
+    moduleId= sendGetChangeModuleId(argVal.toInt(), 06);
+    simpleCli.outputStream->printf("\r\nModule Id Changed to: %d",moduleId);
+    return;
+  }
+  else{
+    moduleId= sendGetModuleId(255, 04);
+    simpleCli.outputStream->printf("\r\nModule Id is  %d",moduleId);
+    return;
+  }
+}
 void temperature_configCallback(cmd *cmdPtr){
   uint16_t  batTemperature;
   Command cmd(cmdPtr);
@@ -335,6 +355,7 @@ void mode_configCallback(cmd *cmdPtr){
   }
 }
 
+bool sendSelectBatteryWithNoCheck(uint8_t modbusId);
 void relay_configCallback(cmd *cmdPtr){
   Command cmd(cmdPtr);
   Argument arg ;
@@ -376,6 +397,25 @@ void relay_configCallback(cmd *cmdPtr){
       retValue=checkAlloff(&failedBatteryH,&failedBatteryL);
   LcdCell485.resumeTask();
       simpleCli.outputStream->printf("retValue :0x%02x 0x%04x%04x\n",retValue,failedBatteryH,failedBatteryL);
+  }
+  arg = cmd.getArgument("test");
+  if (arg.isSet())
+  {
+      strValue = arg.getValue();
+      relayPos = strValue.toInt();
+      uint16_t readCount;
+      
+      if (relayPos >= 1 || relayPos <= 20)
+      {
+          simpleCli.outputStream->printf("\nRelay %d Selecet", relayPos);
+          sendSelectBatteryWithNoCheck(relayPos);
+          time_t startRead = millis();
+          float batVoltage = 0.0;
+          batVoltage = batDevice.readBatAdcValue(relayPos ,600);
+          cellvalue[relayPos - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
+          time_t endRead = millis();                    // take 300ms
+          simpleCli.outputStream->printf("Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
+      }
   }
 }
 void time_configCallback(cmd *cmdPtr){
@@ -482,6 +522,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
 
   cmd_config = addCommand("r/elay", relay_configCallback);
   cmd_config.addArgument("s/el","");
+  cmd_config.addArgument("t/est","");
   cmd_config.addFlagArg("off");
   cmd_config.setDescription("relay on off controll \r\n relay -s/el [1] [-off]");
   cmd_config = addSingleArgCmd("mode", mode_configCallback);
@@ -490,6 +531,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config = addSingleArgCmd("bat/number", batnumber_configCallback);
   cmd_config = addCommand("imp/edance", impedance_configCallback);
   cmd_config = addSingleArgCmd("temp/erature", temperature_configCallback);
+  cmd_config = addSingleArgCmd("mod/uledid", moduleid_configCallback);
 
   cmd_config = addCommand("offset",offset_configCallback);
   cmd_config.addFlagArgument("i");
