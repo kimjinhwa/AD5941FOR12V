@@ -377,7 +377,7 @@ void relay_configCallback(cmd *cmdPtr){
           delay(100);
           simpleCli.outputStream->printf("\nAll relay offed..");
       }
-      else if (relayPos >= 1 || relayPos <= 40)
+      else if (relayPos >= 1 || relayPos <= 20)
       {
           simpleCli.outputStream->printf("\nRelay %d Selecet", relayPos);
           sendSelectBattery(relayPos);
@@ -387,6 +387,14 @@ void relay_configCallback(cmd *cmdPtr){
           cellvalue[relayPos - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
           time_t endRead = millis();                    // take 300ms
           simpleCli.outputStream->printf("Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
+      }
+      else
+      {
+          makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
+          delay(100);
+          makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
+          delay(100);
+          simpleCli.outputStream->printf("\nAll relay offed..");
       }
   }
   arg = cmd.getArgument("off");
@@ -405,7 +413,15 @@ void relay_configCallback(cmd *cmdPtr){
       relayPos = strValue.toInt();
       uint16_t readCount;
       
-      if (relayPos >= 1 || relayPos <= 20)
+      if (relayPos == 0)
+      {
+          makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
+          delay(100);
+          makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
+          delay(100);
+          simpleCli.outputStream->printf("\nAll relay offed..");
+      }
+      else if (relayPos >= 1 || relayPos <= 20)
       {
           simpleCli.outputStream->printf("\nRelay %d Selecet", relayPos);
           sendSelectBatteryWithNoCheck(relayPos);
@@ -415,6 +431,14 @@ void relay_configCallback(cmd *cmdPtr){
           cellvalue[relayPos - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
           time_t endRead = millis();                    // take 300ms
           simpleCli.outputStream->printf("Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
+      }
+      else
+      {
+          makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
+          delay(100);
+          makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
+          delay(100);
+          simpleCli.outputStream->printf("\nAll relay offed..");
       }
   }
 }

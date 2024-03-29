@@ -364,6 +364,8 @@ int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len
     {
       vTaskDelay(1);
       ESP_LOGI("REV", "It's timeout error");
+      if (SerialBT.connect())
+            SerialBT.printf("\r\nIt's timeout error");
       return data_ready;
     }
   };
