@@ -813,7 +813,10 @@ void setup()
 
 
   setupModbusAgentForLcd();
-  String bleName ="TIMP_Dev_"; 
+  String bleName ="TIMP_"; 
+  String WifiAddress = WiFi.macAddress();
+  bleName += WifiAddress ;
+  bleName += "_";
   bleName += systemDefaultValue.modbusId;
   SerialBT.begin(bleName.c_str() );
   wifiApmodeConfig();
