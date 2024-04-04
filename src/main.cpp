@@ -5,6 +5,7 @@
 #include <driver/adc.h>
 #include "filesystem.h"
 #include "mainGrobal.h"
+#include "SimpleCLI.h"
 
 #include "stdio.h"
 //#include "ADuCM3029.h"
@@ -47,6 +48,7 @@ uint8_t selecectedCellNumber =0;
 
 _cell_value cellvalue[MAX_INSTALLED_CELLS];
 
+extern SimpleCLI simpleCli;
 
 void AD5940_ShutDown();
 void pinsetup()
@@ -259,7 +261,33 @@ void setupModbusAgentForLcd(){
 
 };
 ExtendSerial extendSerial;
-
+void clearSerialGarbageData(HardwareSerial *serial,int timeout_ms){
+  int c;
+  int _timeout = 0;
+  if(Serial2.available())ESP_LOGI(TAG,"Garbage Data : ");
+  while(serial->available())
+  {
+    while (serial->available())
+    {
+      c = serial->read();
+      ESP_LOGI(TAG, " %02x", c);
+      ESP_LOGI(TAG, ".");
+      _timeout += 5;
+      vTaskDelay(5);
+      if (_timeout > timeout_ms)
+        break;
+    }
+    if (serial->available())
+    {
+      c = serial->read();
+      ESP_LOGI(TAG, " %02x", c);
+    }
+    _timeout += 5;
+    vTaskDelay(5);
+    if (_timeout > timeout_ms)
+      break;
+  }
+};
 int readResponseDataForBrodcast(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len,uint16_t timeout)
 {
   //uint16_t timeout; //timeout = 300;
@@ -331,22 +359,7 @@ int readResponseDataForBrodcast(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,
     ESP_LOGI("main", "Receive Failed %d received",readCount);
   }
   //리턴하기 전에 Garbage가 있으면 정리한다.
-  if(Serial2.available())ESP_LOGI(TAG,"Garbage Data : ");
-  int c;
-  while(Serial2.available())
-  {
-    while (Serial2.available())
-    {
-      Serial2.read();
-      ESP_LOGI(TAG, ".");
-    }
-    if (Serial2.available())
-    {
-      c = Serial2.read();
-      ESP_LOGI(TAG, " %02x", c);
-    }
-    vTaskDelay(5);
-  }
+  clearSerialGarbageData(&Serial2,300);
   return data_ready;
 };
 int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len,uint16_t timeout)
@@ -354,20 +367,18 @@ int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len
   //uint16_t timeout; //timeout = 300;
   uint16_t readCount=0;
   bool data_ready = false;
-  data_ready = false;
   //우선 타임아웃정에 데이타가 도착하는지를 확인한다.
   unsigned long fTimeOut = millis();
   while (!Serial2.available())
   {
-    delay(1);
     if (millis() - fTimeOut > timeout)
     {
       vTaskDelay(1);
       ESP_LOGI("REV", "It's timeout error");
-      if (SerialBT.connect())
-            SerialBT.printf("\r\nIt's timeout error");
-      return data_ready;
+      simpleCli.outputStream->printf("\r\nIt's timeout error");
+      return data_ready;  // false
     }
+    delay(1);
   };
   //문자간 interval 계산은 최소 3.5배가 되어야 한다. 
   // interval = 35000000 / baudrate
@@ -381,33 +392,25 @@ int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len
     if (Serial2.available())
     {
       buf[readCount++] = Serial2.read();
-      lastMicros = micros();
-      // ESP_LOGI("REV","%02x ",buf[readCount -1]);
-    };
-    // delay(500.0/BAUDRATESERIAL1 );  //4800일때 약 1ms이된다.
+      lastMicros = micros(); // ESP_LOGI("REV","%02x ",buf[readCount -1]);
+    }; // delay(500.0/BAUDRATESERIAL1 );  //4800일때 약 1ms이된다.
     if (readCount == len)
-    {
-      // data를 받았다. 이제 id, command ,checksum 체크섬이 같은지 보자.
+    { // data를 받았다. 이제 id, command ,checksum 체크섬이 같은지 보자.
       // ESP_LOGI("REV","data received len is %02x ",len);
-      if (buf[0] == modbusId && buf[1] == funcCode && RTUutils::validCRC(buf, len))
-      {
-        data_ready = true;
-        break;
-      }
-      else
-      {
-        // ESP_LOGI("REV"," modbusId %d funcCode %d  validCRC %x",buf[0] ,buf[1], RTUutils::validCRC(buf,len));
-        data_ready = false;
+      if (buf[0] == modbusId && buf[1] == funcCode && RTUutils::validCRC(buf, len)) { data_ready = true; break; }
+      else {
+        // ESP_LOGI("REV"," modbusId %d funcCode %d  validCRC %x",buf[0] ,buf[1], RTUutils::validCRC(buf,len)); data_ready = false;
         // vTaskDelay(3000);
         break;
       }
     }
     if (micros() - lastMicros > interval)
     {
-      ESP_LOGI("RECEIVE","Time to retch lastMisros %ld  %ld",micros(),lastMicros);
+      ESP_LOGI("RECEIVE","Time to reach lastMisros %ld  %ld",micros(),lastMicros);
       data_ready = false;
       break;
     }
+    vTaskDelay(1);
   }
   if (data_ready)
   {
@@ -422,22 +425,7 @@ int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len
     ESP_LOGI("main", "Receive Failed %d received",readCount);
   }
   //리턴하기 전에 Garbage가 있으면 정리한다.
-  if(Serial2.available())ESP_LOGI(TAG,"Garbage Data : ");
-  int c;
-  while(Serial2.available())
-  {
-    while (Serial2.available())
-    {
-      Serial2.read();
-      ESP_LOGI(TAG, ".");
-    }
-    if (Serial2.available())
-    {
-      c = Serial2.read();
-      ESP_LOGI(TAG, " %02x", c);
-    }
-    vTaskDelay(5);
-  }
+  clearSerialGarbageData(&Serial2,300);
   return data_ready;
 };
 int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t len)
@@ -453,7 +441,7 @@ int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16
   buf[7] = checkSum >> 8    ;
 
   extendSerial.selectCellModule(false);//change to read Mode
-  while(Serial2.available()){Serial2.read();vTaskDelay(1);};// clear comm buffer
+  clearSerialGarbageData(&Serial2,300);
   extendSerial.selectCellModule(true); vTaskDelay(1);
   Serial2.write(buf,8);
   Serial2.flush();
@@ -662,11 +650,7 @@ int makeWriteSingleRegister(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint
   buf[7] = checkSum >> 8    ;
 
   extendSerial.selectCellModule(false);
-  while(Serial2.available()){
-    int c = Serial2.read();
-    ESP_LOGI(TAG,"Garbage Data : %02x",c);
-    vTaskDelay(1);
-  }
+  clearSerialGarbageData(&Serial2,300);
   extendSerial.selectCellModule(true);
   vTaskDelay(5);
   Serial2.write(buf,8);
@@ -688,11 +672,7 @@ int makeTemperatureData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t
   buf[7] = checkSum >> 8    ;
 
   extendSerial.selectCellModule(false);
-  while(Serial2.available()){
-    int c = Serial2.read();
-    ESP_LOGI(TAG,"Garbage Data : %02x",c);
-    vTaskDelay(1);
-  }
+  clearSerialGarbageData(&Serial2,300);
   extendSerial.selectCellModule(true);
   vTaskDelay(5);
   Serial2.write(buf,8);
@@ -722,7 +702,6 @@ uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode)
   {
     value =0;
   }
-  // while(Serial2.available())Serial2.read();
   extendSerial.selectLcd();
   LcdCell485.resumeTask();
   return value;
@@ -750,7 +729,6 @@ uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode)
     value =0;
     ESP_LOGI("modbus","Receive Failed");
   }
-  // while(Serial2.available())Serial2.read();
   extendSerial.selectLcd();
   LcdCell485.resumeTask();
   return value;
@@ -781,7 +759,6 @@ uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
     value =0;
     ESP_LOGI("modbus","Receive Failed");
   }
-  // while(Serial2.available())Serial2.read();
   extendSerial.selectLcd();
   LcdCell485.resumeTask();
   return value;
