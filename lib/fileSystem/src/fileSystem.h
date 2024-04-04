@@ -28,6 +28,7 @@ class LittleFileSystem
     const char* rangematch(const char *pattern, char test, int flags); 
     void df();
     int writeLog(time_t logtime,u_int16_t status,u_int16_t fault);
+    int writeLogString(String log);
     private:
     Print* outputStream;
 };

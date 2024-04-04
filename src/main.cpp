@@ -773,7 +773,7 @@ void setup()
   // 외부 485통신에 사용한다.
   Serial1.begin(BAUDRATE, SERIAL_8N1, SERIAL_RX1, SERIAL_TX1);
   esp_reset_reason_t resetReson =  esp_reset_reason();
-  String strResetReason="\nSystem booting reason is  ";
+  String strResetReason="System booting reason is  ";
   switch (resetReson )
   {
   case ESP_RST_UNKNOWN:
@@ -843,6 +843,8 @@ void setup()
   wifiApmodeConfig();
   lsFile.littleFsInitFast(0);
   setRtc();
+  lsFile.writeLogString(strResetReason);
+
   SPI.setFrequency(spiClk);
   SPI.begin(SCK, MISO, MOSI, CS_5940);
   pinMode(SS, OUTPUT); // VSPI SS -> 아니다..이것은 리셋용이다.

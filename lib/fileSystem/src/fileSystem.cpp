@@ -431,6 +431,37 @@ int LittleFileSystem::format()
   return 1;
 }
 
+int LittleFileSystem::writeLogString(String log)
+{
+  timeval tmv;
+  gettimeofday(&tmv, NULL);
+  struct tm *timeinfo = gmtime(&tmv.tv_sec);
+  String strLog ="";
+  strLog += timeinfo->tm_year +1930;
+  strLog += "/";
+  strLog += timeinfo->tm_mon+1;
+  strLog += "/";
+  strLog += timeinfo->tm_mday;
+  strLog += " ";
+  strLog += timeinfo->tm_hour;
+  strLog += ":";
+  strLog += timeinfo->tm_min;
+  strLog += ":";
+  strLog += timeinfo->tm_sec;
+  strLog += " ";
+  strLog += log;
+  outputStream->println(strLog);
+
+  FILE *fp;
+  fp = fopen("/spiffs/logFile.txt", "w+");
+  if(fp == NULL){
+    outputStream->printf("\nLogFile Open Error");
+    return -1;
+  };
+  fwrite((char *)strLog.c_str(),1,strLog.length(),fp);
+  fclose(fp);
+  return 0;
+}
 
 int LittleFileSystem::writeLog(time_t logtime,u_int16_t status,u_int16_t fault)
 {
