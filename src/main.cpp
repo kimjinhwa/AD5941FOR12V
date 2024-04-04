@@ -772,6 +772,50 @@ void setup()
   Serial.begin(BAUDRATE);
   // 외부 485통신에 사용한다.
   Serial1.begin(BAUDRATE, SERIAL_8N1, SERIAL_RX1, SERIAL_TX1);
+  esp_reset_reason_t resetReson =  esp_reset_reason();
+  String strResetReason="\nSystem booting reason is  ";
+  switch (resetReson )
+  {
+  case ESP_RST_UNKNOWN:
+    strResetReason +=" Reset reason can not be determined";
+    break;
+  case ESP_RST_POWERON:
+    strResetReason +=" Reset due to power-on event";
+    break;
+  case ESP_RST_EXT:
+    strResetReason +=" Reset by external pin (not applicable for ESP32)";
+    break;
+  case ESP_RST_SW:
+    strResetReason +=" Software reset via esp_restart";
+    break;
+  case ESP_RST_PANIC:
+    strResetReason +=" Software reset due to exception/panic";
+    break;
+  case ESP_RST_INT_WDT:
+    strResetReason +=" Reset (software or hardware) due to interrupt watchdog";
+    break;
+  case ESP_RST_TASK_WDT:
+    strResetReason +=" Reset due to task watchdog";
+    break;
+  case ESP_RST_WDT:
+    strResetReason +=" Reset due to other watchdogs";
+    break;
+  case ESP_RST_DEEPSLEEP:
+    strResetReason +=" Reset after exiting deep sleep mode";
+    break;
+  case ESP_RST_BROWNOUT:
+    strResetReason +=" Brownout reset (software or hardware)";
+    break;
+  case ESP_RST_SDIO:
+    strResetReason +=" Reset over SDIO";
+    break;
+  default:
+    break;
+  }
+  Serial.println("--------------------------------");
+  Serial.println(strResetReason);
+  Serial.println("--------------------------------");
+
   // 내부의 LCD와 셀의 온도및 릴레이를 위해 사용한다.
   Serial2.begin(BAUDRATESERIAL1, SERIAL_8N1, SERIAL_RX2, SERIAL_TX2);
   // ExtendSerial.selectCellModule(true);
