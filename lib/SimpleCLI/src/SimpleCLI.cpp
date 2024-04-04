@@ -28,7 +28,7 @@ int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len
 void setRtcNewTime(RtcDateTime rtc);
 void readnWriteEEProm();
 RtcDateTime getDs1302GetRtcTime();
-bool sendSelectBattery(uint8_t modbusId);
+bool sendSelectBatteryWithRetry(uint8_t modbusId);
 void getTime(){
 
   RtcDateTime now;
@@ -380,7 +380,8 @@ void relay_configCallback(cmd *cmdPtr){
       else if (relayPos >= 1 || relayPos <= 20)
       {
           simpleCli.outputStream->printf("\nRelay %d Selecet", relayPos);
-          sendSelectBattery(relayPos);
+          sendSelectBatteryWithRetry(relayPos);
+
           time_t startRead = millis();
           float batVoltage = 0.0;
           batVoltage = batDevice.readBatAdcValue(relayPos ,600);

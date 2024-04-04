@@ -450,6 +450,7 @@ int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16
 }
 /* All Off will return 0  
 *   else return value;
+* Ret : 모든 릴레이의 합의 값이다.
 */
 uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumberL)
 {
@@ -520,21 +521,24 @@ bool sendSelectBatteryWithNoCheck(uint8_t modbusId)
   uint16_t checkSum;
   LcdCell485.suspendTask();
   uint8_t buf[64];
+  uint16_t readCount ;
+  uint32_t failedBatteryH, failedBatteryL;
+  uint16_t retValue;
 
   makeRelayControllData(buf, 0xFF, WRITE_COIL, 0, 0x00); // 0xff BROADCAST
+  extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
+  readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
   vTaskDelay(100);
   
   makeRelayControllData(buf, 0xFF, WRITE_COIL, 1, 0x00); // 0xff BROADCAST
+  extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
+  readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
   vTaskDelay(500);
-  makeRelayControllData(buf, modbusId, READ_COIL, 0, 2); // Read coil data 2 개
+  //makeRelayControllData(buf, modbusId, READ_COIL, 0, 2); // Read coil data 2 개
 
-  extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
-  uint16_t readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
 
-  uint32_t failedBatteryH, failedBatteryL;
-  uint16_t retValue;
-  extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
-  vTaskDelay(100);  //이값을 주고 나서야 릴레이가 제대로 동작하였다.
+  //extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
+  //vTaskDelay(100);  //이값을 주고 나서야 릴레이가 제대로 동작하였다.
   // retValue는 반드시 0이어야 하고...
   // 총셀은 20셀으므로 상위 바이트는 0X000F
   //  하위 바이트는 0XFFFF이어야 한다.
@@ -545,12 +549,27 @@ bool sendSelectBatteryWithNoCheck(uint8_t modbusId)
     if(readCount == 1){
       ESP_LOGI(TAG,"relay %d Minus(-) ON ",modbusId);
     }
+    // Verify
+    makeRelayControllData(buf, modbusId, READ_COIL, 0, 2);          // Read coil data 2 개
+    extendSerial.selectCellModule(false);                           // 읽기 모드로 전환
+    readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
+    ESP_LOGI(TAG, "relay %d Minus(-) ON Value is %d", modbusId, buf[3]);
+    if(readCount == 1 && buf[3]==1) readCount = 1;
+    else readCount = 0;
+    // Veryfy end
     vTaskDelay(100);
     makeRelayControllData(buf, modbusId + 1, WRITE_COIL, 1, 0xFF00); // 해당 셀을 ON 시킨다
     readCount = readResponseData(modbusId+1, WRITE_COIL, buf, 8, 500); // buf[3]이 Relay 데이타 이다.
     if(readCount == 1){
       ESP_LOGI(TAG,"relay %d Plus(+) ON ",modbusId+1);
     }
+    // Verify
+    makeRelayControllData(buf, modbusId+1, READ_COIL, 0, 2);          // Read coil data 2 개
+    extendSerial.selectCellModule(false);                           // 읽기 모드로 전환
+    readCount = readResponseData(modbusId+1, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
+    ESP_LOGI(TAG, "relay %d Plus(+) ON Value is %d", modbusId+1, buf[3]);
+    if(readCount == 1 && buf[3]==2) readCount = 1;
+    else readCount = 0;
     vTaskDelay(200);
   }
   extendSerial.selectLcd();
@@ -560,6 +579,7 @@ bool sendSelectBatteryWithNoCheck(uint8_t modbusId)
 /* 셀을 선택한다. modbusId는 1부터 시작하며 설치되어 있는 배터리의 수보다 작아야 한다. 
 * 
 */
+
 bool sendSelectBattery(uint8_t modbusId)
 {
   // Coil 명령를 사용하며
@@ -573,22 +593,24 @@ bool sendSelectBattery(uint8_t modbusId)
   uint16_t checkSum;
   LcdCell485.suspendTask();
   uint8_t buf[64];
+  uint16_t readCount;
+  uint32_t failedBatteryH, failedBatteryL;
+  uint16_t retValue;
 
   makeRelayControllData(buf, 0xFF, WRITE_COIL, 0, 0x00); // 0xff BROADCAST
+  extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
+  readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
   vTaskDelay(100);
   
   makeRelayControllData(buf, 0xFF, WRITE_COIL, 1, 0x00); // 0xff BROADCAST
-  vTaskDelay(500);
-  makeRelayControllData(buf, modbusId, READ_COIL, 0, 2); // Read coil data 2 개
-
   extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
-  uint16_t readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
+  readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
+  vTaskDelay(500);
 
-  uint32_t failedBatteryH, failedBatteryL;
-  uint16_t retValue;
+
   retValue = checkAlloff(&failedBatteryH, &failedBatteryL);
   extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
-  vTaskDelay(100);  //이값을 주고 나서야 릴레이가 제대로 동작하였다.
+  vTaskDelay(200);  //이값을 주고 나서야 릴레이가 제대로 동작하였다.
   // retValue는 반드시 0이어야 하고...
   // 총셀은 20셀으므로 상위 바이트는 0X000F
   //  하위 바이트는 0XFFFF이어야 한다.
@@ -604,27 +626,58 @@ bool sendSelectBattery(uint8_t modbusId)
   ESP_LOGI(TAG, "Relay ON State :%d %04x %04x %04x %04x", retValue, checkH, checkL, failedBatteryH, failedBatteryL);
   if (retValue == 0 && checkH == failedBatteryH && checkL == failedBatteryL)
   {
-    makeRelayControllData(buf, modbusId, WRITE_COIL, 0, 0xFF00); // 해당 셀을 ON 시킨다
-    extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
+    makeRelayControllData(buf, modbusId, WRITE_COIL, 0, 0xFF00);     // 해당 셀을 ON 시킨다
+    extendSerial.selectCellModule(false);                            // 읽기 모드로 전환
     readCount = readResponseData(modbusId, WRITE_COIL, buf, 8, 500); // buf[3]이 Relay 데이타 이다.
-    if(readCount == 1){
-      ESP_LOGI(TAG,"relay %d Minus(-) ON ",modbusId);
+    if (readCount == 1)
+    {
+      ESP_LOGI(TAG, "relay %d Minus(-) ON ", modbusId);
     }
+    // Verify
+    makeRelayControllData(buf, modbusId, READ_COIL, 0, 2);          // Read coil data 2 개
+    extendSerial.selectCellModule(false);                           // 읽기 모드로 전환
+    readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
+    ESP_LOGI(TAG, "relay %d Minus(-) ON Value is %d", modbusId, buf[3]);
+    if(readCount == 1 && buf[3]==1) readCount = 1;
+    else readCount = 0;
+    // Veryfy end
     vTaskDelay(100);
-    makeRelayControllData(buf, modbusId + 1, WRITE_COIL, 1, 0xFF00); // 해당 셀을 ON 시킨다
-    readCount = readResponseData(modbusId+1, WRITE_COIL, buf, 8, 500); // buf[3]이 Relay 데이타 이다.
-    if(readCount == 1){
-      ESP_LOGI(TAG,"relay %d Plus(+) ON ",modbusId+1);
+    makeRelayControllData(buf, modbusId + 1, WRITE_COIL, 1, 0xFF00);     // 해당 셀을 ON 시킨다
+    readCount = readResponseData(modbusId + 1, WRITE_COIL, buf, 8, 500); // buf[3]이 Relay 데이타 이다.
+    if (readCount == 1)
+    {
+      ESP_LOGI(TAG, "relay %d Plus(+) ON ", modbusId + 1);
     }
+    // Verify
+    makeRelayControllData(buf, modbusId+1, READ_COIL, 0, 2);          // Read coil data 2 개
+    extendSerial.selectCellModule(false);                           // 읽기 모드로 전환
+    readCount = readResponseData(modbusId+1, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
+    ESP_LOGI(TAG, "relay %d Plus(+) ON Value is %d", modbusId+1, buf[3]);
+    if(readCount == 1 && buf[3]==2) readCount = 1;
+    else readCount = 0;
     vTaskDelay(200);
   }
   else
   {
     ESP_LOGI(TAG,"All relay off fail or communication fails ");
+    readCount = 0;
   }
   extendSerial.selectLcd();
   LcdCell485.resumeTask();
   return readCount ;
+}
+bool sendSelectBatteryWithRetry(uint8_t modbusId)
+{
+    //retry count 3;
+  int retryCount=0;
+  while(!sendSelectBattery(modbusId)){
+    retryCount++;
+    if(retryCount > 4){
+       ESP_LOGE("BAT","Select cell %dBattery Failed",modbusId);
+       return false;
+    }
+  }
+  return true;
 }
 int makeWriteSingleRegister(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t data)
 {
@@ -912,7 +965,7 @@ void loop(void)
     {
       sendGetMoubusTemperature(i, READ_INPUT_REGISTER);
       esp_task_wdt_reset();
-      sendSelectBattery(i);
+      sendSelectBatteryWithRetry(i);
       time_t startRead = millis();
       float batVoltage = 0.0;
       batVoltage = batDevice.readBatAdcValue(i,600);
