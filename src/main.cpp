@@ -949,6 +949,7 @@ void loop(void)
 {
   bool bRet;
   void *parameters;
+  parameters = simpleCli.outputStream;
   now = millis(); 
   esp_task_wdt_reset();
 
@@ -965,24 +966,30 @@ void loop(void)
   if ((now - previous_5Secondmills > Interval_5Second))
   {
     if (systemDefaultValue.runMode != 0)  // 자동 모드에서만 실행한다
-    for (int i = 1; i <= systemDefaultValue.installed_cells ; i++)
     {
-      sendGetMoubusTemperature(i, READ_INPUT_REGISTER);
-      esp_task_wdt_reset();
-      sendSelectBatteryWithRetry(i);
-      time_t startRead = millis();
-      float batVoltage = 0.0;
-      batVoltage = batDevice.readBatAdcValue(i,600);
-      if(batVoltage > 18.0)batVoltage = 0.0;
-      cellvalue[i - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
-      time_t endRead = millis();             // take 300ms
-      ESP_LOGI("Voltage", "Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
-      if (batVoltage > 2.0)
+      for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
       {
-        if (systemDefaultValue.runMode == 3)
-          AD5940_Main(parameters); // for test 무한 루프
+        parameters = simpleCli.outputStream;
+        sendGetMoubusTemperature(i, READ_INPUT_REGISTER);
+        esp_task_wdt_reset();
+        sendSelectBatteryWithRetry(i);
+        time_t startRead = millis();
+        float batVoltage = 0.0;
+        batVoltage = batDevice.readBatAdcValue(i, 600);
+        if (batVoltage > 18.0)
+          batVoltage = 0.0;
+        cellvalue[i - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
+        time_t endRead = millis();             // take 300ms
+        ESP_LOGI("Voltage", "Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
+        simpleCli.outputStream->printf("\nBat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
+        if (batVoltage > 2.0)
+        {
+          if (systemDefaultValue.runMode == 3)
+            AD5940_Main(parameters); // for test 무한 루프
+        }
+        if(systemDefaultValue.runMode ==0) break;
+        vTaskDelay(1000);
       }
-      vTaskDelay(1000);
     }
  //   globalModbusId = globalModbusId > 4 ? 1 : globalModbusId ;
     previous_5Secondmills = now;

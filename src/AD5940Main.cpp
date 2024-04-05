@@ -26,6 +26,8 @@ Analog Devices Software License Agreement.
 
 #define MAX_LOOP_COUNT 40
 #define APPBUFF_SIZE 512
+
+static Print *outputStream;
 uint32_t AppBuff[APPBUFF_SIZE];
 char TAG[] = "AD5940";
 
@@ -52,6 +54,7 @@ void addResult(uint32_t *pData, uint32_t DataCount)
       Average.Image/= 2.0;
     }
     ESP_LOGI("AVERAGE","Average(real, image) = , %f ,%f ,%f mOhm \n", Average.Real,Average.Image,AD5940_ComplexMag(&Average));
+    outputStream->printf("\nAverage(real, image) = , %f ,%f ,%f mOhm \n", Average.Real,Average.Image,AD5940_ComplexMag(&Average));
     // 보정값을 적용하여 주자 
     cellvalue[selecectedCellNumber-1].impendance = AD5940_ComplexMag(&Average) ;
     cellvalue[selecectedCellNumber-1].impendance += 
@@ -59,7 +62,7 @@ void addResult(uint32_t *pData, uint32_t DataCount)
   }
 }
 
-int32_t BATShowResultBLE(uint32_t *pData, uint32_t DataCount,Print *outputStream )
+int32_t BATShowResultBLE(uint32_t *pData, uint32_t DataCount)
 {
   fImpCar_Type *pImp = (fImpCar_Type*)pData;
 	float freq;
@@ -187,7 +190,7 @@ void AD5940_Main_init()
 /* Return RcalVolt magnitude 
 * 
 */
-float AD5940_calibration(float *real , float *image,Print *outputStream ){
+float AD5940_calibration(float *real , float *image){
   uint16_t loopCount=100 ;
   AD5940PlatformCfg();
   AD5940BATStructInit(); /* Configure your parameters in this function */
@@ -225,9 +228,8 @@ float AD5940_calibration(float *real , float *image,Print *outputStream ){
 void AD5940_Main(void *parameters)
 {
   uint32_t temp;
-  Print *outputStream=NULL ;
-  if(parameters != nullptr)
-    outputStream  = static_cast<Print *>(parameters);
+  //if(parameters != nullptr)
+  outputStream  = static_cast<Print *>(parameters);
 
   // AD5940PlatformCfg()
   // AD5940BATStructInit(); /* Configure your parameters in this function */
@@ -261,7 +263,7 @@ void AD5940_Main(void *parameters)
 
   AD5940Err error = AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
   ESP_LOGI(TAG, "AppBATInit %d %s ",error ,error == AD5940ERR_OK ?"성공":"실패");
-  if(outputStream != nullptr)
+  //if(outputStream != nullptr)
   outputStream->printf( "AppBATInit %d %s ",error ,error == AD5940ERR_OK ?"성공":"실패");
   digitalWrite(AD636_SEL,HIGH);
   //30개를 읽고 
@@ -287,7 +289,7 @@ void AD5940_Main(void *parameters)
       addResult(AppBuff, loopCount);
       BATShowResult(AppBuff, temp); /* Print measurement results over UART */
       if(outputStream != nullptr)
-        BATShowResultBLE(AppBuff, temp,outputStream); /* Print measurement results over UART */
+        BATShowResultBLE(AppBuff, temp); /* Print measurement results over UART */
 
       AD5940_SEQMmrTrig(SEQID_0);   /* Trigger next measurement ussing MMR write*/
     }

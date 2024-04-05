@@ -112,7 +112,7 @@ void cat_configCallback(cmd *cmdPtr)
 
 uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumberL);
 
-float AD5940_calibration(float *real , float *image,Print *outputStream );
+float AD5940_calibration(float *real , float *image);
 
 void batnumber_configCallback(cmd *cmdPtr)
 {
@@ -424,7 +424,7 @@ void calibration_configCallback(cmd *cmdPtr){
     return;
   }
   simpleCli.outputStream->printf("\nNow Start calibrating...Wait...");
-  float ImpMagnitude = AD5940_calibration(&real , &image,simpleCli.outputStream);
+  float ImpMagnitude = AD5940_calibration(&real , &image);
   simpleCli.outputStream->printf("\nRcalVolt Real Image IMP:%6.2f\t %6.2f\t %6.2f (%dmills)",
     real,image,ImpMagnitude);
   if(argVal.equals("save")  ){
