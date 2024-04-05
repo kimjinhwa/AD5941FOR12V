@@ -430,25 +430,29 @@ int LittleFileSystem::format()
   littleFsInit(1);
   return 1;
 }
-
+String getTimeString(time_t tTime){
+  struct tm *timeinfo = gmtime(&tTime);
+  String timeString ="";
+  timeString += timeinfo->tm_year +1930;
+  timeString += "/";
+  timeString += timeinfo->tm_mon+1;
+  timeString += "/";
+  timeString += timeinfo->tm_mday;
+  timeString += " ";
+  timeString += timeinfo->tm_hour;
+  timeString += ":";
+  timeString += timeinfo->tm_min;
+  timeString += ":";
+  timeString += timeinfo->tm_sec;
+  timeString += " ";
+  return timeString;
+}
 int LittleFileSystem::writeLogString(String log)
 {
   timeval tmv;
   gettimeofday(&tmv, NULL);
   struct tm *timeinfo = gmtime(&tmv.tv_sec);
-  String strLog ="";
-  strLog += timeinfo->tm_year +1930;
-  strLog += "/";
-  strLog += timeinfo->tm_mon+1;
-  strLog += "/";
-  strLog += timeinfo->tm_mday;
-  strLog += " ";
-  strLog += timeinfo->tm_hour;
-  strLog += ":";
-  strLog += timeinfo->tm_min;
-  strLog += ":";
-  strLog += timeinfo->tm_sec;
-  strLog += " ";
+  String strLog = getTimeString(tmv.tv_sec);
   strLog += log;
   strLog += "\r\n";
   outputStream->println(strLog);
@@ -464,13 +468,133 @@ int LittleFileSystem::writeLogString(String log)
   return 0;
 }
 
+int LittleFileSystem::readMeasuredValue()
+{
+  FILE *fp;
+  _cell_value_iv  value;
+  fp = fopen("/spiffs/measuredvalue.txt", "r");
+
+  outputStream->printf("\nSystem measured imp and voltage\n");
+  if(fp == NULL){
+      outputStream->printf("\nLogFile Create Error");
+      return -1;
+  };
+  while (!feof(fp))
+  {
+    fread((_cell_value_iv *)&value, sizeof(_cell_value_iv), 1, fp);
+    if (feof(fp) || ferror(fp))
+    {
+      break;
+    }
+    outputStream->printf("\n%d\t %3.3f\t %3.3f",value.CellNo,value.impendance,value.voltage);
+  }
+  fclose(fp);
+  return 0;
+}
+int LittleFileSystem::writeMeasuredValue(_cell_value_iv value)
+{
+  if(value.CellNo == 0 ){
+    readMeasuredValue();
+    return 1;
+  }
+  FILE *fp;
+  fp = fopen("/spiffs/measuredvalue.txt", "r+");
+  if(fp == NULL){
+    outputStream->printf("\nLogFile Open Error");
+    outputStream->printf("\nNow Create New file");
+    fp = fopen("/spiffs/measuredvalue.txt", "w+");
+    if(fp == NULL){
+      outputStream->printf("\nLogFile Create Error");
+      return -1;
+    }
+    for(int i=0;i<20;i++){
+      value.CellNo = i+1;
+      fwrite((_cell_value_iv *)&value,sizeof(_cell_value_iv ),1,fp);
+    }
+    fclose(fp);
+    outputStream->printf("\nNew File created retry again");
+    return 1;
+  };
+  outputStream->printf("\nfseek %d %3.3f  %3.3f ",value.CellNo,value.impendance,value.voltage);
+  fseek(fp, (value.CellNo-1) * sizeof(_cell_value_iv), SEEK_SET);
+  fwrite((_cell_value_iv *)&value,sizeof(_cell_value_iv ),1,fp);
+  fclose(fp);
+  readMeasuredValue();
+  return 0;
+}
+void LittleFileSystem::printCellLogData(cell_logData_t *cell_logData){
+    //outputStream->printf("\n%d\t %3.3f\t %3.3f",cell_logData .CellNo,value.impendance,value.voltage);
+    String strTime =  getTimeString(cell_logData->readTime);
+    outputStream->printf("\n%s",strTime.c_str());
+    for(int i=0;i<20;i++){
+      outputStream->printf("(%d):%3.2f %3.2f %d",i,cell_logData->voltage[i],cell_logData->impendance[i],cell_logData->temperature[i]);
+    }
+    outputStream->printf("\n");
+}
+
+int LittleFileSystem::readCellDataLog()
+{
+  FILE *fp;
+  cell_logData_t cell_logData ;
+  fp = fopen("/spiffs/cellDataLog.txt", "r");
+
+  outputStream->printf("\nSystem cellDataLog\n");
+  if(fp == NULL){
+      outputStream->printf("\nLogFile open Error : cellDataLog.txt");
+      return -1;
+  };
+  while (!feof(fp))
+  {
+    fread((cell_logData_t *)&cell_logData , sizeof(cell_logData_t ), 1, fp);
+    if (feof(fp) || ferror(fp))
+    {
+      outputStream->printf("\nEof or error reatched\n");
+      break;
+    }
+    printCellLogData(&cell_logData );
+    //outputStream->printf("\n%d\t %3.3f\t %3.3f",cell_logData .CellNo,value.impendance,value.voltage);
+  }
+  fclose(fp);
+  outputStream->printf("\nRead Cell Data Log OK..\n");
+  return 0;
+}
+int LittleFileSystem::writeCellDataLog()
+{
+  FILE *fp;
+  cell_logData_t cell_logData ;
+  //int16_t cellNo;float impedance;float voltage;int16_t temperature;
+  timeval tmv;
+  gettimeofday(&tmv, NULL);
+  cell_logData.readTime=tmv.tv_sec;
+  //struct tm *timeinfo = gmtime(&tmv.tv_sec);
+
+  fp = fopen("/spiffs/cellDataLog.txt", "a+");
+  if (fp == NULL)
+  {
+    outputStream->printf("\ncellDataLogCreate Error");
+    return -1;
+  }
+  //outputStream->printf("\nfseek %d %3.3f  %3.3f ", value.CellNo, value.impendance, value.voltage);
+
+  for(int i=0;i<20;i++){
+    cell_logData.voltage[i]=cellvalue[i].voltage;
+    cell_logData.impendance[i]=cellvalue[i].impendance;
+    cell_logData.temperature[i]=cellvalue[i].temperature;
+  }
+  fwrite((_cell_value_iv *)&cell_logData, sizeof(cell_logData_t), 1, fp);
+  fclose(fp);
+  printCellLogData(&cell_logData );
+  
+  return 0;
+}
+
 int LittleFileSystem::writeLog(time_t logtime,u_int16_t status,u_int16_t fault)
 {
   FILE *fp;
   upslog_t log = {
     .logTime = logtime, .status = status, .fault = fault
   };
-  fp = fopen("/spiffs/logFile.txt", "a+");
+  fp = fopen("/spiffs/logfile.txt", "a+");
   if(fp == NULL){
     outputStream->printf("\nLogFile Open Error");
     return -1;

@@ -943,12 +943,16 @@ static unsigned long now;
 //uint8_t globalModbusId =1;
 BatDeviceInterface batDevice;
 uint8_t impedanceCellPosition=1;
+static timeval tmv;
+int16_t logForHour=0;
 void loop(void)
 {
   bool bRet;
   void *parameters;
   now = millis(); 
   esp_task_wdt_reset();
+
+
   if ((now - previousSecondmills > everySecondInterval))
   {
     //digitalWrite(LED_OP, !digitalRead(LED_OP));
@@ -989,6 +993,13 @@ void loop(void)
   }
   if ((now - previous_60Secondmills > Interval_60Second))
   {
+    gettimeofday(&tmv, NULL);
+    struct tm *timeinfo = gmtime(&tmv.tv_sec);
+    simpleCli.outputStream->printf("\r\nEveryMinute reached  ... %d %d %d",timeinfo->tm_min,logForHour,timeinfo->tm_hour);
+    if(logForHour != timeinfo->tm_hour){ //매시간마다 로그를 기록한다.
+      logForHour = timeinfo->tm_hour;
+      lsFile.writeCellDataLog();
+    }
     // sendGetMoubusTemperature(impedanceCellPosition,04);
     // sendSelectBattery(impedanceCellPosition);//selecectedCellNumber를 변화 시킨다
     // AD5940_Main(parameters);  

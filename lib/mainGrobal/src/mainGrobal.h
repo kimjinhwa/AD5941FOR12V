@@ -78,6 +78,12 @@ typedef struct {
   float impendance;// 4byte
 }_cell_value_iv; // Total 18bte
 
+typedef struct {
+  time_t readTime; // 4byte
+  float voltage[20];// 4byte
+  float impendance[20];// 4byte
+  int16_t temperature[20];// 2byte
+}cell_logData_t; // Total 18bte
 //#define RESET_5940 GPIO_NUM_5
 // #define SERIAL_SEL_ADDR3    34  // Only Use Input
 // #define SERIAL_SEL_ADDR2    35  // test fail 

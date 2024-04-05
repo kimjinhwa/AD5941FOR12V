@@ -1,6 +1,7 @@
 #ifndef _FILE_SYSTEM_H
 #define  _FILE_SYSTEM_H
 #include <Arduino.h>
+#include "mainGrobal.h"
 // class PrintExt : public Print{
 //     PrintExt(){};
 //     size_t write(u_int8_t c){
@@ -28,7 +29,12 @@ class LittleFileSystem
     const char* rangematch(const char *pattern, char test, int flags); 
     void df();
     int writeLog(time_t logtime,u_int16_t status,u_int16_t fault);
+    int writeMeasuredValue(_cell_value_iv value);
+    int writeCellDataLog();
+    int readCellDataLog();
+    int readMeasuredValue();
     int writeLogString(String log);
+    void printCellLogData(cell_logData_t *cell_logData);
     private:
     Print* outputStream;
 };

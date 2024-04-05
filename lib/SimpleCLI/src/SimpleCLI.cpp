@@ -159,18 +159,37 @@ void printCompensationValue(){
   simpleCli.outputStream->printf("\r\n-------------------------\r\n");
 }
 
-void easuredvalue_configCallback(cmd *cmdPtr){
+void writeCellLog_configCallback(cmd *cmdPtr){
+  simpleCli.outputStream->printf("\nwrite Cell Log");
+  lsFile.writeCellDataLog();
+}
+void readCellLog_configCallback(cmd *cmdPtr){
+
+  simpleCli.outputStream->printf("\nRead Cell Log");
+  lsFile.readCellDataLog();
+}
+void measuredvalue_configCallback(cmd *cmdPtr){
   Command cmd(cmdPtr);
   Argument arg;
   int16_t number;
-  int16_t imp;
-  int16_t vol;
+  float imp;
+  float vol;
   EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
   number = cmd.getArgument("num").getValue().toInt();
-  imp = cmd.getArgument("imp").getValue().toInt();
-  vol = cmd.getArgument("vol").getValue().toInt();
+  imp = cmd.getArgument("imp").getValue().toFloat();
+  vol = cmd.getArgument("vol").getValue().toFloat();
   simpleCli.outputStream->printf("\nnumber\timp\tvol\n"); 
-  simpleCli.outputStream->printf("%d\t%d\t%d\n",number,imp,vol); 
+  simpleCli.outputStream->printf("%d \t%3.3f\t %3.3f\n",number,imp,vol); 
+
+  timeval tmv;
+  gettimeofday(&tmv, NULL);
+  _cell_value_iv cell_value;
+  cell_value.CellNo = number;
+  cell_value.temperature = 25;;
+  cell_value.impendance = imp;
+  cell_value.voltage= vol;
+  cell_value.readTime = tmv.tv_sec;
+  lsFile.writeMeasuredValue(cell_value);
 
 }
 void offset_configCallback(cmd *cmdPtr)
@@ -663,7 +682,9 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config = addSingleArgCmd("temp/erature", temperature_configCallback);
   cmd_config = addSingleArgCmd("mod/uledid", moduleid_configCallback);
 
-  cmd_config = addCommand("wrm",easuredvalue_configCallback);
+  cmd_config = addCommand("writecellLog",writeCellLog_configCallback);
+  cmd_config = addCommand("readcellLog",readCellLog_configCallback);
+  cmd_config = addCommand("wrm",measuredvalue_configCallback);
   cmd_config.addPositionalArgument("num");
   cmd_config.addPositionalArgument("imp");
   cmd_config.addPositionalArgument("vol");
