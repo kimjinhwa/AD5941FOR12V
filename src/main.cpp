@@ -815,11 +815,11 @@ uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
   extendSerial.selectLcd();
   LcdCell485.resumeTask();
   return value;
-
 };
 void setup()
 {
-  EEPROM.begin(1000);
+
+  EEPROM.begin(sizeof(nvsSystemSet)+1);
   readnWriteEEProm();
   pinsetup();
   Serial.begin(BAUDRATE);

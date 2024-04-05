@@ -450,10 +450,11 @@ int LittleFileSystem::writeLogString(String log)
   strLog += timeinfo->tm_sec;
   strLog += " ";
   strLog += log;
+  strLog += "\r\n";
   outputStream->println(strLog);
 
   FILE *fp;
-  fp = fopen("/spiffs/logFile.txt", "w+");
+  fp = fopen("/spiffs/systemlog.txt", "a+");
   if(fp == NULL){
     outputStream->printf("\nLogFile Open Error");
     return -1;
@@ -469,7 +470,7 @@ int LittleFileSystem::writeLog(time_t logtime,u_int16_t status,u_int16_t fault)
   upslog_t log = {
     .logTime = logtime, .status = status, .fault = fault
   };
-  fp = fopen("/spiffs/logFile.txt", "w+");
+  fp = fopen("/spiffs/logFile.txt", "a+");
   if(fp == NULL){
     outputStream->printf("\nLogFile Open Error");
     return -1;

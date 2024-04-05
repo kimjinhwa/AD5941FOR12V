@@ -32,7 +32,7 @@ char TAG[] = "AD5940";
 extern uint8_t selecectedCellNumber ;
 extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
 /* It's your choice here how to do with the data. Here is just an example to print them to UART */
-fImpCar_Type pImpResult[31];
+fImpCar_Type pImpResult[MAX_LOOP_COUNT +1];
 void addResult(uint32_t *pData, uint32_t DataCount)
 {
   fImpCar_Type Average;

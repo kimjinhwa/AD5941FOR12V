@@ -70,6 +70,14 @@ typedef struct {
 }_cell_value; // Total 18bte
 extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
 
+typedef struct {
+  uint16_t CellNo;
+  time_t readTime; // 4byte
+  float voltage;// 4byte
+  int16_t temperature;// 2byte
+  float impendance;// 4byte
+}_cell_value_iv; // Total 18bte
+
 //#define RESET_5940 GPIO_NUM_5
 // #define SERIAL_SEL_ADDR3    34  // Only Use Input
 // #define SERIAL_SEL_ADDR2    35  // test fail 
