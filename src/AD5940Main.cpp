@@ -24,7 +24,7 @@ Analog Devices Software License Agreement.
 #include "BATImpedance.h"
 #include "ad5940.h"
 
-#define MAX_LOOP_COUNT 30
+#define MAX_LOOP_COUNT 40
 #define APPBUFF_SIZE 512
 
 static Print *outputStream;

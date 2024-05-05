@@ -246,7 +246,7 @@ uint16_t cellModbusIdReceived;
 
 void setupModbusAgentForLcd(){
   //address는 항상 1이다.
-  uint8_t address_485 = 1; 
+  uint8_t address_485 = systemDefaultValue.modbusId; 
   LcdCell485.useStopControll =1;
   LcdCell485.begin(Serial2,BAUDRATESERIAL1,1);
   LcdCell485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
@@ -402,7 +402,7 @@ int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len
     {
       vTaskDelay(1);
       ESP_LOGI("REV", "It's timeout error");
-      simpleCli.outputStream->printf("\r\nIt's timeout error");
+      //simpleCli.outputStream->printf("\r\nIt's ble timeout error");
       return data_ready;  // false
     }
     delay(1);
