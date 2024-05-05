@@ -261,6 +261,33 @@ void setupModbusAgentForLcd(){
 
 };
 ExtendSerial extendSerial;
+void ClearoutReceviveData(HardwareSerial *serial,int timeout_ms){
+  int c;
+  int _timeout = 0;
+  unsigned long fTimeOut = millis();
+  //ESP_LOGW(TAG, "ClearoutReceviveData %d", c);
+  while (!Serial2.available())
+  {
+    if (millis() - fTimeOut > timeout_ms) return ;  
+    delay(1);
+  };
+  while(serial->available())
+  {
+    while (serial->available())
+    {
+      c = serial->read();
+      //ESP_LOGW(TAG, "-->%02x", c);
+      _timeout += 5;
+      vTaskDelay(5);
+      if (_timeout > timeout_ms)
+        break;
+    }
+    _timeout += 5;
+    if (_timeout > timeout_ms)
+      break;
+    vTaskDelay(5);
+  }
+}
 void clearSerialGarbageData(HardwareSerial *serial,int timeout_ms){
   int c;
   int _timeout = 0;
@@ -354,9 +381,9 @@ int readResponseDataForBrodcast(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,
   {
     for (int i = 0; i < readCount; i++)
     {
-      Serial.printf("%d:%02x ",i ,buf[readCount]);
+      ESP_LOGW("main","%d:%02x ",i ,buf[readCount]);
     }
-    ESP_LOGI("main", "Receive Failed %d received",readCount);
+    ESP_LOGW("main", "Receive Failed %d received",readCount);
   }
   //리턴하기 전에 Garbage가 있으면 정리한다.
   clearSerialGarbageData(&Serial2,300);
@@ -422,7 +449,7 @@ int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len
     {
       Serial.printf("%d:%02x ",i ,buf[readCount]);
     }
-    ESP_LOGI("main", "Receive Failed %d received",readCount);
+    ESP_LOGW("main", "Receive Failed %d received",readCount);
   }
   //리턴하기 전에 Garbage가 있으면 정리한다.
   clearSerialGarbageData(&Serial2,300);
@@ -527,12 +554,15 @@ bool sendSelectBatteryWithNoCheck(uint8_t modbusId)
 
   makeRelayControllData(buf, 0xFF, WRITE_COIL, 0, 0x00); // 0xff BROADCAST
   extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
-  readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
+  ClearoutReceviveData(&Serial2,300);
+  //readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
+
   vTaskDelay(100);
   
   makeRelayControllData(buf, 0xFF, WRITE_COIL, 1, 0x00); // 0xff BROADCAST
   extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
-  readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
+  ClearoutReceviveData(&Serial2,300);
+  //readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
   vTaskDelay(500);
   //makeRelayControllData(buf, modbusId, READ_COIL, 0, 2); // Read coil data 2 개
 
@@ -599,12 +629,14 @@ bool sendSelectBattery(uint8_t modbusId)
 
   makeRelayControllData(buf, 0xFF, WRITE_COIL, 0, 0x00); // 0xff BROADCAST
   extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
-  readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
+  ClearoutReceviveData(&Serial2,300);
+  //readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
   vTaskDelay(100);
   
   makeRelayControllData(buf, 0xFF, WRITE_COIL, 1, 0x00); // 0xff BROADCAST
   extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
-  readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
+  ClearoutReceviveData(&Serial2,300);
+  //readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
   vTaskDelay(500);
 
 
@@ -816,6 +848,45 @@ uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
   LcdCell485.resumeTask();
   return value;
 };
+int measuredImpedance_1[20]={
+    267,265,292,255,271,
+    274,383,307,277,272,
+    262,267,294,278,270,
+    285,259,289,262,254
+  };
+int measuredImpedance_2[20]={
+    334,337,349,340,345,
+    334,331,350,337,339,
+    334,332,349,337,328,
+    343,341,358,330,334
+  };
+int measuredVoltage_1[20]={
+    1351,1321,1317,1311,1314,
+    1320,1322,1320,1321,1320,
+    1325,1339,1338,1338,1344,
+    1353,1343,1359,1343,1352
+  };
+int measuredVoltage_2[20]={
+    1339,1340,1340,1339,1338,
+    1335,1335,1336,1336,1335,
+    1334,1334,1333,1334,1334,
+    1334,1334,1332,1332,1333
+  };
+void initCellValue()
+{
+  if (systemDefaultValue.modbusId == 1)
+  {
+    for(int i=0;i<20;i++){
+      cellvalue[i].impendance = float(measuredImpedance_1[i])/100.0f;
+    }
+  }
+  else
+  {
+    for(int i=0;i<20;i++){
+      cellvalue[i].impendance = float(measuredImpedance_2[i])/100.0f;
+    }
+  }
+}
 void setup()
 {
 
@@ -827,40 +898,51 @@ void setup()
   Serial1.begin(BAUDRATE, SERIAL_8N1, SERIAL_RX1, SERIAL_TX1);
   esp_reset_reason_t resetReson =  esp_reset_reason();
   String strResetReason="System booting reason is  ";
+  bool dataReload=false;
   switch (resetReson )
   {
   case ESP_RST_UNKNOWN:
     strResetReason +=" Reset reason can not be determined";
+    dataReload = true;
     break;
   case ESP_RST_POWERON:
     strResetReason +=" Reset due to power-on event";
+    dataReload = true;
     break;
   case ESP_RST_EXT:
     strResetReason +=" Reset by external pin (not applicable for ESP32)";
     break;
   case ESP_RST_SW:
     strResetReason +=" Software reset via esp_restart";
+    dataReload = true;
     break;
   case ESP_RST_PANIC:
     strResetReason +=" Software reset due to exception/panic";
+    dataReload = true;
     break;
   case ESP_RST_INT_WDT:
     strResetReason +=" Reset (software or hardware) due to interrupt watchdog";
+    dataReload = true;
     break;
   case ESP_RST_TASK_WDT:
     strResetReason +=" Reset due to task watchdog";
+    dataReload = true;
     break;
   case ESP_RST_WDT:
     strResetReason +=" Reset due to other watchdogs";
+    dataReload = true;
     break;
   case ESP_RST_DEEPSLEEP:
     strResetReason +=" Reset after exiting deep sleep mode";
+    dataReload = true;
     break;
   case ESP_RST_BROWNOUT:
     strResetReason +=" Brownout reset (software or hardware)";
+    dataReload = true;
     break;
   case ESP_RST_SDIO:
     strResetReason +=" Reset over SDIO";
+    dataReload = true;
     break;
   default:
     break;
@@ -897,6 +979,7 @@ void setup()
   lsFile.littleFsInitFast(0);
   setRtc();
   lsFile.writeLogString(strResetReason);
+  if(dataReload)lsFile.readCellDataLog(1);
 
   SPI.setFrequency(spiClk);
   SPI.begin(SCK, MISO, MOSI, CS_5940);
@@ -980,8 +1063,8 @@ void loop(void)
           batVoltage = 0.0;
         cellvalue[i - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
         time_t endRead = millis();             // take 300ms
-        ESP_LOGI("Voltage", "Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
-        simpleCli.outputStream->printf("\nBat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
+        ESP_LOGI("Voltage", "Bat(%d) Voltage is : %3.3f (%ldmilisecond)", i,batVoltage, endRead - startRead);
+        simpleCli.outputStream->printf("\nBat(%i) Voltage is : %3.3f (%ldmilisecond)",i, batVoltage, endRead - startRead);
         if (batVoltage > 2.0)
         {
           if (systemDefaultValue.runMode == 3)

@@ -1,5 +1,52 @@
-## TIA Resistance Measurement System.
+# TIA Resistance Measurement System.
 ## BLUETOOTH COMMAND
+### offset #
+ #### offset    [-ia cellno value ] [-va  cellno value ]    [-i  cellno value ] 
+ * [-ia cellno value ] 임피던스에 대한 옵셋을 맞춘다. 
+   * cellno : 셀번호 1번부터시작한다.   
+                  0 이 주어지면 모든셀에 대하여 적용한다.   
+       * value    
+         systemDefaultValue.impendanceCompensation[i]의 
+         값에 주어진 값을 += 한다.   
+         ```
+          cellvalue[i].impendance = cellvalue[i].impendance +   systemDefaultValue.impendanceCompensation[i] / 100.f;   
+          ```
+      따라서 Value는 1/100로 적용하기 때문에 100을 곱한 
+      값으로 준다.   
+ * [-va  cellno value ]  전압에 대한 옵셋을 맞춘다. 
+      * cellno : 셀번호 1번부터시작한다.   
+                  0 이 주어지면 모든셀에 대하여 적용한다.   
+      * value    
+         systemDefaultValue.voltageCompensation[i]의 
+         값에 주어진 값을 += 한다.     
+        ``` 
+         systemDefaultValue.voltageCompensation[i] += value 
+        ```
+      따라서 Value는 1/100로 적용하기 때문에 100을 곱한 
+      값으로 준다.   
+ * [-i cellno value ] ia와 동일하나 +=이 아닌 =를 사용한다.
+      ```
+      cellvalue[i].impendance = cellvalue[i].impendance + systemDefaultValue.impendanceCompensation[i] / 100.f;
+      ```
+ * [-v cellno value ] va와 동일하나 +=이 아닌 =를 사용한다.
+      ```
+        systemDefaultValue.voltageCompensation[i] = value; // cellvalue[0].voltage - cellvalue[i].voltage;
+        cellvalue[number - 1].voltage= cellvalue[number - 1].voltage+ systemDefaultValue.voltageCompensation[number - 1];
+      ```
+
+ * [-vv cellno value ] 입력한 값으로 옵셋을 맞추어 주는 옵션이다.     
+ 계산을 쉽하기 해 주기 위한 방법이다.   
+ 첫번째는 셀번호를 두번째는 원하는 전압값을 기록한다
+ ```
+    float gapVoltage = fvalue - cellvalue[number-1].voltage ;
+    int voloffset = (int)(gapVoltage /0.005);
+    systemDefaultValue.voltageCompensation[number - 1] = voloffset;
+    //voltageCompensation값은 아래와 같이 adcReading Offset에 사용된다.
+    systemDefaultValue.voltageCompensation[number - 1] = voloffset;
+  uint32_t voltage = esp_adc_cal_raw_to_voltage((uint32_t)batVoltageAdcValue , &adc_chars);
+ ``` 
+
+# relay -s [Cell no] -off 
   - relay -s [Cell no] -off 
     - off : check if all cell is offed 
     - Cell no : 0 All Off, 

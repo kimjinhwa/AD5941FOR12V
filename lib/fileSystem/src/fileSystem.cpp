@@ -12,6 +12,9 @@
 #define FNM_CASEFOLD 0x10    // Case insensitive search.
 #define FNM_PREFIX_DIRS 0x20 // Directory prefixes of pattern match too.
 #define EOS '\0'
+
+extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
+
 LittleFileSystem::LittleFileSystem(){
         outputStream = &Serial;
 }
@@ -522,6 +525,20 @@ int LittleFileSystem::writeMeasuredValue(_cell_value_iv value)
   readMeasuredValue();
   return 0;
 }
+void LittleFileSystem::fillCellLogData(cell_logData_t *cell_logData){
+    //outputStream->printf("\n%d\t %3.3f\t %3.3f",cell_logData .CellNo,value.impendance,value.voltage);
+
+    Serial.printf("\r\nSet data from file system for watchdog reboot");
+    String strTime =  getTimeString(cell_logData->readTime);
+    outputStream->printf("\n%s",strTime.c_str());
+    for(int i=0;i<20;i++){
+      cellvalue[i].voltage = cell_logData->voltage[i]; 
+      cellvalue[i].impendance=cell_logData->impendance[i]; 
+      cellvalue[i].temperature=cell_logData->temperature[i] ; 
+      Serial.printf("(%d):%3.2f %3.2f %d",i,cell_logData->voltage[i],cell_logData->impendance[i],cell_logData->temperature[i]);
+    }
+    Serial.printf("\n");
+}
 void LittleFileSystem::printCellLogData(cell_logData_t *cell_logData){
     //outputStream->printf("\n%d\t %3.3f\t %3.3f",cell_logData .CellNo,value.impendance,value.voltage);
     String strTime =  getTimeString(cell_logData->readTime);
@@ -532,7 +549,8 @@ void LittleFileSystem::printCellLogData(cell_logData_t *cell_logData){
     outputStream->printf("\n");
 }
 
-int LittleFileSystem::readCellDataLog()
+
+int LittleFileSystem::readCellDataLog(bool isBoot)
 {
   FILE *fp;
   cell_logData_t cell_logData ;
@@ -551,9 +569,10 @@ int LittleFileSystem::readCellDataLog()
       outputStream->printf("\nEof or error reatched\n");
       break;
     }
-    printCellLogData(&cell_logData );
+   if(!isBoot)  printCellLogData(&cell_logData );
     //outputStream->printf("\n%d\t %3.3f\t %3.3f",cell_logData .CellNo,value.impendance,value.voltage);
   }
+  if(isBoot) fillCellLogData(&cell_logData );  // 마지막 테이타가 있다.
   fclose(fp);
   outputStream->printf("\nRead Cell Data Log OK..\n");
   return 0;

@@ -166,7 +166,7 @@ void writeCellLog_configCallback(cmd *cmdPtr){
 void readCellLog_configCallback(cmd *cmdPtr){
 
   simpleCli.outputStream->printf("\nRead Cell Log");
-  lsFile.readCellDataLog();
+  lsFile.readCellDataLog(0);
 }
 void measuredvalue_configCallback(cmd *cmdPtr){
   Command cmd(cmdPtr);
@@ -183,13 +183,13 @@ void measuredvalue_configCallback(cmd *cmdPtr){
 
   timeval tmv;
   gettimeofday(&tmv, NULL);
-  _cell_value_iv cell_value;
-  cell_value.CellNo = number;
-  cell_value.temperature = 25;;
-  cell_value.impendance = imp;
-  cell_value.voltage= vol;
-  cell_value.readTime = tmv.tv_sec;
-  lsFile.writeMeasuredValue(cell_value);
+  _cell_value_iv value;
+  value.CellNo = number;
+  value.temperature = 25;;
+  value.impendance = imp;
+  value.voltage= vol;
+  value.readTime = tmv.tv_sec;
+  lsFile.writeMeasuredValue(value);
 
 }
 void offset_configCallback(cmd *cmdPtr)
@@ -233,6 +233,7 @@ void offset_configCallback(cmd *cmdPtr)
       return;
     }
     systemDefaultValue.impendanceCompensation[number - 1] += value;
+    cellvalue[number-1].impendance = cellvalue[number-1].impendance + systemDefaultValue.impendanceCompensation[number-1] / 100.f;
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
@@ -257,6 +258,7 @@ void offset_configCallback(cmd *cmdPtr)
         systemDefaultValue.voltageCompensation[i] += value; // cellvalue[0].voltage - cellvalue[i].voltage;
         simpleCli.outputStream->printf("\ncompansation %d ", systemDefaultValue.voltageCompensation[i]);
       }
+      cellvalue[number-1].voltage= cellvalue[number-1].voltage+ systemDefaultValue.voltageCompensation[number-1] ;
       EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
       EEPROM.commit();
       EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
@@ -269,6 +271,7 @@ void offset_configCallback(cmd *cmdPtr)
       return;
     }
     systemDefaultValue.voltageCompensation[number - 1] += value;
+    cellvalue[number-1].voltage= cellvalue[number-1].voltage+ systemDefaultValue.voltageCompensation[number-1] ;
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
@@ -310,6 +313,7 @@ void offset_configCallback(cmd *cmdPtr)
       return;
     }
     systemDefaultValue.impendanceCompensation[number - 1] = value;
+    cellvalue[number - 1].impendance = cellvalue[number - 1].impendance + systemDefaultValue.impendanceCompensation[number - 1] / 100.f;
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
@@ -333,6 +337,7 @@ void offset_configCallback(cmd *cmdPtr)
       for (int i = 0; i < systemDefaultValue.installed_cells; i++)
       {
         systemDefaultValue.voltageCompensation[i] = value; // cellvalue[0].voltage - cellvalue[i].voltage;
+        cellvalue[number - 1].voltage= cellvalue[number - 1].voltage+ systemDefaultValue.voltageCompensation[number - 1];
         simpleCli.outputStream->printf("\ncompansation %d ", systemDefaultValue.voltageCompensation[i]);
       }
       EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
@@ -347,6 +352,41 @@ void offset_configCallback(cmd *cmdPtr)
       return;
     }
     systemDefaultValue.voltageCompensation[number - 1] = value;
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.commit();
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    cellvalue[number - 1].voltage= cellvalue[number - 1].voltage+ systemDefaultValue.voltageCompensation[number - 1];
+    simpleCli.outputStream->printf("\nWrite Ok to VOL EEPROM %d : %d", number, systemDefaultValue.voltageCompensation[number - 1]);
+    printCompensationValue();
+    return;
+  }
+  arg = cmd.getArgument("vv");
+  if (arg.isSet())
+  { // Voltage
+    if (cmd.countArgs() < 4)
+    {
+      simpleCli.outputStream->printf("\n You have to input number and value like as \noffset 1 3.49 <--real Measured value");
+      return;
+    }
+    number = cmd.getArgument("num").getValue().toInt();
+    float fvalue = cmd.getArgument("value").getValue().toFloat();
+    if (number == 0)
+    {
+      simpleCli.outputStream->printf("\nNot support value  %d", number);
+      return ;
+    }
+    if (number > systemDefaultValue.installed_cells)
+    {
+      simpleCli.outputStream->printf("\n Cell(%d) number Must be less then Installed cell(%d)\n", number, systemDefaultValue.installed_cells);
+      return;
+    }
+    //calculate 
+    float gapVoltage = fvalue - cellvalue[number-1].voltage ;
+    simpleCli.outputStream->printf("\nreadVolage %3.2f - inputVol %3.2f = gapVoltage %3.2f", cellvalue[number-1].voltage , fvalue,gapVoltage );
+    int voloffset = (int)(gapVoltage /0.005);
+    simpleCli.outputStream->printf("\ngapVoltege %3.2f/0.005 = %d",gapVoltage, voloffset);
+    //이미 offset이 적용되어 있는 값이므로 +=를 해준다.
+    systemDefaultValue.voltageCompensation[number - 1] = voloffset;
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
@@ -698,6 +738,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config.addFlagArgument("ia"); //impedance
   cmd_config.addFlagArgument("v"); //voltage
   cmd_config.addFlagArgument("va"); //voltage
+  cmd_config.addFlagArgument("vv"); //voltage
   cmd_config.addPositionalArgument("num");
   cmd_config.addPositionalArgument("value");
   cmd_config.setDescription("\nFor impdance and voltage compansation value\n  \

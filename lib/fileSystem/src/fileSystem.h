@@ -31,10 +31,12 @@ class LittleFileSystem
     int writeLog(time_t logtime,u_int16_t status,u_int16_t fault);
     int writeMeasuredValue(_cell_value_iv value);
     int writeCellDataLog();
-    int readCellDataLog();
+    int readCellDataLog(bool isBoot);
     int readMeasuredValue();
     int writeLogString(String log);
     void printCellLogData(cell_logData_t *cell_logData);
+    void fillCellLogData(cell_logData_t *cell_logData);
+
     private:
     Print* outputStream;
 };

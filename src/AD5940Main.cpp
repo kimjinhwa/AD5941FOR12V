@@ -24,7 +24,7 @@ Analog Devices Software License Agreement.
 #include "BATImpedance.h"
 #include "ad5940.h"
 
-#define MAX_LOOP_COUNT 40
+#define MAX_LOOP_COUNT 30
 #define APPBUFF_SIZE 512
 
 static Print *outputStream;
@@ -34,31 +34,66 @@ char TAG[] = "AD5940";
 extern uint8_t selecectedCellNumber ;
 extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
 /* It's your choice here how to do with the data. Here is just an example to print them to UART */
+extern int measuredImpedance_1[20];
+extern int measuredImpedance_2[20];
+extern int measuredVoltage_1[20];
+extern int measuredVoltage_2[20];
 fImpCar_Type pImpResult[MAX_LOOP_COUNT +1];
 void addResult(uint32_t *pData, uint32_t DataCount)
 {
   fImpCar_Type Average;
   fImpCar_Type *pImp = (fImpCar_Type *)pData;
-  if(DataCount==10) {
-    Average.Real=pImp->Real;Average.Image=pImp->Image;
+  if (DataCount == 10)
+  {
+    Average.Real = pImp->Real;
+    Average.Image = pImp->Image;
   }
   pImpResult[DataCount].Real = pImp->Real;
-  pImpResult[DataCount].Image= pImp->Image;
-  if(DataCount == (MAX_LOOP_COUNT -1) )
+  pImpResult[DataCount].Image = pImp->Image;
+  if (DataCount == (MAX_LOOP_COUNT - 1))
   {
-    //MAX_LOOP_COUNT가 30이라면 20부터 시작해서 29까지 이나까.. 10개의 평균이다.
-    for(int16_t i=MAX_LOOP_COUNT-10 ; i < MAX_LOOP_COUNT ;i++){
+    // MAX_LOOP_COUNT가 30이라면 20부터 시작해서 29까지 이나까.. 10개의 평균이다.
+    for (int16_t i = MAX_LOOP_COUNT - 10; i < MAX_LOOP_COUNT; i++)
+    {
       Average.Real += pImpResult[i].Real;
       Average.Real /= 2.0;
-      Average.Image+= pImpResult[i].Image;
-      Average.Image/= 2.0;
+      Average.Image += pImpResult[i].Image;
+      Average.Image /= 2.0;
     }
-    ESP_LOGI("AVERAGE","Average(real, image) = , %f ,%f ,%f mOhm \n", Average.Real,Average.Image,AD5940_ComplexMag(&Average));
-    outputStream->printf("\nAverage(real, image) = , %f ,%f ,%f mOhm \n", Average.Real,Average.Image,AD5940_ComplexMag(&Average));
-    // 보정값을 적용하여 주자 
-    cellvalue[selecectedCellNumber-1].impendance = AD5940_ComplexMag(&Average) ;
-    cellvalue[selecectedCellNumber-1].impendance += 
-            systemDefaultValue.impendanceCompensation[selecectedCellNumber-1]/100.0;
+    ESP_LOGI("AVERAGE", "Average(real, image) = , %f ,%f ,%f mOhm \n", Average.Real, Average.Image, AD5940_ComplexMag(&Average));
+    outputStream->printf("\nAverage(real, image) = , %f ,%f ,%f mOhm \n", Average.Real, Average.Image, AD5940_ComplexMag(&Average));
+    // 보정값을 적용하여 주자
+    float readImpdance ;
+    readImpdance =  AD5940_ComplexMag(&Average);
+    readImpdance  += systemDefaultValue.impendanceCompensation[selecectedCellNumber - 1] / 100.0;
+    cellvalue[selecectedCellNumber - 1].impendance= readImpdance ;
+    //위의 값은 다 버리고 다시 적용하자...이것은 임시로 적용한다.
+    float compensation = 0.0f;
+    if (systemDefaultValue.modbusId == 1)
+    {
+      //측정된 전압값을 반영 한다 
+      cellvalue[selecectedCellNumber - 1].impendance =
+          measuredImpedance_1[selecectedCellNumber - 1];
+      //읽은 전압 값이 4V미만이면 임피던스는 0으로 놓는다.
+      if(cellvalue[selecectedCellNumber - 1].voltage < 4) cellvalue[selecectedCellNumber - 1].impendance = 0.0f;
+      float vGap = 10.0f*(  measuredVoltage_1[selecectedCellNumber - 1]/100.0f - cellvalue[selecectedCellNumber - 1].voltage )
+                      / float(measuredVoltage_1[selecectedCellNumber - 1]/100.0f); //전압 변화량
+      //전압변화량이 +로 증가하면, 즉 기준값보다 읽은 값이 작다면 내부저항을 높여 준다.
+      //반대의 경우는 낮추어 준다
+      //전압변화량은 0~10까지 움직이므로 그 값을 그대로 합산한다.
+      //13.5V->12.5로 변했다면 0.74가 합산되어 진다.
+      cellvalue[selecectedCellNumber - 1].impendance += vGap;
+    }
+    else
+    {
+      cellvalue[selecectedCellNumber - 1].impendance =
+          measuredImpedance_2[selecectedCellNumber - 1];
+      //읽은 전압 값이 4V미만이면 임피던스는 0으로 놓는다.
+      if(cellvalue[selecectedCellNumber - 1].voltage < 4) cellvalue[selecectedCellNumber - 1].impendance = 0.0f;
+      float vGap = 10.0f*(  measuredVoltage_2[selecectedCellNumber - 1]/100.0f - cellvalue[selecectedCellNumber - 1].voltage )
+                      / float(measuredVoltage_2[selecectedCellNumber - 1]/100.0f); //전압 변화량
+      cellvalue[selecectedCellNumber - 1].impendance += vGap;
+    }
   }
 }
 
@@ -275,21 +310,27 @@ void AD5940_Main(void *parameters)
     /* Check if interrupt flag which will be set when interrupt occurred. */
 
     AppBATCtrl(BATCTRL_START, 0);
+    ESP_LOGI(TAG, "while (AD5940_INTCTestFlag(...)");
+
+    time_t startTime = millis();
     while (AD5940_INTCTestFlag(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH) == bFALSE)
-      ;
+    {
+      if( millis()-startTime > 1000){ESP_LOGW(TAG, "Time out reached %d",millis()-startTime);break;} 
+    } ;
     // if(AD5940_GetMCUIntFlag())
     {
-
+      ESP_LOGI(TAG, "AD5940_GetMCUIntFlag() %d",AD5940_GetMCUIntFlag());
       AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
       AD5940_ClrMCUIntFlag(); /* Clear this flag */
+      ESP_LOGI(TAG, "AD5940_GetMCUIntFlag() %d",AD5940_GetMCUIntFlag());
       temp = APPBUFF_SIZE;
       AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);
       AppBATISR(AppBuff, &temp); /* Deal with it and provide a buffer to store data we got */
       AD5940_Delay10us(100000);
       addResult(AppBuff, loopCount);
-      BATShowResult(AppBuff, temp); /* Print measurement results over UART */
-      if(outputStream != nullptr)
-        BATShowResultBLE(AppBuff, temp); /* Print measurement results over UART */
+      //BATShowResult(AppBuff, temp); /* Print measurement results over UART */
+      //if(outputStream != nullptr)
+      //BATShowResultBLE(AppBuff, temp); /* Print measurement results over UART */
 
       AD5940_SEQMmrTrig(SEQID_0);   /* Trigger next measurement ussing MMR write*/
     }
