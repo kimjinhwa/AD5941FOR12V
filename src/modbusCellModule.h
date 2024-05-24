@@ -6,6 +6,7 @@
 
 bool sendSelectBatteryWithRetry(uint8_t modbusId);
 uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode);
+uint16_t sendGetMoubusTemperature_new(uint8_t modbusId, uint8_t fCode);
 typedef struct
 {
     uint8_t relay1;
