@@ -3,6 +3,7 @@
 #include "modbusRtu.h"
 #include "mainGrobal.h"
 #include <RtcDS1302.h>
+#include "modbusCellModule.h"
 void setRtcNewTime(RtcDateTime rtc);
 
 void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
@@ -156,13 +157,18 @@ ModbusMessage FC04(ModbusMessage request) {
       response.add(value);
     }
   }
-  else if(address >= 0x30001 && address <= 0x30010 ){  // Cell제어 
-      value=28.5;
-      response.add(value);
-      value=1;
-      response.add(value);
-      value=4800;
-      response.add(value);
+  else if(address >= 30001 && address <= 30016 ){  // Cell제어 
+      // response.add(modbusCellData.temperature);
+      // response.add(modbusCellData.modbusid);
+      // response.add(modbusCellData.baudrate);
+    // writeAddress = address & 0xFF;
+    uint16_t *pValues;
+    pValues= (uint16_t *)&modbusCellData;
+    words = words > 16 ? 16 :words;
+    for (int i = 0; i < words; i++)
+    {
+      response.add(pValues[i]);
+    }
   }
   else if(address >= 0x30010  ){  //  5941제어이다.
   }

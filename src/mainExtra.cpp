@@ -60,6 +60,9 @@ _cell_value cellvalue[MAX_INSTALLED_CELLS];
 extern SimpleCLI simpleCli;
 
 BluetoothSerial SerialBT;
+
+ModbusRequestModule modbusRequestModule(10);
+
 void AD5940_ShutDown();
 void pinsetup()
 {
@@ -398,6 +401,20 @@ void setup()
   //   ESP_LOGI(TAG,"Selecet Module %d",i);
   // }
   AD5940_ShutDown();
+  for (int i = 0; i < 10; i++)
+  {
+    modbusRequestModule.addToQueue(millis(), 2, READ_INPUT_REGISTER, 0, 10);
+    vTaskDelay(55);
+  }
+  for (int i = 0; i < 10; i++)
+  {
+    modbusRequestModule.pop();
+    ESP_LOGI("MUTEX", "%d %d  %d %d %d ", modbusRequestModule.reqEntry.address,
+             modbusRequestModule.reqEntry.func,
+             modbusRequestModule.reqEntry.lendata,
+             modbusRequestModule.reqEntry.modbusID,
+             modbusRequestModule.reqEntry.token);
+  }
 };
 static unsigned long previousSecondmills = 0;
 static int everySecondInterval = 1000;

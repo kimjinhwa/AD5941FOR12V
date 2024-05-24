@@ -32,11 +32,11 @@ static char TAG[]="CELL MODULE";
 static uint16_t requestDataLength;
 
 modbus_cellRelay_t modbusCellrelay= {
-    0,0
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
 modbus_cellData_t modbusCellData= {
-    0,0,0
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 void modbusCellModuleSetup()
 {
