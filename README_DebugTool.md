@@ -39,6 +39,69 @@
   - FC06을 사용하여 보정값을 메모리에 저장한다.
 
 ## BLUETOOTH COMMAND
+``` 
+SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStream ) : commandQueueSize(commandQueueSize), errorQueueSize(errorQueueSize) {
+  this->inputStream = &Serial;
+  Command cmd_config = addCommand("ls",ls_configCallback);
+  cmd_config.setDescription(" File list \r\n ");
+  cmd_config =  addSingleArgCmd("cat", cat_configCallback);
+  cmd_config = addSingleArgCmd("rm", rm_configCallback);
+  cmd_config = addSingleArgCmd("format", format_configCallback);
+  cmd_config = addCommand("time", time_configCallback);
+  cmd_config.addArgument("y/ear","");
+  cmd_config.addArgument("mo/nth","");
+  cmd_config.addArgument("d/ay","");
+  cmd_config.addArgument("h/our","");
+  cmd_config.addArgument("m/inute","");
+  cmd_config.addArgument("s/econd","");
+  cmd_config.setDescription(" Get Time or set \r\n time -y 2024 or time -M 11,..., Month is M , minute is m ");
+  cmd_config = addCommand("df", df_configCallback);
+  cmd_config = addSingleArgCmd("reboot", reboot_configCallback);
+
+  cmd_config = addCommand("r/elay", relay_configCallback);
+  cmd_config.addArgument("s/el","");
+  cmd_config.addArgument("t/est","");
+  cmd_config.addFlagArg("off");
+  cmd_config.setDescription("relay on off controll \r\n relay -s/el [1] [-off]");
+  cmd_config = addSingleArgCmd("mode", mode_configCallback);
+  cmd_config = addSingleArgCmd("id", id_configCallback);
+  cmd_config = addSingleArgCmd("cal/ibration", calibration_configCallback);
+  cmd_config = addSingleArgCmd("bat/number", batnumber_configCallback);
+  cmd_config = addCommand("imp/edance", impedance_configCallback);
+  cmd_config = addSingleArgCmd("temp/erature", temperature_configCallback);
+  cmd_config = addSingleArgCmd("mod/uledid", moduleid_configCallback);
+
+  cmd_config = addCommand("writecellLog",writeCellLog_configCallback);
+  cmd_config = addCommand("readcellLog",readCellLog_configCallback);
+  cmd_config = addCommand("wrm",measuredvalue_configCallback);
+  cmd_config.addPositionalArgument("num");
+  cmd_config.addPositionalArgument("imp");
+  cmd_config.addPositionalArgument("vol");
+  cmd_config.setDescription("\n \
+    Input measured impdance and voltage compansation value\n  \
+    Usage : wrm cellno imp vol \n\
+  ");
+
+  cmd_config = addCommand("offset",offset_configCallback);
+  cmd_config.addFlagArgument("i"); //impedance
+  cmd_config.addFlagArgument("ia"); //impedance
+  cmd_config.addFlagArgument("v"); //voltage
+  cmd_config.addFlagArgument("va"); //voltage
+  cmd_config.addFlagArgument("vv"); //voltage
+  cmd_config.addPositionalArgument("num");
+  cmd_config.addPositionalArgument("value");
+  cmd_config.setDescription("\nFor impdance and voltage compansation value\n  \
+    Usage: offset [-i (cellnumber) (value)] [-v (cellnumber) (value)]\n    \
+                [-ia][-va]  \
+           flag: -ia  0 [value] [ set all offset value set to samevalue to given impedance value]\n   \
+           flag: -iv  [ for set to samevalue to First voltage value]\n     \
+           For set IMP input, value is 100 times.\n, \
+           For set Vol input, value is for use offset. So not multiples.\n, \
+             ");
+  simpleCli.setOnError(errorCallback);
+  cmd_config= addCommand("help",help_Callback);
+}
+```
 ### offset #
  #### offset    [-ia cellno value ] [-va  cellno value ]    [-i  cellno value ] 
  * [-ia cellno value ] 임피던스에 대한 옵셋을 맞춘다. 

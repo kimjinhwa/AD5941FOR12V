@@ -3,7 +3,7 @@
 //               MIT license - see license.md for details
 // =================================================================================================
 #include "ModbusServerRTU.h"
-#include "mainGrobal.h"
+//#include "mainGrobal.h"
 
 #if HAS_FREERTOS
 
