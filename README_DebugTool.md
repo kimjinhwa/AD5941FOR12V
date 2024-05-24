@@ -1,4 +1,43 @@
-# TIA Resistance Measurement System.
+# Modbus Debug Explaination
+  * Send data from PC via RS232 modbus and receive at controller
+  * Then Controller send data to ad5941 via SPI and receive data.
+  * This received data was sent to PC
+## Controll SUB SENSOR MODULE 
+  * To controll sub module via PC modbus
+### Address Definition
+  * FC01 30001 : -> Relay 1 Read 
+  * FC01 30002 : -> Relay 1 Read 
+
+  * FC03 30001 : -> Module Address 0 Not use
+  * FC03 30002 : -> Module Address 1 Change Modbus ID
+  * FC03 30003 : -> Module Address 2 Change Comm Speed 
+
+  * FC04 30001 : -> Module Address 0 Temperature 
+  * FC04 30002 : -> Module Address 1 Modbus ID
+  * FC04 30003 : -> Module Address 2 Comm Speed 
+
+  * FC05 30001 : -> Relay 1 Write
+  * FC05 30002 : -> Relay 1 Write
+## Controll AD5941
+### Using modbus
+- For controll AD5941 via modbus 
+- FC03 : Read Register at ad4941
+  **Most High Address** REG_AFE_ADCFILTERCFG: 0x00004010   
+  **Most Low Address**  REG_AFECRC_CTL: 0x00001000
+- address start from 30001 or 40001
+
+### Modbus Address function 3 Holding Register
+  - read 0...1 (register 40001 to 40002)
+    * send    01 03 00 00 00 02 C4 0B
+    * receive 01 03 04 00 06 00 05 DA 31
+### Modbus Address function 4 Input Register
+  - read 0...1 (register 30001 to 30002)
+    * send    01 04 00 00 00 02 71 CB
+    * receive 01 04 04 00 06 00 05 DB 86 
+
+### MODBUS FC06
+  - FC06을 사용하여 보정값을 메모리에 저장한다.
+
 ## BLUETOOTH COMMAND
 ### offset #
  #### offset    [-ia cellno value ] [-va  cellno value ]    [-i  cellno value ] 
@@ -93,59 +132,3 @@
     3. Address는 나중에 사용되는 External RS485와 같은 번지를 사용한다.
     4. 셀과의 통신이 항상 우선시 되므로 LCD에서는  매초 마다 폴링을 하여 요청이 있는지를 확인한다. 
     5. Device는 셀과의 통신이 완료 되면 LCD수신모드로 들어간다.(LCD에게는 Agent 이기 때문이다.)
-
-### MODBUS FC04
-1. FC04펑션의 추가 및 수정.    
-  - 한번에 모든데이타를 전송한다. 최대 256개의 데이타   
-  - 0x00~0xFF 
-    - 0~39 : Cell Voltage
-    - 40~79 : temperature + 40
-    - 80~119 : impedance 
-    - 120~255 : Etc 
-
-1. FC03펑션의 추가 및 수정.    
-  - 전압과 내부저항의 보정값루틴을 사용한다.
-1. FC06을 사용하여 보정값을 메모리에 저장한다.
-
-
-### Modbus Address function 3 Holding Register
-  - read 0...1 (register 40001 to 40002)
-    * send    01 03 00 00 00 02 C4 0B
-    * receive 01 03 04 00 06 00 05 DA 31
-### Modbus Address function 4 Input Register
-  - read 0...1 (register 30001 to 30002)
-    * send    01 04 00 00 00 02 71 CB
-    * receive 01 04 04 00 06 00 05 DB 86 
-
-
-### Modbus Address function 3,4
-#### Fcode 04
-    - 0~39: CellVolage * 100 
-    - 40~79: temperature + 40
-    - 80~119: impedance * 100 
-#### Fcode 04
-    - 0~39:  전압보정값
-      전압 보정은 옵셋값으로 주며 0 번지에만 준다. 
-      1옵셋당 약 9mv에 해당한다.
-    - 40~79: not use 
-    - 80~119: 임피던스보정값 
-
-    - 120: year
-    - 121: Month 
-    - 122: day 
-    - 123: Hour
-    - 124: Minute 
-    - 125: Second
-    - 126: ModbusID
-    - 127: installed_cells 
-    - 128: AlarmTemperature 
-    - 129: alarmHighCellVoltage 
-    - 130: alarmLowCellVoltage 
-    - 131: AlarmAmpere 
-    #### function 6
-    - 40 : year
-    - 41 : Month 
-    - 42 : day 
-    - 43 : Hour
-    - 44 : Minute 
-    - 45 : Second
