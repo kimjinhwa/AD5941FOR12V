@@ -29,6 +29,7 @@ uint32_t messageToken;
 static uint32_t request_response ;
 static bool data_ready = false;
 static char TAG[]="CELL MODULE";
+static uint16_t requestDataLength;
 
 modbus_cellRelay_t modbusCellrelay= {
     0,0
@@ -51,17 +52,15 @@ void handleData(ModbusMessage response, uint32_t token)
     // The device has values all as IEEE754 float32 in two consecutive registers
     // Read the requested in a loop
     uint16_t *values;
-    uint16_t dataLength;
     uint8_t func = response.getFunctionCode();
 
     ESP_LOGI(TAG, "Data Received");
     if (func == READ_INPUT_REGISTER || func == READ_HOLD_REGISTER)
     {
-        offs = 1;
-        offs = response.get(offs, dataLength);
         offs = 3;
+        ESP_LOGI(TAG, "func %d, dataLength %d ",func,requestDataLength);
         values = (uint16_t *)&modbusCellData;
-        for (uint8_t i = 0; i < dataLength/2; i++)
+        for (uint8_t i = 0; i < requestDataLength; i++)
         {
             offs = response.get(offs, values[i]);
         }
@@ -626,11 +625,40 @@ uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode)
   return value;
 
 };
+uint16_t sendGetMoubusTemperature_old(uint8_t modbusId, uint8_t fCode)
+{
+  uint16_t checkSum ;
+  uint16_t value ;
+  bool data_ready = false;
+  //ESP_LOGI("main","request");
+  LcdCell485.suspendTask();
+  vTaskDelay(100);
+  uint8_t buf[64];
+  data_ready = false;
+  makeTemperatureData(buf,modbusId,fCode,0,2);
+  extendSerial.selectCellModule(false);
+  ESP_LOGI("modbus","getTemp");
+  data_ready  = readResponseData(modbusId,fCode, buf,9,500); 
+  if (data_ready)
+  {
+    value = buf[3]*256  + buf[4] ;
+    ESP_LOGI("modbus","%d:%02x %02x Temperature %d",modbusId-1,buf[3],buf[4], value);
+    cellvalue[modbusId - 1].temperature = value ;
+  }
+  else
+  {
+    value =0;
+    ESP_LOGI("modbus","Receive Failed");
+  }
+  extendSerial.selectLcd();
+  LcdCell485.resumeTask();
+  return value;
+};
+
 uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
 {
     uint16_t checkSum;
     uint16_t retValue=0;
-    uint16_t requestDataLen=3;
 
     data_ready = false;
     LcdCell485.suspendTask(); //
@@ -640,7 +668,8 @@ uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
     vTaskDelay(1); // Select cell module and set can sendData;
                    // Dont care true or false, because MB will use probe pin
     messageToken = millis();
-    Error err = MB.addRequest(messageToken, modbusId, fCode, 0, requestDataLen * 2);
+    requestDataLength=3;
+    Error err = MB.addRequest(messageToken, modbusId, fCode, 0,  requestDataLength);
     ESP_LOGI("modbus", "getTemp");
     if (err != SUCCESS)
     {
@@ -662,57 +691,7 @@ uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
     {
         //token이 같은지 검사하자
         ESP_LOGI("modbus", " %d %d Modbusid %d Temperature %d baudrate %d",messageToken , request_response ,
-                            modbusCellData.modbusid,  modbusCellData.temperature, modbusCellData.temperature);
-        cellvalue[modbusCellData.modbusid- 1].temperature =modbusCellData.temperature ;
-        retValue=1;
-        //data_ready=false;
-    }
-    else
-    {
-        ESP_LOGI("modbus", "Receive Failed");
-        retValue=0;
-    }
-    extendSerial.selectLcd();
-    LcdCell485.resumeTask();
-    return retValue ;
-};
-uint16_t sendGetMoubusTemperature_new(uint8_t modbusId, uint8_t fCode)
-{
-    uint16_t checkSum;
-    uint16_t retValue=0;
-    uint16_t requestDataLen=3;
-
-    data_ready = false;
-    LcdCell485.suspendTask(); //
-    vTaskDelay(100);
-    data_ready = false;
-    extendSerial.selectCellModule(true);
-    vTaskDelay(1); // Select cell module and set can sendData;
-                   // Dont care true or false, because MB will use probe pin
-    messageToken = millis();
-    Error err = MB.addRequest(messageToken, modbusId, fCode, 0, requestDataLen * 2);
-    ESP_LOGI("modbus", "getTemp");
-    if (err != SUCCESS)
-    {
-        ModbusError e(err);
-        ESP_LOGE("MODBUS", "Error creating request: %02X - %s\n", (int)e, (const char *)e);
-        extendSerial.selectLcd();
-        LcdCell485.resumeTask();
-        return retValue ;
-    }
-    int16_t timeout = 100;
-    for (int i = 0; i < timeout; i++)
-    {
-        vTaskDelay(1);
-        if (data_ready)
-            break;
-    }
-    //이제 데이타가 준비 되었으며 버퍼에 데이타가 있다.
-    if (data_ready)
-    {
-        //token이 같은지 검사하자
-        ESP_LOGI("modbus", " %d %d Modbusid %d Temperature %d baudrate %d",messageToken , request_response ,
-                            modbusCellData.modbusid,  modbusCellData.temperature, modbusCellData.temperature);
+                            modbusCellData.modbusid,  modbusCellData.temperature, modbusCellData.baudrate);
         cellvalue[modbusCellData.modbusid- 1].temperature =modbusCellData.temperature ;
         retValue=1;
         //data_ready=false;

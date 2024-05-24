@@ -156,6 +156,16 @@ ModbusMessage FC04(ModbusMessage request) {
       response.add(value);
     }
   }
+  else if(address >= 0x30001 && address <= 0x30010 ){  // Cell제어 
+      value=28.5;
+      response.add(value);
+      value=1;
+      response.add(value);
+      value=4800;
+      response.add(value);
+  }
+  else if(address >= 0x30010  ){  //  5941제어이다.
+  }
   return response;
 };
 ModbusMessage FC06(ModbusMessage request)

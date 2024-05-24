@@ -362,6 +362,7 @@ void setup()
 
 
   setupModbusAgentForLcd();
+  modbusCellModuleSetup();
   String bleName ="TIMP_"; 
   String WifiAddress = WiFi.macAddress();
   bleName += WifiAddress ;
@@ -389,7 +390,7 @@ void setup()
   // esp_task_wdt_init(5, true); // WDT를 활성화하고, panic 핸들러를 사용하여 리셋합니다.
   // esp_task_wdt_add(NULL); // 현재 태스크를 WDT에 추가합니다.
   // xTaskCreate(NetworkTask,"NetworkTask",5000,NULL,1,h_pxNetworkTask); //PCB 패턴문제로 사용하지 않는다.
-  xTaskCreate(blueToothTask, "blueToothTask", 5000, NULL, 1, h_pxblueToothTask);
+  xTaskCreate(blueToothTask, "blueToothTask", 4000, NULL, 1, h_pxblueToothTask);
   ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
   // for (int i = 1; i < systemDefaultValue.installed_cells; i++)
   // {
