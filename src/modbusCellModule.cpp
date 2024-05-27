@@ -4,6 +4,8 @@
 #include "modbusRtu.h"
 #include "AD5940.h"
 
+#define CELLOFF 0x0000
+#define CELLON 0xFF00
 extern ModbusServerRTU LcdCell485;
 extern ModbusServerRTU external485;
 extern uint8_t selecectedCellNumber ;
@@ -53,7 +55,8 @@ void handleData(ModbusMessage response, uint32_t token)
     uint16_t *values;
     uint8_t func = response.getFunctionCode();
 
-    ESP_LOGI(TAG, "Data Received");
+    ESP_LOGI("modbus", "Data Received: token %d Modbusid %d Func %d Error:%d",
+      token, response.getServerID(),response.getFunctionCode(),response.getError());
     if (func == READ_INPUT_REGISTER || func == READ_HOLD_REGISTER)
     {
         offs = 3;
@@ -66,7 +69,23 @@ void handleData(ModbusMessage response, uint32_t token)
         request_response = token;
         data_ready = true;
     }
-    
+    else if (func == WRITE_COIL){
+      //01 05 00 00 FF 00 8C 3A 
+        int16_t address;
+        int16_t data;
+        values = (uint16_t *)&modbusCellrelay;
+        values[0]=response.getServerID();
+        values[1]=response.getFunctionCode();
+        offs = 2;
+        offs = response.get(offs, address = values[2]); //address
+        offs = response.get(offs, data ); //data
+        if(address==0)values[3]=data;
+        else values[4]=data;
+        ESP_LOGI(TAG, "WRITE_COIL id: %d func %d,add:%d d1:0x%4x d2:0x%04x",
+          response.getServerID(), response.getFunctionCode(),values[2],values[3], values[4]);
+        request_response = token;
+        data_ready = true;
+    }
 }
 bool getDataReady(){
   return data_ready ;
@@ -508,17 +527,50 @@ bool sendSelectBattery(uint8_t modbusId)
   LcdCell485.resumeTask();
   return readCount ;
 }
-bool sendSelectBatteryWithRetry(uint8_t modbusId)
+bool CellOnOff(uint8_t modbusId, uint16_t relay, uint16_t onoff)
 {
-    //retry count 3;
-  int retryCount=0;
-  while(!sendSelectBattery(modbusId)){
-    retryCount++;
-    if(retryCount > 4){
-       ESP_LOGE("BAT","Select cell %dBattery Failed",modbusId);
-       return false;
+  int i;
+  uint16_t retValue;
+  uint16_t startId, endId;
+  if (modbusId == 255)
+  {
+    startId = 1;
+    endId = systemDefaultValue.installed_cells;
+  }
+  else
+  {
+    startId = modbusId;
+    endId = modbusId;
+  }
+  for (i = startId; i <= endId; i++)
+  {
+    retValue = sendGetMoubusModuleData(millis(), i, WRITE_COIL, relay, onoff);
+    if (retValue != 0 )
+    {
+      ESP_LOGE("MODULE", "Succeed %d", retValue);
+    }
+    else
+    {
+      ESP_LOGE("MODULE", "Fail Cell ID %d, Error %d d1:%04x d2:%04x", 
+        i, retValue, modbusCellrelay.relay1,modbusCellrelay.relay2);
+      return false;
     }
   }
+  return true;
+}
+bool SelectBatteryMinusPlus(uint8_t modbusId)
+{
+  // First Step : All relay 0 -> off
+  int i;
+  uint16_t retValue;
+  // 모든 모듈의 1번 릴레이를 OFF한다.
+  if(!CellOnOff(255,0,CELLOFF)) return false;
+  // 모든 모듈의 2번 릴레이를 OFF한다.
+  if(!CellOnOff(255,1,CELLOFF))return false;
+  // 주어진 modbusid의 1번 릴레이를 ON한다.
+  if(!CellOnOff(modbusId,0,CELLON))return false;
+  // 주어진 modbusid의 다음번  2번 릴레이를 ON한다.
+  if(!CellOnOff(modbusId+1,1,CELLON))return false;
   return true;
 }
 int makeWriteSingleRegister(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t data)
@@ -605,30 +657,33 @@ uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode)
 
 uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode)
 {//Focde is 06
-  uint16_t checkSum ;
-  uint16_t value ;
-  data_ready = false;
-  LcdCell485.suspendTask();
-  vTaskDelay(100);
-  uint8_t buf[64];
-  data_ready = false;
-  makeWriteSingleRegister(buf,255,fCode, 1, modbusId);
-  extendSerial.selectCellModule(false);
-  ESP_LOGI("modbus","change module id");
-  data_ready  = readResponseDataForBrodcast(modbusId,fCode, buf,8,500); 
-  if (data_ready)
-  {
-    value = buf[4]*256  + buf[5] ;
-    ESP_LOGI("modbus","modbus id was changed : %d", value);
-  }
-  else
-  {
-    value =0;
-    ESP_LOGI("modbus","Receive Failed");
-  }
-  extendSerial.selectLcd();
-  LcdCell485.resumeTask();
-  return value;
+
+  uint16_t retValue;
+  retValue = sendGetMoubusModuleData(millis(), i, WRITE_COIL, relay, onoff);
+  // uint16_t checkSum ;
+  // uint16_t value ;
+  // data_ready = false;
+  // LcdCell485.suspendTask();
+  // vTaskDelay(100);
+  // uint8_t buf[64];
+  // data_ready = false;
+  // makeWriteSingleRegister(buf,255,fCode, 1, modbusId);
+  // extendSerial.selectCellModule(false);
+  // ESP_LOGI("modbus","change module id");
+  // data_ready  = readResponseDataForBrodcast(modbusId,fCode, buf,8,500); 
+  // if (data_ready)
+  // {
+  //   value = buf[4]*256  + buf[5] ;
+  //   ESP_LOGI("modbus","modbus id was changed : %d", value);
+  // }
+  // else
+  // {
+  //   value =0;
+  //   ESP_LOGI("modbus","Receive Failed");
+  // }
+  // extendSerial.selectLcd();
+  // LcdCell485.resumeTask();
+  // return value;
 
 };
 uint32_t sendGetMoubusModuleData_old(uint8_t modbusId, uint8_t fCode)
@@ -694,35 +749,16 @@ uint32_t sendGetMoubusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
     uint16_t retValue=0;
 
     data_ready = false;
+    AD5940_ShutDown();  // 전류의 흐름을 없애기 위하여 혹시 파형을 출력 중이면 정지 시킨다.
     LcdCell485.suspendTask(); //
-    vTaskDelay(100);
-    data_ready = false;
     extendSerial.selectCellModule(true);
-    vTaskDelay(1); // Select cell module and set can sendData;
-                   // Dont care true or false, because modBusRtuCellModule will use probe pin
+    vTaskDelay(10);
+    // Select cell module and set can sendData;
+    // Dont care true or false, because modBusRtuCellModule will use probe pin
     requestDataLength=len;
-    Error err;
-    //err = modBusRtuCellModule.addRequest(token, modbusId, fCode, startAddress,  requestDataLength);
     ModbusMessage rc  = modBusRtuCellModule.syncRequest(token, modbusId, fCode, startAddress,  requestDataLength);
     //ModbusMessage rc = m.setMessage(std::forward<Args>(args) ...);
-    ESP_LOGI("modbus", "getTemp");
-    if (err != SUCCESS)
-    {
-        ModbusError e(err);
-        ESP_LOGE("MODBUS", "Error creating request: %02X - %s\n", (int)e, (const char *)e);
-        extendSerial.selectLcd();
-        LcdCell485.resumeTask();
-        return retValue ;
-    }
     handleData(rc,token);
-    // int16_t timeout = 100;
-    // for (int i = 0; i < timeout; i++)
-    // {
-    //     vTaskDelay(1);
-    //     if (data_ready)
-    //         break;
-    // }
-    //이제 데이타가 준비 되었으며 버퍼에 데이타가 있다.
     if (data_ready)
     {
         //token이 같은지 검사하자
@@ -730,13 +766,13 @@ uint32_t sendGetMoubusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
                             modbusCellData.modbusid,  modbusCellData.temperature, modbusCellData.baudrate);
         cellvalue[modbusCellData.modbusid- 1].temperature =modbusCellData.temperature ;
         retValue=request_response ;
-        //data_ready=false;
+        data_ready=false;
     }
     else
     {
-        ESP_LOGI("modbus", "Receive Failed");
         retValue=0;
     }
+    if(modbusId == 255 )retValue=1;
     extendSerial.selectLcd();
     LcdCell485.resumeTask();
     return retValue ;

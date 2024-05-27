@@ -11,27 +11,27 @@
 using std::queue;
 
 void modbusCellModuleSetup();
-bool sendSelectBatteryWithRetry(uint8_t modbusId);
+bool SelectBatteryMinusPlus(uint8_t modbusId);
 uint32_t sendGetMoubusModuleData_old(uint8_t modbusId, uint8_t fCode);
 uint32_t sendGetMoubusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len);
 typedef struct
 {
-    uint8_t relay1;
-    uint8_t relay2;
-    uint8_t reserved_3;
-    uint8_t reserved_4;
-    uint8_t reserved_5;
-    uint8_t reserved_6;
-    uint8_t reserved_7;
-    uint8_t reserved_8;
-    uint8_t reserved_9;
-    uint8_t reserved_10;
-    uint8_t reserved_11;
-    uint8_t reserved_12;
-    uint8_t reserved_13;
-    uint8_t reserved_14;
-    uint8_t reserved_15;
-    uint8_t reserved_16;
+    uint16_t modbusId;
+    uint16_t funcCode;
+    uint16_t address;
+    uint16_t relay1;
+    uint16_t relay2;
+    uint16_t reserved_6;
+    uint16_t reserved_7;
+    uint16_t reserved_8;
+    uint16_t reserved_9;
+    uint16_t reserved_10;
+    uint16_t reserved_11;
+    uint16_t reserved_12;
+    uint16_t reserved_13;
+    uint16_t reserved_14;
+    uint16_t reserved_15;
+    uint16_t reserved_16;
 }modbus_cellRelay_t ;
 
 typedef struct
@@ -39,23 +39,33 @@ typedef struct
     uint16_t temperature;
     uint16_t modbusid;
     uint16_t baudrate;
-    uint8_t reserved_4;
-    uint8_t reserved_5;
-    uint8_t reserved_6;
-    uint8_t reserved_7;
-    uint8_t reserved_8;
-    uint8_t reserved_9;
-    uint8_t reserved_10;
-    uint8_t reserved_11;
-    uint8_t reserved_12;
-    uint8_t reserved_13;
-    uint8_t reserved_14;
-    uint8_t reserved_15;
-    uint8_t reserved_16;
+    uint16_t reserved_4;
+    uint16_t reserved_5;
+    uint16_t reserved_6;
+    uint16_t reserved_7;
+    uint16_t reserved_8;
+    uint16_t reserved_9;
+    uint16_t reserved_10;
+    uint16_t reserved_11;
+    uint16_t reserved_12;
+    uint16_t reserved_13;
+    uint16_t reserved_14;
+    uint16_t reserved_15;
+    uint16_t reserved_16;
 }modbus_cellData_t ;
+
+typedef struct
+{
+    uint16_t modbusid;
+    uint16_t funCode;
+    uint16_t address;
+    uint16_t data;
+    uint16_t checksum;
+}modbus_data_t ;
 
 extern modbus_cellRelay_t modbusCellrelay;
 extern modbus_cellData_t modbusCellData;
+extern modbus_data_t writeHoldRegister;
 
 
 class ExtendSerial//: public HardwareSerial

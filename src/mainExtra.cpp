@@ -61,7 +61,7 @@ extern SimpleCLI simpleCli;
 
 BluetoothSerial SerialBT;
 
-ModbusRequestModule modbusRequestModule(30);
+ModbusRequestModule modbusRequestModule(10);
 
 void AD5940_ShutDown();
 void pinsetup()
@@ -450,6 +450,7 @@ void moubusMouduleProc(){
     delay(50);
   }
 };
+uint32_t loopCount=0;
 void loop(void)
 {
   bool bRet;
@@ -457,7 +458,7 @@ void loop(void)
   parameters = simpleCli.outputStream;
   now = millis(); 
   esp_task_wdt_reset();
-  moubusMouduleProc();
+  //moubusMouduleProc();
   if ((now - previousSecondmills > everySecondInterval))
   {
     //digitalWrite(LED_OP, !digitalRead(LED_OP));
@@ -474,10 +475,17 @@ void loop(void)
       for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
       {
         parameters = simpleCli.outputStream;
-        modbusRequestModule.addToQueue(millis(), i, READ_INPUT_REGISTER, 0, 3);
+        //modbusRequestModule.addToQueue(millis(), i, READ_INPUT_REGISTER, 0, 3);
+        //TODO: 임시로 막는 다>
+        //sendGetMoubusModuleData(millis(), i, READ_INPUT_REGISTER, 0, 3);
+          // modbusRequestModule.reqEntry.token,
+          // modbusRequestModule.reqEntry.modbusID,
+          // modbusRequestModule.reqEntry.func,
+          // modbusRequestModule.reqEntry.address,
+          // modbusRequestModule.reqEntry.lendata);
         esp_task_wdt_reset();
         //TODO: 아래의 펑션은 MODBUS 루틴을 변경하기 위해 임시로 막는다
-        sendSelectBatteryWithRetry(i);
+        //SelectBatteryMinusPlus(i);
         // time_t startRead = millis();
         // float batVoltage = 0.0;
         // batVoltage = batDevice.readBatAdcValue(i, 600);
@@ -497,6 +505,7 @@ void loop(void)
       }
     }
  //   globalModbusId = globalModbusId > 4 ? 1 : globalModbusId ;
+    loopCount++;
     previous_5Secondmills = now;
   }
   if ((now - previous_30Secondmills > Interval_30Second))
