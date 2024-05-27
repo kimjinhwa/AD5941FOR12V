@@ -132,7 +132,7 @@ void batnumber_configCallback(cmd *cmdPtr)
 }
 
 void AD5940_Main(void *parameters);
-uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode);
+uint32_t sendGetMoubusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len);
 
     // simpleCli.outputStream->printf("\ncount is %d",cmd.countArgs()); 
     // simpleCli.outputStream->printf("\nfirst arg is %s",cmd.getArgument(0).getName()); 
@@ -434,13 +434,16 @@ void temperature_configCallback(cmd *cmdPtr){
   String argVal = arg.getValue();
   simpleCli.outputStream->printf("\r\n%s",argVal.c_str());
   if(argVal.length() > 0 ){
-    batTemperature = sendGetMoubusTemperature(argVal.toInt(), 04);
+
+    //sendGetMoubusModuleData(uint8_t modbusId, uint8_t fCode);
+    batTemperature = sendGetMoubusModuleData(millis(), argVal.toInt(), READ_INPUT_REGISTER,0,3);
     simpleCli.outputStream->printf("\r\n[%d]Bat Temperature : %3.2f",argVal.toInt(),batTemperature/100.0f);
     return;
   }
   for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
   {
-    batTemperature = sendGetMoubusTemperature(i, 04);
+    batTemperature = sendGetMoubusModuleData(millis(), i, READ_INPUT_REGISTER,0,3);
+    //batTemperature = sendGetMoubusModuleData(i, 04);
     simpleCli.outputStream->printf("\r\n[%d]Bat Temperature : %3.2f",i,batTemperature/100.0f);
   }
 }

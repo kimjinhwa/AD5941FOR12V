@@ -4,7 +4,11 @@
 #include "mainGrobal.h"
 #include <RtcDS1302.h>
 #include "modbusCellModule.h"
+#include <ModbusClientRTU.h>
+
+extern ModbusClientRTU modBusRtuCellModule;
 void setRtcNewTime(RtcDateTime rtc);
+ModbusMessage  syncRequestCellModule(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len);
 
 void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   struct timeval tmv;
@@ -86,6 +90,7 @@ ModbusMessage FC03(ModbusMessage request) {
   }
   return response;
 };
+uint32_t getRequest_response();
 ModbusMessage FC04(ModbusMessage request) {
   uint16_t address;           // requested register address
   uint16_t writeAddress;           // requested register address
@@ -93,12 +98,13 @@ ModbusMessage FC04(ModbusMessage request) {
   ModbusMessage response;     // response message to be sent back
   uint16_t value;
   uint16_t sendValue[256];
+  int i;
   memset(sendValue,0x00,256);
   setSendbuffer(04,sendValue);
   // get request values
   request.get(2, address);
   request.get(4, words);
-  writeAddress = address & 0xFF;
+  writeAddress = address & 0x00FF;
 
   if(  words ==0  ||  ((address & 0x00FF) + words) > 255){
     response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
@@ -109,7 +115,7 @@ ModbusMessage FC04(ModbusMessage request) {
   if ((address + words) < 0x100)
   {
     //Serial.printf("\nFunction code 04 %d[%d] %d ",address,writeAddress,words);
-      for (int i = address; i < words + address; i++)
+      for (i = address; i < words + address; i++)
       {
         value = sendValue[i];
         response.add(value);
@@ -117,23 +123,23 @@ ModbusMessage FC04(ModbusMessage request) {
       }
   }
   else if((address >= 0x100) && address+words < (0x100 + MAX_INSTALLED_CELLS)){
-    for (int i = writeAddress ; i< words+writeAddress ; i++)
+    for (i = writeAddress ; i< words+writeAddress ; i++)
     {
         value = sendValue[i+40];
         response.add(value);
     }
   }
   else if((address >= 0x200) && address+words < (0x200 + MAX_INSTALLED_CELLS)){
-    writeAddress = address & 0xFF;
-    for (int i = writeAddress; i< words+writeAddress ; i++)
+    writeAddress = address & 0x00FF;
+    for (i = writeAddress; i< words+writeAddress ; i++)
     {
         value = sendValue[i+80];
         response.add(value);
     }
   }
   else if((address >= 0x300) && address+words < (0x300 + MAX_INSTALLED_CELLS)){
-    writeAddress = address & 0xFF;
-    for (int i = writeAddress ;i <  words+writeAddress; i++)
+    writeAddress = address & 0x00FF;
+    for (i = writeAddress ;i <  words+writeAddress; i++)
     {
       value = sendValue[i];
       response.add(value);
@@ -142,15 +148,15 @@ ModbusMessage FC04(ModbusMessage request) {
   else if((address >= 0x400) && address+words < (0x400 + 255)){
     writeAddress = address & 0x00FF;
     //Serial.printf("\nFunction code 03 %d[%d] %d ",address,writeAddress,words);
-    for (int i = writeAddress; i < writeAddress+words; i++)
+    for (i = writeAddress; i < writeAddress+words; i++)
     {
       value = sendValue[i+120];
       response.add(value);
     }
   }
   else if((address >= 0x700) && address <= 0x7FF){
-    writeAddress = address & 0xFF;
-    for (int i = writeAddress; i < words; i++)
+    writeAddress = address & 0x00FF;
+    for (i = writeAddress; i < words; i++)
     {
       uint8_t _modBusID = EEPROM.readByte(1);
       value = _modBusID;
@@ -161,16 +167,36 @@ ModbusMessage FC04(ModbusMessage request) {
       // response.add(modbusCellData.temperature);
       // response.add(modbusCellData.modbusid);
       // response.add(modbusCellData.baudrate);
-    // writeAddress = address & 0xFF;
+    uint8_t moduleAddress = address -30000;
     uint16_t *pValues;
     pValues= (uint16_t *)&modbusCellData;
     words = words > 16 ? 16 :words;
-    for (int i = 0; i < words; i++)
+    uint32_t token=millis();
+    uint32_t restoken=millis();
+    //TODO: 
+    //modBusRtuCellModule
+    ModbusMessage rc =  syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), 0,  3);
+    // ModbusMessage rc  = modBusRtuCellModule.syncRequest(token, 
+    //   1, request.getFunctionCode(), 0,  3);
+    ESP_LOGI("REQ","server id (%d) func %d ",request.getServerID(),request.getFunctionCode());
+    ESP_LOGI("REQ","server id (%d) func %d error %d",rc.getServerID(),rc.getFunctionCode(),rc.getError());
+
+    // ESP_LOGI("REQ","Request id =%d Token=%d",moduleAddress,token);
+    // modbusRequestModule.addToQueue(token, moduleAddress , READ_INPUT_REGISTER, 0, 3);
+    // restoken=getRequest_response();
+    // for(i=0;token !=  restoken;i++){
+    //   vTaskDelay(80);
+    //   restoken=getRequest_response();
+    //   if(i>100)break;
+    // };
+    // ESP_LOGI("REQ","Waiting(%d) tocken %d receive %d",i,token,restoken);
+
+    for (i = 0; i < words; i++)
     {
       response.add(pValues[i]);
     }
   }
-  else if(address >= 0x30010  ){  //  5941제어이다.
+  else if(address >= 0x50010  ){  //  5941제어이다.
   }
   return response;
 };

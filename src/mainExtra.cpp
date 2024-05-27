@@ -61,7 +61,7 @@ extern SimpleCLI simpleCli;
 
 BluetoothSerial SerialBT;
 
-ModbusRequestModule modbusRequestModule(10);
+ModbusRequestModule modbusRequestModule(30);
 
 void AD5940_ShutDown();
 void pinsetup()
@@ -389,32 +389,24 @@ void setup()
   ESP_LOGI(TAG,"\nEEPROM installed Bat number %d", systemDefaultValue.installed_cells);
   esp_task_wdt_init(WDT_TIMEOUT, true);
   esp_task_wdt_add(NULL);
-  // esp_task_wdt_reset();
-  // esp_task_wdt_init(5, true); // WDT를 활성화하고, panic 핸들러를 사용하여 리셋합니다.
-  // esp_task_wdt_add(NULL); // 현재 태스크를 WDT에 추가합니다.
   // xTaskCreate(NetworkTask,"NetworkTask",5000,NULL,1,h_pxNetworkTask); //PCB 패턴문제로 사용하지 않는다.
   xTaskCreate(blueToothTask, "blueToothTask", 4000, NULL, 1, h_pxblueToothTask);
   ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
-  // for (int i = 1; i < systemDefaultValue.installed_cells; i++)
-  // {
-  //   sendGetMoubusTemperature(i, 04);
-  //   ESP_LOGI(TAG,"Selecet Module %d",i);
-  // }
   AD5940_ShutDown();
-  for (int i = 0; i < 10; i++)
-  {
-    modbusRequestModule.addToQueue(millis(), 2, READ_INPUT_REGISTER, 0, 10);
-    vTaskDelay(55);
-  }
-  for (int i = 0; i < 10; i++)
-  {
-    modbusRequestModule.pop();
-    ESP_LOGI("MUTEX", "%d %d  %d %d %d ", modbusRequestModule.reqEntry.address,
-             modbusRequestModule.reqEntry.func,
-             modbusRequestModule.reqEntry.lendata,
-             modbusRequestModule.reqEntry.modbusID,
-             modbusRequestModule.reqEntry.token);
-  }
+  // for (int i = 0; i < 10; i++)
+  // {
+  //   modbusRequestModule.addToQueue(millis(), 2, READ_INPUT_REGISTER, 0, 10);
+  //   vTaskDelay(55);
+  // }
+  // for (int i = 0; i < 10; i++)
+  // {
+  //   modbusRequestModule.pop();
+  //   ESP_LOGI("MUTEX", "%d %d  %d %d %d ", modbusRequestModule.reqEntry.address,
+  //            modbusRequestModule.reqEntry.func,
+  //            modbusRequestModule.reqEntry.lendata,
+  //            modbusRequestModule.reqEntry.modbusID,
+  //            modbusRequestModule.reqEntry.token);
+  // }
 };
 static unsigned long previousSecondmills = 0;
 static int everySecondInterval = 1000;
@@ -439,6 +431,25 @@ BatDeviceInterface batDevice;
 uint8_t impedanceCellPosition=1;
 static timeval tmv;
 int16_t logForHour=0;
+void moubusMouduleProc(){
+
+  if(modbusRequestModule.requestModuleQueue.size())
+  {
+    modbusRequestModule.pop();
+    ESP_LOGI("MUTEX", "%d %d  %d %d %d ", modbusRequestModule.reqEntry.address,
+             modbusRequestModule.reqEntry.func,
+             modbusRequestModule.reqEntry.lendata,
+             modbusRequestModule.reqEntry.modbusID,
+             modbusRequestModule.reqEntry.token);
+    sendGetMoubusModuleData(
+        modbusRequestModule.reqEntry.token,
+        modbusRequestModule.reqEntry.modbusID,
+        modbusRequestModule.reqEntry.func,
+        modbusRequestModule.reqEntry.address,
+        modbusRequestModule.reqEntry.lendata);
+    delay(50);
+  }
+};
 void loop(void)
 {
   bool bRet;
@@ -446,8 +457,7 @@ void loop(void)
   parameters = simpleCli.outputStream;
   now = millis(); 
   esp_task_wdt_reset();
-
-
+  moubusMouduleProc();
   if ((now - previousSecondmills > everySecondInterval))
   {
     //digitalWrite(LED_OP, !digitalRead(LED_OP));
@@ -464,11 +474,10 @@ void loop(void)
       for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
       {
         parameters = simpleCli.outputStream;
-        //TODO: 아래의 펑션은 MODBUS 루틴을 변경하기 위해 임시로 막는다
-        sendGetMoubusTemperature(1, READ_INPUT_REGISTER);
+        modbusRequestModule.addToQueue(millis(), i, READ_INPUT_REGISTER, 0, 3);
         esp_task_wdt_reset();
         //TODO: 아래의 펑션은 MODBUS 루틴을 변경하기 위해 임시로 막는다
-        //sendSelectBatteryWithRetry(i);
+        sendSelectBatteryWithRetry(i);
         // time_t startRead = millis();
         // float batVoltage = 0.0;
         // batVoltage = batDevice.readBatAdcValue(i, 600);
@@ -503,7 +512,6 @@ void loop(void)
       logForHour = timeinfo->tm_hour;
       lsFile.writeCellDataLog();
     }
-    // sendGetMoubusTemperature(impedanceCellPosition,04);
     // sendSelectBattery(impedanceCellPosition);//selecectedCellNumber를 변화 시킨다
     // AD5940_Main(parameters);  
     // impedanceCellPosition++;

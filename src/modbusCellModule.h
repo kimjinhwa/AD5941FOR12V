@@ -12,8 +12,8 @@ using std::queue;
 
 void modbusCellModuleSetup();
 bool sendSelectBatteryWithRetry(uint8_t modbusId);
-uint16_t sendGetMoubusTemperature_old(uint8_t modbusId, uint8_t fCode);
-uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode);
+uint32_t sendGetMoubusModuleData_old(uint8_t modbusId, uint8_t fCode);
+uint32_t sendGetMoubusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len);
 typedef struct
 {
     uint8_t relay1;

@@ -24,8 +24,7 @@ uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode);
 void handleData(ModbusMessage response, uint32_t token);
 void handleError(Error error, uint32_t token) ;
 
-ModbusClientRTU MB(CELL485_DE,100);
-uint32_t messageToken;
+ModbusClientRTU modBusRtuCellModule(CELL485_DE,100);
 static uint32_t request_response ;
 static bool data_ready = false;
 static char TAG[]="CELL MODULE";
@@ -40,10 +39,10 @@ modbus_cellData_t modbusCellData= {
 };
 void modbusCellModuleSetup()
 {
-  MB.onDataHandler(&handleData);
-  MB.onErrorHandler(&handleError);
-  MB.setTimeout(1000);
-  MB.begin(Serial2,BAUDRATESERIAL2,1);
+  modBusRtuCellModule.onDataHandler(&handleData);
+  modBusRtuCellModule.onErrorHandler(&handleError);
+  modBusRtuCellModule.setTimeout(1000);
+  modBusRtuCellModule.begin(Serial2,BAUDRATESERIAL2,1);
 }
 void handleData(ModbusMessage response, uint32_t token)
 {
@@ -68,6 +67,13 @@ void handleData(ModbusMessage response, uint32_t token)
         data_ready = true;
     }
     
+}
+bool getDataReady(){
+  return data_ready ;
+}
+uint32_t getRequest_response(){
+  //vTaskDelay(1);
+  return request_response ;
 }
 void handleError(Error error, uint32_t token) 
 {
@@ -625,7 +631,7 @@ uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode)
   return value;
 
 };
-uint16_t sendGetMoubusTemperature_old(uint8_t modbusId, uint8_t fCode)
+uint32_t sendGetMoubusModuleData_old(uint8_t modbusId, uint8_t fCode)
 {
   uint16_t checkSum ;
   uint16_t value ;
@@ -655,7 +661,34 @@ uint16_t sendGetMoubusTemperature_old(uint8_t modbusId, uint8_t fCode)
   return value;
 };
 
-uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
+  //bool addToQueue(uint32_t tok, uint16_t mod, uint16_t fun, uint16_t add, uint16_t len)
+
+ModbusMessage  syncRequestCellModule(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len)
+{
+    uint16_t retValue=0;
+    data_ready = false;
+    LcdCell485.suspendTask(); //
+    extendSerial.selectCellModule(true);
+    vTaskDelay(1); // Select cell module and set can sendData;
+    requestDataLength=len;
+    Error err;
+    ModbusMessage rc  = modBusRtuCellModule.syncRequest(token, 
+      modbusId, fCode, startAddress,  len);
+    ESP_LOGI("modbus", "getTemp");
+    if (err != SUCCESS)
+    {
+        ModbusError e(err);
+        ESP_LOGE("MODBUS", "Error creating request: %02X - %s\n", (int)e, (const char *)e);
+        extendSerial.selectLcd();
+        LcdCell485.resumeTask();
+        return rc   ;
+    }
+    handleData(rc,token);
+    extendSerial.selectLcd();
+    LcdCell485.resumeTask();
+    return rc    ;
+}
+uint32_t sendGetMoubusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len)
 {
     uint16_t checkSum;
     uint16_t retValue=0;
@@ -666,10 +699,12 @@ uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
     data_ready = false;
     extendSerial.selectCellModule(true);
     vTaskDelay(1); // Select cell module and set can sendData;
-                   // Dont care true or false, because MB will use probe pin
-    messageToken = millis();
-    requestDataLength=3;
-    Error err = MB.addRequest(messageToken, modbusId, fCode, 0,  requestDataLength);
+                   // Dont care true or false, because modBusRtuCellModule will use probe pin
+    requestDataLength=len;
+    Error err;
+    //err = modBusRtuCellModule.addRequest(token, modbusId, fCode, startAddress,  requestDataLength);
+    ModbusMessage rc  = modBusRtuCellModule.syncRequest(token, modbusId, fCode, startAddress,  requestDataLength);
+    //ModbusMessage rc = m.setMessage(std::forward<Args>(args) ...);
     ESP_LOGI("modbus", "getTemp");
     if (err != SUCCESS)
     {
@@ -679,21 +714,22 @@ uint16_t sendGetMoubusTemperature(uint8_t modbusId, uint8_t fCode)
         LcdCell485.resumeTask();
         return retValue ;
     }
-    int16_t timeout = 100;
-    for (int i = 0; i < timeout; i++)
-    {
-        vTaskDelay(1);
-        if (data_ready)
-            break;
-    }
+    handleData(rc,token);
+    // int16_t timeout = 100;
+    // for (int i = 0; i < timeout; i++)
+    // {
+    //     vTaskDelay(1);
+    //     if (data_ready)
+    //         break;
+    // }
     //이제 데이타가 준비 되었으며 버퍼에 데이타가 있다.
     if (data_ready)
     {
         //token이 같은지 검사하자
-        ESP_LOGI("modbus", " %d %d Modbusid %d Temperature %d baudrate %d",messageToken , request_response ,
+        ESP_LOGI("modbus", " %d %d Modbusid %d Temperature %d baudrate %d",token, request_response ,
                             modbusCellData.modbusid,  modbusCellData.temperature, modbusCellData.baudrate);
         cellvalue[modbusCellData.modbusid- 1].temperature =modbusCellData.temperature ;
-        retValue=1;
+        retValue=request_response ;
         //data_ready=false;
     }
     else
