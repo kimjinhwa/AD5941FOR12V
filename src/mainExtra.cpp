@@ -441,7 +441,7 @@ void moubusMouduleProc(){
              modbusRequestModule.reqEntry.lendata,
              modbusRequestModule.reqEntry.modbusID,
              modbusRequestModule.reqEntry.token);
-    sendGetMoubusModuleData(
+    sendGetModbusModuleData(
         modbusRequestModule.reqEntry.token,
         modbusRequestModule.reqEntry.modbusID,
         modbusRequestModule.reqEntry.func,
@@ -477,7 +477,7 @@ void loop(void)
         parameters = simpleCli.outputStream;
         //modbusRequestModule.addToQueue(millis(), i, READ_INPUT_REGISTER, 0, 3);
         //TODO: 임시로 막는 다>
-        //sendGetMoubusModuleData(millis(), i, READ_INPUT_REGISTER, 0, 3);
+        sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER, 0, 3);
           // modbusRequestModule.reqEntry.token,
           // modbusRequestModule.reqEntry.modbusID,
           // modbusRequestModule.reqEntry.func,

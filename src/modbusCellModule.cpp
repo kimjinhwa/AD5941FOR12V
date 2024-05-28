@@ -39,6 +39,8 @@ modbus_cellRelay_t modbusCellrelay= {
 modbus_cellData_t modbusCellData= {
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
+
+modbus_data_t writeHoldRegister;
 void modbusCellModuleSetup()
 {
   modBusRtuCellModule.onDataHandler(&handleData);
@@ -53,14 +55,23 @@ void handleData(ModbusMessage response, uint32_t token)
     // The device has values all as IEEE754 float32 in two consecutive registers
     // Read the requested in a loop
     uint16_t *values;
+    uint8_t len;
     uint8_t func = response.getFunctionCode();
 
     ESP_LOGI("modbus", "Data Received: token %d Modbusid %d Func %d Error:%d",
       token, response.getServerID(),response.getFunctionCode(),response.getError());
     if (func == READ_INPUT_REGISTER || func == READ_HOLD_REGISTER)
-    {
+    {   
+        offs = 2;
+        offs = response.get(offs,len);
+        
+        // std::vector<uint8_t> MM_data(response.data(),response.data()+response.size());
+        // for (uint8_t byte : MM_data) {
+        //   ESP_LOGI(TAG,"%d",byte);
+        // }
+        //len = values[2] =static_cast<int>(MM_data[2])<<8|static_cast<int>(MM_data[3]);
         offs = 3;
-        ESP_LOGI(TAG, "func %d, dataLength %d ",func,requestDataLength);
+        ESP_LOGI(TAG, "func %d, dataLength %d ",func,len);
         values = (uint16_t *)&modbusCellData;
         for (uint8_t i = 0; i < requestDataLength; i++)
         {
@@ -83,6 +94,29 @@ void handleData(ModbusMessage response, uint32_t token)
         else values[4]=data;
         ESP_LOGI(TAG, "WRITE_COIL id: %d func %d,add:%d d1:0x%4x d2:0x%04x",
           response.getServerID(), response.getFunctionCode(),values[2],values[3], values[4]);
+        request_response = token;
+        data_ready = true;
+    }
+    else if (func == WRITE_HOLD_REGISTER){
+      //01 05 00 00 FF 00 8C 3A 
+        int16_t address;
+        int16_t data;
+        values = (uint16_t *)&writeHoldRegister;
+        values[0]=response.getServerID();
+        values[1]=response.getFunctionCode();
+        std::vector<uint8_t> MM_data(response.data(),response.data()+response.size());
+        for (uint8_t byte : MM_data) {
+          ESP_LOGI(TAG,"%d",byte);
+        }
+        ESP_LOGI(TAG,"MM_data[2]%d",static_cast<int>(MM_data[2])<<8|static_cast<int>(MM_data[3]));
+        ESP_LOGI(TAG,"MM_data[4]%d",static_cast<int>(MM_data[4])<<8|static_cast<int>(MM_data[5]));
+        address = values[2] =static_cast<int>(MM_data[2])<<8|static_cast<int>(MM_data[3]);
+        data = values[2] =static_cast<int>(MM_data[4])<<8|static_cast<int>(MM_data[5]);
+        // offs = response.get(offs, address = values[2]); //address
+        // offs = response.get(offs, data ); //data
+        values[3]=data;
+        ESP_LOGI(TAG, "WRITE_HOLDREGISTER id: %d func %d,add:%d d1:0x%04x ",
+          response.getServerID(), response.getFunctionCode(),values[2],values[3] );
         request_response = token;
         data_ready = true;
     }
@@ -544,7 +578,7 @@ bool CellOnOff(uint8_t modbusId, uint16_t relay, uint16_t onoff)
   }
   for (i = startId; i <= endId; i++)
   {
-    retValue = sendGetMoubusModuleData(millis(), i, WRITE_COIL, relay, onoff);
+    retValue = sendGetModbusModuleData(millis(), i, WRITE_COIL, relay, onoff);
     if (retValue != 0 )
     {
       ESP_LOGE("MODULE", "Succeed %d", retValue);
@@ -629,64 +663,88 @@ int makeTemperatureData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t
 }
 
 uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode)
-{//Focde is 06
-  uint16_t checkSum ;
-  uint16_t value ;
-  data_ready = false;
-  //ESP_LOGI("main","request");
-  LcdCell485.suspendTask();
-  vTaskDelay(100);
-  uint8_t buf[64];
-  data_ready = false;
-  makeTemperatureData(buf,modbusId,fCode,0,2);
-  extendSerial.selectCellModule(false);
-  ESP_LOGI("modbus","getTemp");
-  data_ready  = readResponseData(modbusId,fCode, buf,9,500); 
-  if (data_ready)
-  {
-    value = buf[5]*256  + buf[6] ;
-  }
-  else
-  {
-    value =0;
-  }
-  extendSerial.selectLcd();
-  LcdCell485.resumeTask();
-  return value;
-};
-
-uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode)
-{//Focde is 06
-
+{
   uint16_t retValue;
-  retValue = sendGetMoubusModuleData(millis(), i, WRITE_COIL, relay, onoff);
+  retValue = sendGetModbusModuleData(millis(), 1, READ_INPUT_REGISTER, 0, 3);
+    
+    if (retValue != 0 )
+    {
+      ESP_LOGE("MODULE", "Succeed %d modbusCellData %d", retValue,
+        modbusCellData.modbusid );
+     return modbusCellData.modbusid;
+    }
+    else
+    {
+      ESP_LOGE("MODULE", "Fail");
+      return false;
+    }
+  //Focde is 06
   // uint16_t checkSum ;
   // uint16_t value ;
   // data_ready = false;
+  // //ESP_LOGI("main","request");
   // LcdCell485.suspendTask();
   // vTaskDelay(100);
   // uint8_t buf[64];
   // data_ready = false;
-  // makeWriteSingleRegister(buf,255,fCode, 1, modbusId);
+  // makeTemperatureData(buf,modbusId,fCode,0,2);
   // extendSerial.selectCellModule(false);
-  // ESP_LOGI("modbus","change module id");
-  // data_ready  = readResponseDataForBrodcast(modbusId,fCode, buf,8,500); 
+  // ESP_LOGI("modbus","getTemp");
+  // data_ready  = readResponseData(modbusId,fCode, buf,9,500); 
   // if (data_ready)
   // {
-  //   value = buf[4]*256  + buf[5] ;
-  //   ESP_LOGI("modbus","modbus id was changed : %d", value);
+  //   value = buf[5]*256  + buf[6] ;
   // }
   // else
   // {
   //   value =0;
-  //   ESP_LOGI("modbus","Receive Failed");
   // }
   // extendSerial.selectLcd();
   // LcdCell485.resumeTask();
-  // return value;
+  return modbusCellData.modbusid;
+};
+
+uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode)
+{//Focde is 06
+  uint16_t checkSum ;
+  uint16_t value ;
+  data_ready = false;
+  LcdCell485.suspendTask();
+  vTaskDelay(100);
+  uint8_t buf[64];
+  data_ready = false;
+  extendSerial.selectCellModule(true);
+  uint16_t change_id=modbusId;
+  vTaskDelay(10);
+  // change_id=  sendGetModuleId(255,4);
+  // ESP_LOGI("modbus","change module id %d ",modbusId);
+  //makeWriteSingleRegister(buf,255,fCode, 1, modbusId);
+  uint32_t token=millis();
+  // ModbusMessage rc  = modBusRtuCellModule.syncRequest(token, modbusId, WRITE_HOLD_REGISTER, 1,change_id );
+  // handleData(rc,token);
+  sendGetModbusModuleData(token,modbusId,WRITE_HOLD_REGISTER,1,change_id );
+  // extendSerial.selectLcd();
+  // LcdCell485.resumeTask();
+  //extendSerial.selectCellModule(true);
+  //data_ready  = readResponseDataForBrodcast(modbusId,fCode, buf,8,500); 
+  if (data_ready)
+  {
+    value = buf[4]*256  + buf[5] ;
+    ESP_LOGI("modbus","modbus id was changed : %d", writeHoldRegister.data );
+    return writeHoldRegister.data ;
+  }
+  else
+  {
+    value =0;
+    ESP_LOGI("modbus","Receive Failed");
+    return false;
+  }
+  // extendSerial.selectLcd();
+  // LcdCell485.resumeTask();
+  return value;
 
 };
-uint32_t sendGetMoubusModuleData_old(uint8_t modbusId, uint8_t fCode)
+uint32_t sendGetModbusModuleData_old(uint8_t modbusId, uint8_t fCode)
 {
   uint16_t checkSum ;
   uint16_t value ;
@@ -743,7 +801,7 @@ ModbusMessage  syncRequestCellModule(uint32_t token,uint8_t modbusId, uint8_t fC
     LcdCell485.resumeTask();
     return rc    ;
 }
-uint32_t sendGetMoubusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len)
+uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len)
 {
     uint16_t checkSum;
     uint16_t retValue=0;
