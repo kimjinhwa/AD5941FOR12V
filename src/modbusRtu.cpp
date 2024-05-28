@@ -55,6 +55,7 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   sendValue[130]=systemDefaultValue.alarmLowCellVoltage;
   sendValue[131]= systemDefaultValue.AlarmAmpere ;  // 200A
 }
+
 ModbusMessage FC03(ModbusMessage request) {
   uint16_t address;           // requested register address
   uint16_t writeAddress;           // requested register address
@@ -79,7 +80,6 @@ ModbusMessage FC03(ModbusMessage request) {
   } 
   response.add(request.getServerID(), request.getFunctionCode(), (uint8_t)(words * 2));
 
-  //Serial.printf("\nFunction code 04 %d[%d] %d ",address,writeAddress,words);
   if ((address + words) < 0x100)
   {
     for (int i = address; i < words + address; i++)
@@ -88,6 +88,27 @@ ModbusMessage FC03(ModbusMessage request) {
         response.add(value);
     }
   }
+  
+  if(address >= 0x1101 && address <= 0x2501  ){  // Cell제어 
+    uint8_t moduleAddress = address >> 8;
+    moduleAddress  -= 16;
+    uint16_t *pValues;
+    pValues= (uint16_t *)&modbusCellData;
+    words = words > 16 ? 16 :words;
+    uint32_t token=millis();
+    uint32_t restoken=millis();
+    ModbusMessage rc =  syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), 0,  3);
+    ESP_LOGI("REQ","server id (%d) func %d ",request.getServerID(),request.getFunctionCode());
+    ESP_LOGI("REQ","server id (%d) func %d error %d",rc.getServerID(),rc.getFunctionCode(),rc.getError());
+
+    for (int i = 0; i < words; i++)
+    {
+      response.add(pValues[i]);
+    }
+  }
+  else if(address >= 0x50010  ){  //  5941제어이다.
+  }
+
   return response;
 };
 uint32_t getRequest_response();
@@ -163,11 +184,13 @@ ModbusMessage FC04(ModbusMessage request) {
       response.add(value);
     }
   }
-  else if(address >= 30001 && address <= 30016 ){  // Cell제어 
+  else if(address >= 0x1101 && address <= 0x2501  ){  // Cell제어 
       // response.add(modbusCellData.temperature);
       // response.add(modbusCellData.modbusid);
       // response.add(modbusCellData.baudrate);
-    uint8_t moduleAddress = address -30000;
+    uint8_t moduleAddress = address >> 8;//-30000;
+    moduleAddress  -= 16;
+    //moduleAddress = (int16_t)(moduleAddress / 3) +1;
     uint16_t *pValues;
     pValues= (uint16_t *)&modbusCellData;
     words = words > 16 ? 16 :words;
@@ -200,6 +223,81 @@ ModbusMessage FC04(ModbusMessage request) {
   }
   return response;
 };
+
+ModbusMessage FC01(ModbusMessage request)
+{
+  uint16_t address;       // requested register address
+  ModbusMessage response; // response message to be sent back
+  uint16_t quantity;
+  // get request quantitys
+  request.get(2, address);
+  request.get(4, quantity);
+  uint16_t writeAddress = (0xFFFF & address);
+
+  response.add(request.getServerID(), request.getFunctionCode());
+  ESP_LOGI("MODBUS", "\nFunction code %d address(%d) writeAddress(%d) quantity(%d) ",
+    response.getFunctionCode(), address, writeAddress, quantity);
+
+  if (writeAddress >= 0x1101 && writeAddress <= 0x2501)
+  { // Cell제어
+    uint8_t moduleAddress = address >> 8;
+    moduleAddress -= 16;
+    writeAddress &= 0x00FF;
+    writeAddress = writeAddress - 1;
+    uint32_t token = millis();
+    ModbusMessage rc = syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), writeAddress, quantity);
+
+    std::vector<uint8_t> MM_data(rc.data(), rc.data() + rc.size());
+    for (uint8_t byte : MM_data)
+    {
+      ESP_LOGI("MODSERVER", "%d", byte);
+    }
+    uint8_t relay =static_cast<uint8_t >(MM_data[3]);
+    response.add((uint8_t)1);
+    response.add(relay);
+    ESP_LOGI("REQ", "server id (%d) func %d ", request.getServerID(), request.getFunctionCode());
+    ESP_LOGI("REQ", "server id (%d) func %d error %d", rc.getServerID(), rc.getFunctionCode(), rc.getError());
+    response.setError()
+  }
+  return response;
+};
+ModbusMessage FC05(ModbusMessage request)
+{
+  uint16_t address;       // requested register address
+  ModbusMessage response; // response message to be sent back
+  uint16_t value;
+  uint16_t sendValue[256];
+  memset(sendValue, 0x00, 256);
+  setSendbuffer(03, sendValue);
+  // get request values
+  request.get(2, address);
+  request.get(4, value);
+  uint16_t writeAddress = (0xFFFF & address);
+
+  struct timeval tmv;
+  gettimeofday(&tmv, NULL);
+  RtcDateTime now;
+  now = RtcDateTime(tmv.tv_sec);
+
+  response.add(request.getServerID(), request.getFunctionCode(), writeAddress);
+  response.add(value);
+
+  ESP_LOGI("MODBUS", "\nFunction code %d address(%d) writeAddress(%d) value(%d) ",
+    response.getFunctionCode(), address, writeAddress, value);
+  ESP_LOGI("MODBUS", "Write and read %d ", systemDefaultValue.voltageCompensation[writeAddress]);
+
+  if(writeAddress >= 0x1101 && writeAddress <= 0x2501  ){  // Cell제어 
+    uint8_t moduleAddress = address >> 8;
+    moduleAddress  -= 16;
+    writeAddress &= 0x00FF;
+    writeAddress = writeAddress -1;
+    uint32_t token=millis();
+    ModbusMessage rc =  syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), writeAddress,  value);
+    ESP_LOGI("REQ","server id (%d) func %d ",request.getServerID(),request.getFunctionCode());
+    ESP_LOGI("REQ","server id (%d) func %d error %d",rc.getServerID(),rc.getFunctionCode(),rc.getError());
+  }
+  return response;
+};
 ModbusMessage FC06(ModbusMessage request)
 {
   uint16_t address;       // requested register address
@@ -211,22 +309,23 @@ ModbusMessage FC06(ModbusMessage request)
   // get request values
   request.get(2, address);
   request.get(4, value);
-  uint16_t writeAddress = (0x00FF & address);
+  uint16_t writeAddress = (0xFFFF & address);
 
   struct timeval tmv;
   gettimeofday(&tmv, NULL);
   RtcDateTime now;
   now = RtcDateTime(tmv.tv_sec);
 
-  if (writeAddress > 255)
-  {
-    response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
-    return response;
-  }
-  response.add(request.getServerID(), request.getFunctionCode(), 2);
+  // if (writeAddress > 255)
+  // {
+  //   response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
+  //   return response;
+  // }
+  response.add(request.getServerID(), request.getFunctionCode(), writeAddress) ;
   response.add(value);
 
-  ESP_LOGI("MODBUS", "\nFunction code 06 address(%d) writeAddress(%d) value(%d) ", address, writeAddress, value);
+  ESP_LOGI("MODBUS", "\nFunction code %d address(%d) writeAddress(%d) value(%d) ",
+    response.getFunctionCode(), address, writeAddress, value);
   ESP_LOGI("MODBUS", "Write and read %d ", systemDefaultValue.voltageCompensation[writeAddress]);
   if (writeAddress < 40)  // voltage compensation
   {
@@ -307,6 +406,17 @@ ModbusMessage FC06(ModbusMessage request)
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  }
+
+  if(writeAddress >= 0x1101 && writeAddress <= 0x2501  ){  // Cell제어 
+    uint8_t moduleAddress = address >> 8;
+    moduleAddress  -= 16;
+    writeAddress &= 0x00FF;
+    writeAddress = writeAddress -1;
+    uint32_t token=millis();
+    ModbusMessage rc =  syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), writeAddress,  value);
+    ESP_LOGI("REQ","server id (%d) func %d ",request.getServerID(),request.getFunctionCode());
+    ESP_LOGI("REQ","server id (%d) func %d error %d",rc.getServerID(),rc.getFunctionCode(),rc.getError());
   }
   return response;
 };

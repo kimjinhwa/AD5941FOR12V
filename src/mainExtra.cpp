@@ -230,8 +230,10 @@ void setupModbusAgentForLcd(){
 
   external485.useStopControll =0;
   external485.begin(Serial1,BAUDRATE,1);
+  external485.registerWorker(address_485,READ_COIL,&FC01);
   external485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
   external485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
+  external485.registerWorker(address_485,WRITE_COIL,&FC05);
   external485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
 
 };
@@ -477,7 +479,7 @@ void loop(void)
         parameters = simpleCli.outputStream;
         //modbusRequestModule.addToQueue(millis(), i, READ_INPUT_REGISTER, 0, 3);
         //TODO: 임시로 막는 다>
-        sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER, 0, 3);
+        //sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER, 0, 3);
           // modbusRequestModule.reqEntry.token,
           // modbusRequestModule.reqEntry.modbusID,
           // modbusRequestModule.reqEntry.func,

@@ -8,21 +8,22 @@
   * FC01 30001 : -> Relay 1 Read 
   * FC01 30002 : -> Relay 1 Read 
 
-  * FC03 30001 : -> Module Address 0 Not use
-  * FC03 30002 : -> Module Address 1 Change Modbus ID
-  * FC03 30003 : -> Module Address 2 Change Comm Speed 
+  * FC03 0x1101: -> Module Address 0 
+  * FC03 0x1201: -> Module Address 1 
+  * FC03 0x1201: -> Module Address 2 
 
-  * FC04 30001 : -> 
-    - Sensor Module Device 30001-30000=1 Controll
-  * FC04 30002 : -> 
-    - Sensor Module Device 30002-30000= 2 Controll
-  * FC04 30003 : -> 
+
+  * FC04 0x1101: -> 
+    - Sensor Module Device 
+  * FC04 0x1102: -> 
+    - Sensor Module Device 
+  * FC04 0x1103: -> 
       - Address 0 Temperature 
       - Address 1 Modbus ID
       - Address 2 Comm Speed 
-  * FC04 50010 : -> AD5941 Controll Registor
+  * FC04 30001 : -> AD5941 Controll Registor
 
-  * FC05 30001 : -> Relay 1 Write
+  * FC05 0x1103: -> Relay 1 Write
     - Sensor Module Device 30000-30000= 1 Controll
   * FC05 30002 : -> Relay 1 Write
 ## Controll AD5941

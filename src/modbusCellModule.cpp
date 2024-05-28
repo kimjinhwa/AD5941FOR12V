@@ -30,7 +30,6 @@ ModbusClientRTU modBusRtuCellModule(CELL485_DE,100);
 static uint32_t request_response ;
 static bool data_ready = false;
 static char TAG[]="CELL MODULE";
-static uint16_t requestDataLength;
 
 modbus_cellRelay_t modbusCellrelay= {
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
@@ -73,7 +72,7 @@ void handleData(ModbusMessage response, uint32_t token)
         offs = 3;
         ESP_LOGI(TAG, "func %d, dataLength %d ",func,len);
         values = (uint16_t *)&modbusCellData;
-        for (uint8_t i = 0; i < requestDataLength; i++)
+        for (uint8_t i = 0; i < len; i++)
         {
             offs = response.get(offs, values[i]);
         }
@@ -666,41 +665,41 @@ uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode)
 {
   uint16_t retValue;
   retValue = sendGetModbusModuleData(millis(), 1, READ_INPUT_REGISTER, 0, 3);
-    
-    if (retValue != 0 )
-    {
-      ESP_LOGE("MODULE", "Succeed %d modbusCellData %d", retValue,
-        modbusCellData.modbusid );
-     return modbusCellData.modbusid;
-    }
-    else
-    {
-      ESP_LOGE("MODULE", "Fail");
-      return false;
-    }
-  //Focde is 06
-  // uint16_t checkSum ;
-  // uint16_t value ;
-  // data_ready = false;
-  // //ESP_LOGI("main","request");
-  // LcdCell485.suspendTask();
-  // vTaskDelay(100);
-  // uint8_t buf[64];
-  // data_ready = false;
-  // makeTemperatureData(buf,modbusId,fCode,0,2);
-  // extendSerial.selectCellModule(false);
-  // ESP_LOGI("modbus","getTemp");
-  // data_ready  = readResponseData(modbusId,fCode, buf,9,500); 
-  // if (data_ready)
-  // {
-  //   value = buf[5]*256  + buf[6] ;
-  // }
-  // else
-  // {
-  //   value =0;
-  // }
-  // extendSerial.selectLcd();
-  // LcdCell485.resumeTask();
+
+  if (retValue != 0)
+  {
+    ESP_LOGE("MODULE", "Succeed %d modbusCellData %d", retValue,
+             modbusCellData.modbusid);
+    return modbusCellData.modbusid;
+  }
+  else
+  {
+    ESP_LOGE("MODULE", "Fail");
+    return false;
+  }
+  // Focde is 06
+  //  uint16_t checkSum ;
+  //  uint16_t value ;
+  //  data_ready = false;
+  //  //ESP_LOGI("main","request");
+  //  LcdCell485.suspendTask();
+  //  vTaskDelay(100);
+  //  uint8_t buf[64];
+  //  data_ready = false;
+  //  makeTemperatureData(buf,modbusId,fCode,0,2);
+  //  extendSerial.selectCellModule(false);
+  //  ESP_LOGI("modbus","getTemp");
+  //  data_ready  = readResponseData(modbusId,fCode, buf,9,500);
+  //  if (data_ready)
+  //  {
+  //    value = buf[5]*256  + buf[6] ;
+  //  }
+  //  else
+  //  {
+  //    value =0;
+  //  }
+  //  extendSerial.selectLcd();
+  //  LcdCell485.resumeTask();
   return modbusCellData.modbusid;
 };
 
@@ -722,7 +721,7 @@ uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode)
   uint32_t token=millis();
   // ModbusMessage rc  = modBusRtuCellModule.syncRequest(token, modbusId, WRITE_HOLD_REGISTER, 1,change_id );
   // handleData(rc,token);
-  sendGetModbusModuleData(token,modbusId,WRITE_HOLD_REGISTER,1,change_id );
+  sendGetModbusModuleData(token,1,WRITE_HOLD_REGISTER,1,change_id );
   // extendSerial.selectLcd();
   // LcdCell485.resumeTask();
   //extendSerial.selectCellModule(true);
@@ -783,7 +782,6 @@ ModbusMessage  syncRequestCellModule(uint32_t token,uint8_t modbusId, uint8_t fC
     LcdCell485.suspendTask(); //
     extendSerial.selectCellModule(true);
     vTaskDelay(1); // Select cell module and set can sendData;
-    requestDataLength=len;
     Error err;
     ModbusMessage rc  = modBusRtuCellModule.syncRequest(token, 
       modbusId, fCode, startAddress,  len);
@@ -813,10 +811,20 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
     vTaskDelay(10);
     // Select cell module and set can sendData;
     // Dont care true or false, because modBusRtuCellModule will use probe pin
-    requestDataLength=len;
-    ModbusMessage rc  = modBusRtuCellModule.syncRequest(token, modbusId, fCode, startAddress,  requestDataLength);
-    //ModbusMessage rc = m.setMessage(std::forward<Args>(args) ...);
-    handleData(rc,token);
+    if(modbusId != 255){
+      ModbusMessage rc  = modBusRtuCellModule.syncRequest(token, modbusId, fCode, startAddress,  len);
+      //ModbusMessage rc = m.setMessage(std::forward<Args>(args) ...);
+      handleData(rc,token);
+    }
+    else{
+      //Error err  = modBusRtuCellModule.addRequest(token, modbusId, fCode, startAddress,  len);
+      // for(int i =0;i<100;i++){
+      //   vTaskDelay(10);
+      //   if(data_ready)break;
+      //   ESP_LOGI("modbus", "Waiting....%d",i);
+      // }
+
+    }
     if (data_ready)
     {
         //token이 같은지 검사하자
