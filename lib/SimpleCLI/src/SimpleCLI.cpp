@@ -23,7 +23,7 @@ extern "C" {
 #include "c/parser.h"    // parse_lines
 #include "c/cmd_error.h" // cmd_error_destroy
 }
-int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t len);
+//int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t len);
 int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len,uint16_t timeout);
 void setRtcNewTime(RtcDateTime rtc);
 void readnWriteEEProm();
@@ -522,7 +522,7 @@ void mode_configCallback(cmd *cmdPtr){
   }
 }
 
-bool sendSelectBatteryWithNoCheck(uint8_t modbusId);
+bool SelectBatteryMinusPlus(uint8_t modbusId);
 void relay_configCallback(cmd *cmdPtr){
   Command cmd(cmdPtr);
   Argument arg ;
@@ -531,84 +531,84 @@ void relay_configCallback(cmd *cmdPtr){
   uint8_t buf[64];
   arg = cmd.getArgument("sel");
 
-  if (arg.isSet())
-  {
-      strValue = arg.getValue();
-      relayPos = strValue.toInt();
-      uint16_t readCount;
-      if (relayPos == 0)
-      {
-          makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
-          delay(100);
-          makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
-          delay(100);
-          simpleCli.outputStream->printf("\nAll relay offed..");
-      }
-      else if (relayPos >= 1 || relayPos <= 20)
-      {
-          simpleCli.outputStream->printf("\nRelay %d Selecet", relayPos);
-          SelectBatteryMinusPlus(relayPos);
+  // if (arg.isSet())
+  // {
+  //     strValue = arg.getValue();
+  //     relayPos = strValue.toInt();
+  //     uint16_t readCount;
+  //     if (relayPos == 0)
+  //     {
+  //         makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
+  //         delay(100);
+  //         makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
+  //         delay(100);
+  //         simpleCli.outputStream->printf("\nAll relay offed..");
+  //     }
+  //     else if (relayPos >= 1 || relayPos <= 20)
+  //     {
+  //         simpleCli.outputStream->printf("\nRelay %d Selecet", relayPos);
+  //         SelectBatteryMinusPlus(relayPos);
 
-          time_t startRead = millis();
-          float batVoltage = 0.0;
-          batVoltage = batDevice.readBatAdcValue(relayPos ,600);
-          cellvalue[relayPos - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
-          time_t endRead = millis();                    // take 300ms
-          simpleCli.outputStream->printf("Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
-      }
-      else
-      {
-          makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
-          delay(100);
-          makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
-          delay(100);
-          simpleCli.outputStream->printf("\nAll relay offed..");
-      }
-  }
-  arg = cmd.getArgument("off");
-  if(arg.isSet()){
-    uint32_t failedBatteryH,failedBatteryL;
-    uint16_t retValue;
-  LcdCell485.suspendTask();
-      retValue=checkAlloff(&failedBatteryH,&failedBatteryL);
-  LcdCell485.resumeTask();
-      simpleCli.outputStream->printf("retValue :0x%02x 0x%04x%04x\n",retValue,failedBatteryH,failedBatteryL);
-  }
-  arg = cmd.getArgument("test");
-  if (arg.isSet())
-  {
-      strValue = arg.getValue();
-      relayPos = strValue.toInt();
-      uint16_t readCount;
+  //         time_t startRead = millis();
+  //         float batVoltage = 0.0;
+  //         batVoltage = batDevice.readBatAdcValue(relayPos ,600);
+  //         cellvalue[relayPos - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
+  //         time_t endRead = millis();                    // take 300ms
+  //         simpleCli.outputStream->printf("Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
+  //     }
+  //     else
+  //     {
+  //         makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
+  //         delay(100);
+  //         makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
+  //         delay(100);
+  //         simpleCli.outputStream->printf("\nAll relay offed..");
+  //     }
+  // }
+  // arg = cmd.getArgument("off");
+  // if(arg.isSet()){
+  //   uint32_t failedBatteryH,failedBatteryL;
+  //   uint16_t retValue;
+  // LcdCell485.suspendTask();
+  //     retValue=checkAlloff(&failedBatteryH,&failedBatteryL);
+  // LcdCell485.resumeTask();
+  //     simpleCli.outputStream->printf("retValue :0x%02x 0x%04x%04x\n",retValue,failedBatteryH,failedBatteryL);
+  // }
+  // arg = cmd.getArgument("test");
+  // if (arg.isSet())
+  // {
+  //     strValue = arg.getValue();
+  //     relayPos = strValue.toInt();
+  //     uint16_t readCount;
       
-      if (relayPos == 0)
-      {
-          makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
-          delay(100);
-          makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
-          delay(100);
-          simpleCli.outputStream->printf("\nAll relay offed..");
-      }
-      else if (relayPos >= 1 || relayPos <= 20)
-      {
-          simpleCli.outputStream->printf("\nRelay %d Selecet", relayPos);
-          sendSelectBatteryWithNoCheck(relayPos);
-          time_t startRead = millis();
-          float batVoltage = 0.0;
-          batVoltage = batDevice.readBatAdcValue(relayPos ,600);
-          cellvalue[relayPos - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
-          time_t endRead = millis();                    // take 300ms
-          simpleCli.outputStream->printf("Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
-      }
-      else
-      {
-          makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
-          delay(100);
-          makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
-          delay(100);
-          simpleCli.outputStream->printf("\nAll relay offed..");
-      }
-  }
+  //     if (relayPos == 0)
+  //     {
+  //         makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
+  //         delay(100);
+  //         makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
+  //         delay(100);
+  //         simpleCli.outputStream->printf("\nAll relay offed..");
+  //     }
+  //     else if (relayPos >= 1 || relayPos <= 20)
+  //     {
+  //         simpleCli.outputStream->printf("\nRelay %d Selecet", relayPos);
+  //         SelectBatteryMinusPlus(relayPos);
+  //         time_t startRead = millis();
+  //         float batVoltage = 0.0;
+  //         batVoltage = batDevice.readBatAdcValue(relayPos ,600);
+  //         cellvalue[relayPos - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
+  //         time_t endRead = millis();                    // take 300ms
+  //         simpleCli.outputStream->printf("Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
+  //     }
+  //     else
+  //     {
+  //         makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
+  //         delay(100);
+  //         makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
+  //         delay(100);
+  //         simpleCli.outputStream->printf("\nAll relay offed..");
+  //     }
+  // }
 }
 void time_configCallback(cmd *cmdPtr){
   RtcDateTime now;

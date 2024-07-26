@@ -125,7 +125,7 @@ private:
 public:
   RequestEntry reqEntry;
   queue<RequestEntry> requestModuleQueue;
-  ModbusRequestModule(uint16_t queueLimit = 10) : MR_qLimit(queueLimit), reqEntry(0,0,0,0,0),messageCount(0)
+  ModbusRequestModule(uint16_t queueLimit = 10) : MR_qLimit(queueLimit), reqEntry(0, 0, 0, 0, 0), messageCount(0)
   {
     MR_qLimit = queueLimit;
   }
@@ -145,9 +145,39 @@ public:
   void pop()
   {
     std::lock_guard<std::mutex> lockGuard(qLock);
-    if(!requestModuleQueue.empty()){
+    if (!requestModuleQueue.empty())
+    {
       reqEntry = requestModuleQueue.front();
       requestModuleQueue.pop();
+    }
+  }
+
+  void moubusMouduleProc()
+  {
+    if (requestModuleQueue.size())
+    {
+      pop();
+      ESP_LOGI("MUTEX", "%d %d  %d %d %d ",
+               reqEntry.address,
+               reqEntry.func,
+               reqEntry.lendata,
+               reqEntry.modbusID,
+               reqEntry.token);
+      sendGetModbusModuleData(
+          reqEntry.token,
+          reqEntry.modbusID,
+          reqEntry.func,
+          reqEntry.address,
+          reqEntry.lendata);
+      delay(50);
+    }
+  };
+  void addAll()
+  {
+    for (int i = 0; i < MR_qLimit ; i++)
+    {
+      addToQueue(millis(), 2, 4, 0, 10);
+      vTaskDelay(55);
     }
   }
 };

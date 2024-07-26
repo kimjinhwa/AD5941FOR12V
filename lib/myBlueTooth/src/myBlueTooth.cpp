@@ -244,8 +244,8 @@ void blueToothTask(void *parameter)
       previousmills = now;
       if (SerialBT.connected()){
         lsFile.setOutputStream(&SerialBT);
-        simpleCli.outputStream = &SerialBT;
         simpleCli.inputStream= &SerialBT;
+        simpleCli.outputStream = &SerialBT;
       }
       else{
         lsFile.setOutputStream(&Serial);

@@ -111,7 +111,6 @@ ModbusMessage FC03(ModbusMessage request) {
 
   return response;
 };
-uint32_t getRequest_response();
 ModbusMessage FC04(ModbusMessage request) {
   uint16_t address;           // requested register address
   uint16_t writeAddress;           // requested register address
@@ -204,16 +203,6 @@ ModbusMessage FC04(ModbusMessage request) {
     ESP_LOGI("REQ","server id (%d) func %d ",request.getServerID(),request.getFunctionCode());
     ESP_LOGI("REQ","server id (%d) func %d error %d",rc.getServerID(),rc.getFunctionCode(),rc.getError());
 
-    // ESP_LOGI("REQ","Request id =%d Token=%d",moduleAddress,token);
-    // modbusRequestModule.addToQueue(token, moduleAddress , READ_INPUT_REGISTER, 0, 3);
-    // restoken=getRequest_response();
-    // for(i=0;token !=  restoken;i++){
-    //   vTaskDelay(80);
-    //   restoken=getRequest_response();
-    //   if(i>100)break;
-    // };
-    // ESP_LOGI("REQ","Waiting(%d) tocken %d receive %d",i,token,restoken);
-
     for (i = 0; i < words; i++)
     {
       response.add(pValues[i]);
@@ -257,7 +246,6 @@ ModbusMessage FC01(ModbusMessage request)
     response.add(relay);
     ESP_LOGI("REQ", "server id (%d) func %d ", request.getServerID(), request.getFunctionCode());
     ESP_LOGI("REQ", "server id (%d) func %d error %d", rc.getServerID(), rc.getFunctionCode(), rc.getError());
-    response.setError()
   }
   return response;
 };
@@ -266,10 +254,7 @@ ModbusMessage FC05(ModbusMessage request)
   uint16_t address;       // requested register address
   ModbusMessage response; // response message to be sent back
   uint16_t value;
-  uint16_t sendValue[256];
-  memset(sendValue, 0x00, 256);
-  setSendbuffer(03, sendValue);
-  // get request values
+  
   request.get(2, address);
   request.get(4, value);
   uint16_t writeAddress = (0xFFFF & address);
@@ -284,7 +269,6 @@ ModbusMessage FC05(ModbusMessage request)
 
   ESP_LOGI("MODBUS", "\nFunction code %d address(%d) writeAddress(%d) value(%d) ",
     response.getFunctionCode(), address, writeAddress, value);
-  ESP_LOGI("MODBUS", "Write and read %d ", systemDefaultValue.voltageCompensation[writeAddress]);
 
   if(writeAddress >= 0x1101 && writeAddress <= 0x2501  ){  // Cell제어 
     uint8_t moduleAddress = address >> 8;
@@ -303,9 +287,6 @@ ModbusMessage FC06(ModbusMessage request)
   uint16_t address;       // requested register address
   ModbusMessage response; // response message to be sent back
   uint16_t value;
-  uint16_t sendValue[256];
-  memset(sendValue, 0x00, 256);
-  setSendbuffer(03, sendValue);
   // get request values
   request.get(2, address);
   request.get(4, value);
