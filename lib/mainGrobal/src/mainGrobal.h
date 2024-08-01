@@ -26,6 +26,9 @@
 #define RTC1305_EN          33 // OK  RTC 칩을 Enable한다.
 #define LED_OP              25 // system operating 상태 
 
+#define RELAY_1             0  // + 릴레이 
+#define RELAY_2             25 // - 릴레이 
+
 #define GPIO_INTERRUPT32  GPIO_NUM_32
 #define ESP_INTR_FLAG_DEFAULT 0
 #define GPIO_OUTPUT_RESET GPIO_NUM_5

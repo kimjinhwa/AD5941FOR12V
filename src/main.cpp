@@ -30,6 +30,9 @@
 // #include <esp_task.h>
 #include <esp_task_wdt.h>
 
+#define RELAY_OFF   1  
+#define RELAY_ON    0 
+
 #define WDT_TIMEOUT 60 
 // 기본 vSPI와 일치한다
 #define VSPI_MISO   MISO  // IO19
@@ -81,6 +84,8 @@ void pinsetup()
     pinMode(SERIAL_SEL_ADDR1, OUTPUT);
     pinMode(SERIAL_TX2 , OUTPUT);
     pinMode(LED_OP, OUTPUT);
+    pinMode(RELAY_1, OUTPUT);
+    pinMode(RELAY_2, OUTPUT);
 
     pinMode(RTC1305_EN, OUTPUT);
     pinMode(AD636_SEL, OUTPUT);
@@ -93,6 +98,8 @@ void pinsetup()
 
     digitalWrite(AD636_SEL,LOW );//REFERANCE
     digitalWrite(CS_5940, HIGH);
+    digitalWrite(RELAY_1, RELAY_OFF   );
+    digitalWrite(RELAY_2, RELAY_OFF   );
 };
 
 //HardwareSerial Serial1;
@@ -445,7 +452,6 @@ void loop(void)
   //moubusMouduleProc();
   if ((now - previousSecondmills > everySecondInterval))
   {
-    //digitalWrite(LED_OP, !digitalRead(LED_OP));
     previousSecondmills = now;
   }
   if ((now - previous_3Secondmills > Interval_3Second))
