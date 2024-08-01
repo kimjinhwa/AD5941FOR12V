@@ -1,4 +1,6 @@
 # TIA Resistance Measurement System.
+## BOARD DEBUGGING
+  * WIFI 안테나 부분을 파자.
 ## BLUETOOTH COMMAND
 ### offset #
  #### offset    [-ia cellno value ] [-va  cellno value ]    [-i  cellno value ] 

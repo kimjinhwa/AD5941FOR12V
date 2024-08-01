@@ -7,6 +7,11 @@
 #include "mainGrobal.h"
 #include "SimpleCLI.h"
 
+#ifdef WEBOTA
+#include <WebServer.h>
+#include "esp32WebOTA.h"
+#endif
+
 #include "stdio.h"
 //#include "ADuCM3029.h"
 #include "AD5940.h"
@@ -61,6 +66,10 @@ extern SimpleCLI simpleCli;
 
 BluetoothSerial SerialBT;
 
+
+#ifdef WEBOTA
+extern WebServer webServer;
+#endif
 
 void AD5940_ShutDown();
 void pinsetup()
@@ -394,6 +403,10 @@ void setup()
   xTaskCreate(blueToothTask, "blueToothTask", 4000, NULL, 1, h_pxblueToothTask);
   ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
   AD5940_ShutDown();
+
+#ifdef WEBOTA
+  webInit(); 
+#endif
 };
 static unsigned long previousSecondmills = 0;
 static int everySecondInterval = 1000;
@@ -423,6 +436,9 @@ void loop(void)
 {
   bool bRet;
   void *parameters;
+#ifdef WEBOTA
+  if(WiFi.isConnected()) webServer.handleClient();
+#endif
   parameters = simpleCli.outputStream;
   now = millis(); 
   esp_task_wdt_reset();
