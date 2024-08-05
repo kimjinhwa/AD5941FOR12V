@@ -137,6 +137,7 @@ uint32_t AD5940_ClrMCUIntFlag(void)
 {
   //  pADI_XINT0->CLR = BITM_XINT_CLR_IRQ0;
   //gpio_intr_status_clear(GPIO_INTERRUPT32);
+  digitalWrite(AD5940_ISR,HIGH); 
   ucInterrupted = 0;
    return 1;
 }
@@ -178,7 +179,8 @@ uint32_t AD5940_MCUResourceInit(void *pCfg)
   // gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
   // gpio_isr_handler_add(GPIO_NUM_32, Ext_Int0_Handler, (void *)GPIO_NUM_32);
   // gpio_intr_enable(GPIO_NUM_32);
-  attachInterrupt(digitalPinToInterrupt(GPIO_NUM_32), Ext_Int0_Handler, FALLING);
+  //attachInterrupt(digitalPinToInterrupt(GPIO_NUM_32), Ext_Int0_Handler, FALLING);
+  attachInterrupt(digitalPinToInterrupt(AD5940_ISR), Ext_Int0_Handler, FALLING);
   //gpio_set_level(GPIO_NUM_32, HIGH);
   AD5940_CsSet(); /* AD5941 Chip을 선택한다. */
   AD5940_Delay10us(150 * 100);
@@ -218,11 +220,13 @@ uint32_t AD5940_MCUResourceInit(void *pCfg)
 }
 
 /* MCU related external line interrupt service routine */
-void Ext_Int0_Handler()
+void IRAM_ATTR Ext_Int0_Handler()
 {
   //gpio_intr_status_clear(GPIO_NUM_32);
   //  pADI_XINT0->CLR = BITM_XINT_CLR_IRQ0;
+
   ucInterrupted = 1;
+  Serial.println("Interrupt detected!");
   // /* This example just set the flag and deal with interrupt in AD5940Main function. It's your choice to choose how to process interrupt. */
 }
 

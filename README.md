@@ -2,6 +2,8 @@
 ## BOARD DEBUGGING
   * WIFI 안테나 부분을 파자.
   * C6를 104 -> 105로 하거나, 아니면 100K를 200K 이상으로 하자.
+  *  adc_filter.Sinc2NotchEnable = bTRUE; 이것이 활성화 되어 있지 않다.    
+     다시 확인을 하자. 
 ## BLUETOOTH COMMAND
 ### offset #
  #### offset    [-ia cellno value ] [-va  cellno value ]    [-i  cellno value ] 

@@ -167,7 +167,7 @@ AD5940Err AppBATCtrl(int32_t BatCtrl, void *pPara)
     //Settle input RC filter.
     AD5940_WriteReg(REG_AFE_SWMUX, 0); //control ADG636 to measure rcal
     digitalWrite(AD636_SEL,HIGH);
-		AD5940_WriteReg(REG_AFE_SYNCEXTDEVICE, 0x4);
+		AD5940_WriteReg(REG_AFE_SYNCEXTDEVICE, 0x4); // GPIO2
     PreCharge(PRECHARGE_RCAL);
     PreCharge(PRECHARGE_AMP);
     AD5940_FIFOCtrlS(FIFOSRC_DFT, bFALSE);

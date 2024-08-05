@@ -23,6 +23,7 @@ Analog Devices Software License Agreement.
 #include "math.h"
 #include "BATImpedance.h"
 #include "ad5940.h"
+#include <esp_task_wdt.h>
 
 #define MAX_LOOP_COUNT 40
 #define APPBUFF_SIZE 512
@@ -304,25 +305,25 @@ void AD5940_Main(void *parameters)
   //30개를 읽고 
   //앞의 10개는 버리고 
   //뒤의 20개는 평균을 내서 
+  AppBATCtrl(BATCTRL_MRCAL, 0);   
   uint16_t loopCount ;
+  AppBATCtrl(BATCTRL_START, 0);
   for(loopCount =0;loopCount < MAX_LOOP_COUNT ;loopCount++ )
   {
     /* Check if interrupt flag which will be set when interrupt occurred. */
 
-    AppBATCtrl(BATCTRL_START, 0);
     ESP_LOGI(TAG, "while (AD5940_INTCTestFlag(...)");
-
     time_t startTime = millis();
-    while (AD5940_INTCTestFlag(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH) == bFALSE)
-    {
-      if( millis()-startTime > 1000){ESP_LOGW(TAG, "Time out reached %d",millis()-startTime);break;} 
-    } ;
+    esp_task_wdt_reset();
+
+    // while (AD5940_INTCTestFlag(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH) == bFALSE)
+    // {
+    //   if( millis()-startTime > 1000){ESP_LOGW(TAG, "Time out reached %d",millis()-startTime);break;} 
+    // } ;
     // if(AD5940_GetMCUIntFlag())
     {
-      ESP_LOGI(TAG, "AD5940_GetMCUIntFlag() %d",AD5940_GetMCUIntFlag());
       AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
       AD5940_ClrMCUIntFlag(); /* Clear this flag */
-      ESP_LOGI(TAG, "AD5940_GetMCUIntFlag() %d",AD5940_GetMCUIntFlag());
       temp = APPBUFF_SIZE;
       AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);
       AppBATISR(AppBuff, &temp); /* Deal with it and provide a buffer to store data we got */

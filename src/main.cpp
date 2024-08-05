@@ -79,7 +79,7 @@ void pinsetup()
 {
     pinMode(READ_BATVOL, INPUT);
 
-    pinMode(AD5940_ISR, OUTPUT);
+    pinMode(AD5940_ISR, INPUT);
     pinMode(SERIAL_SEL_ADDR0, OUTPUT);
     pinMode(SERIAL_SEL_ADDR1, OUTPUT);
     pinMode(SERIAL_TX2 , OUTPUT);
@@ -100,6 +100,7 @@ void pinsetup()
     digitalWrite(CS_5940, HIGH);
     digitalWrite(RELAY_1, RELAY_OFF   );
     digitalWrite(RELAY_2, RELAY_OFF   );
+    digitalWrite(AD5940_ISR, HIGH);
 };
 
 //HardwareSerial Serial1;
@@ -300,12 +301,20 @@ void initCellValue()
     }
   }
 }
+// 인터럽트 서비스 루틴 (ISR)
+// void IRAM_ATTR handleInterrupt() {
+//   // 인터럽트가 발생했을 때 실행될 코드
+//   Serial.println("Interrupt detected!");
+// }
+
 void setup()
 {
 
   EEPROM.begin(sizeof(nvsSystemSet)+1);
   readnWriteEEProm();
   pinsetup();
+   // 인터럽트 핸들러를 연결
+  //attachInterrupt(digitalPinToInterrupt(AD5940_ISR), handleInterrupt, FALLING);
   Serial.begin(BAUDRATE);
   // 외부 485통신에 사용한다.
   Serial1.begin(BAUDRATE, SERIAL_8N1, SERIAL_RX1, SERIAL_TX1);
@@ -448,7 +457,7 @@ void loop(void)
 #endif
   parameters = simpleCli.outputStream;
   now = millis(); 
-  esp_task_wdt_reset();
+
   //moubusMouduleProc();
   if ((now - previousSecondmills > everySecondInterval))
   {
