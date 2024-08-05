@@ -162,10 +162,11 @@ static int32_t AD5940PlatformCfg(void)
   /* Step3. Interrupt controller */
   ESP_LOGI(TAG,"Step3. Interrupt controller ");
   AD5940_INTCCfg(AFEINTC_1, AFEINTSRC_ALLINT, bTRUE);           /* Enable all interrupt in Interrupt Controller 1, so we can check INTC flags */
+  AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
   AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);   /* Interrupt Controller 0 will control GP0 to generate interrupt to MCU */
   AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
   gpio_cfg.FuncSet = GP0_INT|GP2_SYNC;
-  gpio_cfg.InputEnSet = AGPIO_Pin2;
+  gpio_cfg.InputEnSet = AGPIO_Pin0;
   gpio_cfg.OutputEnSet = AGPIO_Pin0|AGPIO_Pin2 | AGPIO_Pin1;
   gpio_cfg.OutVal = 0;
   gpio_cfg.PullEnSet = 0;
