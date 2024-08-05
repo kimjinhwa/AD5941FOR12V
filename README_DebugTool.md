@@ -1,3 +1,13 @@
+# 새로운 보드의 테스트 절차 
+  - 블루투스를 열고 mode 3을 입력하여야 한다.
+  - 테스트 순서 
+    1. Chip ID를 정상적으로 읽는지를 확인한다. 
+    2. CE단자에 SINE파가 잡히는 지를 확인한다.   
+       이때 배터리는 연결되어 있어야 한다.
+       CE와 AIN1의 파형은 동일하다.
+    3. 이제 증폭기를 확인한다.    
+       AIN2와 AIN3의 파형은 출력이며 동일하다. 
+
 # Modbus Debug Explaination
   * Send data from PC via RS232 modbus and receive at controller
   * Then Controller send data to ad5941 via SPI and receive data.
