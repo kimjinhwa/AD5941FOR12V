@@ -458,6 +458,7 @@ void loop(void)
   parameters = simpleCli.outputStream;
   now = millis(); 
 
+  esp_task_wdt_reset();
   //moubusMouduleProc();
   if ((now - previousSecondmills > everySecondInterval))
   {

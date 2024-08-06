@@ -717,7 +717,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config.addArgument("t/est","");
   cmd_config.addFlagArg("off");
   cmd_config.setDescription("relay on off controll \r\n relay -s/el [1] [-off]");
-  cmd_config = addSingleArgCmd("mode", mode_configCallback);
+  cmd_config = addSingleArgCmd("runmode", mode_configCallback);
   cmd_config = addSingleArgCmd("id", id_configCallback);
   cmd_config = addSingleArgCmd("cal/ibration", calibration_configCallback);
   cmd_config = addSingleArgCmd("bat/number", batnumber_configCallback);

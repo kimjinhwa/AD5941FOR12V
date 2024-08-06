@@ -40,6 +40,8 @@ extern int measuredImpedance_2[20];
 extern int measuredVoltage_1[20];
 extern int measuredVoltage_2[20];
 fImpCar_Type pImpResult[MAX_LOOP_COUNT +1];
+
+void AD5940_ShutDown();
 void addResult(uint32_t *pData, uint32_t DataCount)
 {
   fImpCar_Type Average;
@@ -235,7 +237,7 @@ float AD5940_calibration(float *real , float *image){
   *real  = 0.0f; *image = 0.0f;
   while (loopCount--)
   {
-    ESP_LOGI(TAG, "AppBATCtrl(BATCTRL_MRCAL, 0)\n");
+    ESP_LOGI(TAG, "Now on calibration(%d)...",loopCount);
     time_t startTime = millis();
     if (AD5940ERR_WAKEUP == AppBATCtrl(BATCTRL_MRCAL, 0))
     {
@@ -260,6 +262,7 @@ float AD5940_calibration(float *real , float *image){
   };
   *real /= 10.0f;
   *image /=10.0f;
+  AD5940_ShutDown();
   return AD5940_ComplexMag(&AppBATCfg.RcalVolt);
 }
 void AD5940_Main(void *parameters)
@@ -306,23 +309,34 @@ void AD5940_Main(void *parameters)
   //30개를 읽고 
   //앞의 10개는 버리고 
   //뒤의 20개는 평균을 내서 
-  AppBATCtrl(BATCTRL_MRCAL, 0);   
+  //AppBATCtrl(BATCTRL_MRCAL, 0);   
   uint16_t loopCount ;
+  AD5940_ClrMCUIntFlag(); /* Clear this flag */
   AppBATCtrl(BATCTRL_START, 0);
   for(loopCount =0;loopCount < MAX_LOOP_COUNT ;loopCount++ )
   {
     /* Check if interrupt flag which will be set when interrupt occurred. */
-
-    ESP_LOGI(TAG, "while (AD5940_INTCTestFlag(...)");
     time_t startTime = millis();
-    esp_task_wdt_reset();
+    //esp_task_wdt_reset();
 
     // while (AD5940_INTCTestFlag(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH) == bFALSE)
     // {
     //   if( millis()-startTime > 1000){ESP_LOGW(TAG, "Time out reached %d",millis()-startTime);break;} 
     // } ;
-    // if(AD5940_GetMCUIntFlag())
+
+    while(!AD5940_GetMCUIntFlag())
     {
+      delay(100);
+      if (millis() - startTime > 3000)
+      {
+        ESP_LOGW(TAG, "Time out reached %d", millis() - startTime);
+        break;
+      }
+    }
+    if(AD5940_GetMCUIntFlag())
+    {
+      ESP_LOGI(TAG, "Reading Impedance(%d)",MAX_LOOP_COUNT - loopCount);
+      AD5940_AGPIOToggle(AGPIO_Pin1);
       AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
       AD5940_ClrMCUIntFlag(); /* Clear this flag */
       temp = APPBUFF_SIZE;
@@ -336,7 +350,6 @@ void AD5940_Main(void *parameters)
 
       AD5940_SEQMmrTrig(SEQID_0);   /* Trigger next measurement ussing MMR write*/
     }
-    AD5940_AGPIOToggle(AGPIO_Pin1);
   }
 }
 

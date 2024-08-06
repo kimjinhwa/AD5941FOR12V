@@ -97,14 +97,14 @@ void ModbusServerRTU::doBegin(uint32_t baudRate, int coreID) {
   else 
     xTaskCreatePinnedToCore((TaskFunction_t)&serve, taskName, 4096, this, 8, &serverTask, coreID >= 0 ? coreID : NULL);
 
-  LOG_D("Server task %d started. Interval=%d\n", (uint32_t)serverTask, MSRinterval);
+  ESP_LOGD("MODBUS","Server task %d started. Interval=%d\n", (uint32_t)serverTask, MSRinterval);
 }
 
 // end: kill server task
 void ModbusServerRTU::end() {
   if (serverTask != nullptr) {
     vTaskDelete(serverTask);
-    LOG_D("Server task %d stopped.\n", (uint32_t)serverTask);
+    ESP_LOGD("MODBUS","Server task %d stopped.\n", (uint32_t)serverTask);
     serverTask = nullptr;
   }
 }
@@ -113,13 +113,13 @@ void ModbusServerRTU::end() {
 void ModbusServerRTU::useModbusASCII(unsigned long timeout) {
   MSRuseASCII = true;
   serverTimeout = timeout; // Set timeout to ASCII's value
-  LOG_D("Protocol mode: ASCII\n");
+  ESP_LOGD("MODBUS","Protocol mode: ASCII\n");
 }
 
 // Toggle protocol to ModbusRTU
 void ModbusServerRTU::useModbusRTU() {
   MSRuseASCII = false;
-  LOG_D("Protocol mode: RTU\n");
+  ESP_LOGD("MODBUS","Protocol mode: RTU\n");
 }
 
 // Inquire protocol mode
@@ -130,14 +130,14 @@ bool ModbusServerRTU::isModbusASCII() {
 // Toggle skipping of leading 0x00 byte
 void ModbusServerRTU::skipLeading0x00(bool onOff) {
   MSRskipLeadingZeroByte = onOff;
-  LOG_D("Skip leading 0x00 mode = %s\n", onOff ? "ON" : "OFF");
+  ESP_LOGD("MODBUS","Skip leading 0x00 mode = %s\n", onOff ? "ON" : "OFF");
 }
 
 // Special case: worker to react on broadcast requests
 void ModbusServerRTU::registerBroadcastWorker(MSRlistener worker) {
   // If there is one already, it will be overwritten!
   listener = worker;
-  LOG_D("Registered worker for broadcast requests\n");
+  ESP_LOGD("MODBUS","Registered worker for broadcast requests\n");
 }
 
 // Even more special: register a sniffer worker
@@ -146,7 +146,7 @@ void ModbusServerRTU::registerSniffer(MSRlistener worker) {
   // This holds true for the broadcast worker as well, 
   // so a sniffer never will do else but to sniff on broadcast requests!
   sniffer = worker;
-  LOG_D("Registered sniffer\n");
+  ESP_LOGD("MODBUS","Registered sniffer\n");
 }
 // serve: loop until killed and receive messages from the RTU interface
 void ModbusServerRTU::serve(ModbusServerRTU *myServer) {
@@ -174,7 +174,7 @@ void ModbusServerRTU::serve(ModbusServerRTU *myServer) {
 
     // Request longer than 1 byte (that will signal an error in receive())? 
     if (request.size() > 1) {
-      //LOG_D("Request received.\n");
+      //ESP_LOGD("MODBUS","Request received.\n");
 
       // Yes. 
       // Do we have a sniffer listening?
@@ -195,14 +195,14 @@ void ModbusServerRTU::serve(ModbusServerRTU *myServer) {
         // Do we have a callback function registered for it?
         MBSworker callBack = myServer->getWorker(request[0], request[1]);
         if (callBack) {
-          //LOG_D("Callback found.\n");
+          //ESP_LOGD("MODBUS","Callback found.\n");
           // Yes, we do. Count the message
           {
             LOCK_GUARD(cntLock, myServer->m);
             myServer->messageCount++;
           }
           // Get the user's response
-          //LOG_D("Callback called.\n");
+          //ESP_LOGD("MODBUS","Callback called.\n");
           m = callBack(request);
           HEXDUMP_V("Callback response", m.data(), m.size());
 
@@ -241,7 +241,7 @@ void ModbusServerRTU::serve(ModbusServerRTU *myServer) {
           //digitalWrite(CELL485_DE, 1);
           RTUutils::send(*(myServer->MSRserial), myServer->MSRlastMicros, myServer->MSRinterval, myServer->MRTSrts, response, myServer->MSRuseASCII);
           //digitalWrite(CELL485_DE, 0);
-          //LOG_D("Response sent.\n");
+          //ESP_LOGD("MODBUS","Response sent.\n");
           // Count it, in case we had an error response
           if (response.getError() != SUCCESS) {
             LOCK_GUARD(errorCntLock, myServer->m);
@@ -287,7 +287,7 @@ void ModbusServerRTU::serveExt(ModbusServerRTU *myServer) {
 
     // Request longer than 1 byte (that will signal an error in receive())? 
     if (request.size() > 1) {
-      //LOG_D("Request received.\n");
+      //ESP_LOGD("MODBUS","Request received.\n");
 
       // Yes. 
       // Do we have a sniffer listening?
@@ -308,14 +308,14 @@ void ModbusServerRTU::serveExt(ModbusServerRTU *myServer) {
         // Do we have a callback function registered for it?
         MBSworker callBack = myServer->getWorker(request[0], request[1]);
         if (callBack) {
-          //LOG_D("Callback found.\n");
+          //ESP_LOGD("MODBUS","Callback found.\n");
           // Yes, we do. Count the message
           {
             LOCK_GUARD(cntLock, myServer->m);
             myServer->messageCount++;
           }
           // Get the user's response
-          //LOG_D("Callback called.\n");
+          //ESP_LOGD("MODBUS","Callback called.\n");
           m = callBack(request);
           HEXDUMP_V("Callback response", m.data(), m.size());
 
@@ -354,7 +354,7 @@ void ModbusServerRTU::serveExt(ModbusServerRTU *myServer) {
           //digitalWrite(CELL485_DE, 1);
           RTUutils::send(*(myServer->MSRserial), myServer->MSRlastMicros, myServer->MSRinterval, myServer->MRTSrts, response, myServer->MSRuseASCII);
           //digitalWrite(CELL485_DE, 0);
-          //LOG_D("Response sent.\n");
+          //ESP_LOGD("MODBUS","Response sent.\n");
           // Count it, in case we had an error response
           if (response.getError() != SUCCESS) {
             LOCK_GUARD(errorCntLock, myServer->m);

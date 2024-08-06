@@ -29,10 +29,7 @@
 #define RELAY_1             0  // + 릴레이 
 #define RELAY_2             25 // - 릴레이 
 
-#define GPIO_INTERRUPT32  GPIO_NUM_32
 #define ESP_INTR_FLAG_DEFAULT 0
-#define GPIO_OUTPUT_RESET GPIO_NUM_5
-//#define GPIO_INTERRUPT32  GPIO_NUM_32
 #define ESP_INTR_FLAG_DEFAULT 0
 
 #define MAX_INSTALLED_CELLS 50
@@ -87,7 +84,6 @@ typedef struct {
   float impendance[20];// 4byte
   int16_t temperature[20];// 2byte
 }cell_logData_t; // Total 18bte
-//#define RESET_5940 GPIO_NUM_5
 // #define SERIAL_SEL_ADDR3    34  // Only Use Input
 // #define SERIAL_SEL_ADDR2    35  // test fail 
 // 2 OK 

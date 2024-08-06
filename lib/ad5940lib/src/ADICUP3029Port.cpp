@@ -104,12 +104,12 @@ void AD5940_CsSet(void)
 
 void AD5940_RstSet(void)
 {
-   digitalWrite(GPIO_OUTPUT_RESET,1);
+   digitalWrite(RESET_5940,1);
 }
 
 void AD5940_RstClr(void)
 {
-   digitalWrite(GPIO_OUTPUT_RESET,0);
+   digitalWrite(RESET_5940,0);
 }
 void AD5940_Delay10us(uint32_t time)
 {
@@ -137,9 +137,9 @@ uint32_t AD5940_ClrMCUIntFlag(void)
 {
   //  pADI_XINT0->CLR = BITM_XINT_CLR_IRQ0;
   //gpio_intr_status_clear(GPIO_INTERRUPT32);
-  digitalWrite(AD5940_ISR,HIGH); 
+  //digitalWrite(AD5940_ISR,HIGH); 
   ucInterrupted = 0;
-   return 1;
+  return 1;
 }
 
 /* This function is used to set Dn on Arduino shield(and set it to output) */
@@ -170,18 +170,8 @@ uint32_t AD5940_MCUResourceInit(void *pCfg)
   //다시 정리 한다. //P2.6-ADC3-A3-AD5940_Reset
   // /*Setup Pins P0.0-->SCLK P0.1-->MOSI P0.2-->MISO P1.10-->CS*/
   // pADI_GPIO1->CFG &=~(3<<14); /* Configure P1.10 to GPIO function */
-  gpio_set_direction(GPIO_OUTPUT_RESET, GPIO_MODE_OUTPUT);
-  digitalWrite(GPIO_OUTPUT_RESET,1);
-  //gpio_set_level(GPIO_OUTPUT_RESET, 1);
-
-  gpio_set_direction(GPIO_NUM_32, GPIO_MODE_INPUT_OUTPUT);
-  // gpio_set_intr_type(GPIO_NUM_32, GPIO_INTR_NEGEDGE /*GPIO_INTR_ANYEDGE*/);
   // gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
-  // gpio_isr_handler_add(GPIO_NUM_32, Ext_Int0_Handler, (void *)GPIO_NUM_32);
-  // gpio_intr_enable(GPIO_NUM_32);
-  //attachInterrupt(digitalPinToInterrupt(GPIO_NUM_32), Ext_Int0_Handler, FALLING);
   attachInterrupt(digitalPinToInterrupt(AD5940_ISR), Ext_Int0_Handler, FALLING);
-  //gpio_set_level(GPIO_NUM_32, HIGH);
   AD5940_CsSet(); /* AD5941 Chip을 선택한다. */
   AD5940_Delay10us(150 * 100);
   AD5940_RstSet();
@@ -222,11 +212,8 @@ uint32_t AD5940_MCUResourceInit(void *pCfg)
 /* MCU related external line interrupt service routine */
 void IRAM_ATTR Ext_Int0_Handler()
 {
-  //gpio_intr_status_clear(GPIO_NUM_32);
-  //  pADI_XINT0->CLR = BITM_XINT_CLR_IRQ0;
-
   ucInterrupted = 1;
-  Serial.println("Interrupt detected!");
+  //Serial.println("Interrupt detected!");
   // /* This example just set the flag and deal with interrupt in AD5940Main function. It's your choice to choose how to process interrupt. */
 }
 
