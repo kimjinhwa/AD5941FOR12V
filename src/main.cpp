@@ -480,6 +480,7 @@ void loop(void)
         sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER, 0, 3);
         esp_task_wdt_reset();
         //TODO: 아래의 펑션은 MODBUS 루틴을 변경하기 위해 임시로 막는다
+        //readModuleRelayStatus(1);
         SelectBatteryMinusPlus(i);
         time_t startRead = millis();
         float batVoltage = 0.0;
@@ -489,7 +490,7 @@ void loop(void)
         cellvalue[i - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
         time_t endRead = millis();             // take 300ms
         ESP_LOGI("Voltage", "Bat(%d) Voltage is : %3.3f (%ldmilisecond)", i,batVoltage, endRead - startRead);
-        simpleCli.outputStream->printf("\nBat(%i) Voltage is : %3.3f (%ldmilisecond)",i, batVoltage, endRead - startRead);
+        simpleCli.outputStream->printf("\nBat(%i) Voltage is : %3.3f (%ldmilisecond)\n",i, batVoltage, endRead - startRead);
         //if (batVoltage > 2.0)
         {
           if (systemDefaultValue.runMode == 3)
@@ -501,7 +502,7 @@ void loop(void)
     }
  //   globalModbusId = globalModbusId > 4 ? 1 : globalModbusId ;
     loopCount++;
-    previous_5Secondmills = now;
+    previous_5Secondmills = millis();
   }
   if ((now - previous_30Secondmills > Interval_30Second))
   {

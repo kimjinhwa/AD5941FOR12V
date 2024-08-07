@@ -12,7 +12,7 @@ using std::queue;
 
 void modbusCellModuleSetup();
 bool SelectBatteryMinusPlus(uint8_t modbusId);
-uint32_t sendGetModbusModuleData_old(uint8_t modbusId, uint8_t fCode);
+int readModuleRelayStatus(uint8_t modbusId);
 uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len);
 typedef struct
 {
@@ -21,9 +21,9 @@ typedef struct
     uint16_t address;
     uint16_t relay1;
     uint16_t relay2;
-    uint16_t reserved_6;
-    uint16_t reserved_7;
-    uint16_t reserved_8;
+    uint16_t relay1_status;
+    uint16_t relay2_status;
+    uint16_t bitData;
     uint16_t reserved_9;
     uint16_t reserved_10;
     uint16_t reserved_11;
@@ -183,3 +183,4 @@ public:
 };
 extern ModbusRequestModule modbusRequestModule;
 #endif
+//uint32_t sendGetModbusModuleData_old(uint8_t modbusId, uint8_t fCode);

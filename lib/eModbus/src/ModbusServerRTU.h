@@ -36,17 +36,18 @@ public:
   // begin: create task with RTU server to accept requests
   void begin(Stream& serial, uint32_t baudRate, int coreID = -1);
   void begin(HardwareSerial& serial, int coreID = -1);
-
+ TaskHandle_t*  getTaskHandle(){
+  return &serverTask;
+ }
   void suspendTask(){
-    //vTaskSuspend( serverTask);
+    vTaskSuspend( serverTask);//stopReceive ;
     stopReceive = 1;
   }
-   int isSuspendedTask(){
-    //vTaskSuspend( serverTask);
-    return stopReceive ;
+   eTaskState isSuspendedTask(){
+    return eTaskGetState(serverTask);
   }
   void resumeTask(){
-    //vTaskResume( serverTask);
+    vTaskResume( serverTask);
     stopReceive  = 0;
   }
   

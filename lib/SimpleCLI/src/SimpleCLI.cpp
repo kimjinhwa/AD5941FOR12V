@@ -24,6 +24,8 @@ extern "C" {
 #include "c/cmd_error.h" // cmd_error_destroy
 }
 //int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t len);
+void AD5940_Main(void *parameters);
+uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len);
 int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len,uint16_t timeout);
 void setRtcNewTime(RtcDateTime rtc);
 void readnWriteEEProm();
@@ -131,22 +133,7 @@ void batnumber_configCallback(cmd *cmdPtr)
   simpleCli.outputStream->printf("\nChanged EEPROM installed Bat number %d", systemDefaultValue.installed_cells);
 }
 
-void AD5940_Main(void *parameters);
-uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len);
 
-    // simpleCli.outputStream->printf("\ncount is %d",cmd.countArgs()); 
-    // simpleCli.outputStream->printf("\nfirst arg is %s",cmd.getArgument(0).getName()); 
-    // simpleCli.outputStream->printf("\nfirst arg is %s",cmd.getArgument(0).getValue()); 
-    // simpleCli.outputStream->printf("\nsecond arg is %s",cmd.getArgument(1).getName()); 
-    // simpleCli.outputStream->printf("\nsecond arg is %s",cmd.getArgument(1).getValue()); 
-    // simpleCli.outputStream->printf("\nthird arg is %s",cmd.getArgument(2).getName()); 
-    // simpleCli.outputStream->printf("\nthird arg is %s",cmd.getArgument(2).getValue()); 
-    // simpleCli.outputStream->printf("\nforth arg is %s",cmd.getArgument(3).getName()); 
-    // simpleCli.outputStream->printf("\nforth arg is %s",cmd.getArgument(3).getValue()); 
-  // cmd_config.addFlagArgument("i");
-  // cmd_config.addFlagArgument("v");
-  // cmd_config.addPositionalArgument("num");
-  // cmd_config.addPositionalArgument("value");
 void printCompensationValue(){
   simpleCli.outputStream->printf("\r\nCompensation Value");
   simpleCli.outputStream->printf("\r\n\tno\timp\tvol\r\n");
@@ -435,7 +422,6 @@ void temperature_configCallback(cmd *cmdPtr){
   simpleCli.outputStream->printf("\r\n%s",argVal.c_str());
   if(argVal.length() > 0 ){
 
-    //sendGetModbusModuleData(uint8_t modbusId, uint8_t fCode);
     batTemperature = sendGetModbusModuleData(millis(), argVal.toInt(), READ_INPUT_REGISTER,0,3);
     simpleCli.outputStream->printf("\r\n[%d]Bat Temperature : %3.2f",argVal.toInt(),batTemperature/100.0f);
     return;
@@ -443,7 +429,6 @@ void temperature_configCallback(cmd *cmdPtr){
   for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
   {
     batTemperature = sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER,0,3);
-    //batTemperature = sendGetModbusModuleData(i, 04);
     simpleCli.outputStream->printf("\r\n[%d]Bat Temperature : %3.2f",i,batTemperature/100.0f);
   }
 }
@@ -1062,3 +1047,18 @@ void SimpleCLI::setOnError(void (* onError)(cmd_error* e)) {
 void SimpleCLI::setErrorCallback(void (* onError)(cmd_error* e)) {
     setOnError(onError);
 }
+    //sendGetModbusModuleData(uint8_t modbusId, uint8_t fCode);
+    // simpleCli.outputStream->printf("\ncount is %d",cmd.countArgs()); 
+    // simpleCli.outputStream->printf("\nfirst arg is %s",cmd.getArgument(0).getName()); 
+    // simpleCli.outputStream->printf("\nfirst arg is %s",cmd.getArgument(0).getValue()); 
+    // simpleCli.outputStream->printf("\nsecond arg is %s",cmd.getArgument(1).getName()); 
+    // simpleCli.outputStream->printf("\nsecond arg is %s",cmd.getArgument(1).getValue()); 
+    // simpleCli.outputStream->printf("\nthird arg is %s",cmd.getArgument(2).getName()); 
+    // simpleCli.outputStream->printf("\nthird arg is %s",cmd.getArgument(2).getValue()); 
+    // simpleCli.outputStream->printf("\nforth arg is %s",cmd.getArgument(3).getName()); 
+    // simpleCli.outputStream->printf("\nforth arg is %s",cmd.getArgument(3).getValue()); 
+  // cmd_config.addFlagArgument("i");
+  // cmd_config.addFlagArgument("v");
+  // cmd_config.addPositionalArgument("num");
+  // cmd_config.addPositionalArgument("value");
+    //batTemperature = sendGetModbusModuleData(i, 04);
