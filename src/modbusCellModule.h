@@ -86,7 +86,7 @@ class ExtendSerial//: public HardwareSerial
     void selectCellModule(bool writeEnable){
       digitalWrite(_addr0,false);
       digitalWrite(_addr1,false); 
-      digitalWrite(CELL485_DE, writeEnable);
+      //digitalWrite(CELL485_DE, writeEnable);
     };
     void selectLcd(){
       digitalWrite(_addr0,true);

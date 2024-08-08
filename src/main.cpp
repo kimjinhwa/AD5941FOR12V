@@ -60,7 +60,7 @@ uint32_t request_time;
 uint16_t values[2];
 uint16_t cellModbusIdReceived;
 ExtendSerial extendSerial;
-//ModbusClientRTU cellModbus(CELL485_DE);
+
 uint8_t selecectedCellNumber =0;
 
 _cell_value cellvalue[MAX_INSTALLED_CELLS];
@@ -101,6 +101,7 @@ void pinsetup()
     digitalWrite(RELAY_1, RELAY_OFF   );
     digitalWrite(RELAY_2, RELAY_OFF   );
     digitalWrite(AD5940_ISR, HIGH);
+    digitalWrite(CELL485_DE, LOW);
 };
 
 //HardwareSerial Serial1;
@@ -315,7 +316,7 @@ void setup()
   pinsetup();
    // 인터럽트 핸들러를 연결
   //attachInterrupt(digitalPinToInterrupt(AD5940_ISR), handleInterrupt, FALLING);
-  Serial.begin(BAUDRATE);
+  Serial.begin(115200);
   // 외부 485통신에 사용한다.
   Serial1.begin(BAUDRATE, SERIAL_8N1, SERIAL_RX1, SERIAL_TX1);
   esp_reset_reason_t resetReson =  esp_reset_reason();
@@ -399,6 +400,8 @@ void setup()
   bleName += systemDefaultValue.modbusId;
   SerialBT.begin(bleName.c_str() );
   wifiApmodeConfig();
+
+  Serial.println("Flash Memory Init....Waiting....");
   lsFile.littleFsInitFast(0);
   setRtc();
   lsFile.writeLogString(strResetReason);
