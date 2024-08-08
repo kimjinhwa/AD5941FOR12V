@@ -39,7 +39,8 @@ float BatDeviceInterface::readBatAdcValue(float filter)
   batVoltageAdcValue += systemDefaultValue.voltageCompensation[_cellNumbver-1];
   uint32_t voltage = esp_adc_cal_raw_to_voltage((uint32_t)batVoltageAdcValue , &adc_chars);
   
-  batVoltageAdcValue = voltage*((5.1+0.05567+1)/1);
+  //batVoltageAdcValue = voltage*((5.1+0.05567+1)/1);
+  batVoltageAdcValue = voltage*100.0/33.0*2.0 * 1.24;
   batVoltageAdcValue  /= 1000.0;
   if(batVoltageAdcValue < 1.3 ) batVoltageAdcValue = 0; 
 // 이후, adc_chars를 esp_adc_cal_raw_to_voltage() 함수와 함께 사용

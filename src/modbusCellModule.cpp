@@ -270,9 +270,15 @@ int isModuleAllOff(){
 }
 bool SelectBatteryMinusPlus(uint8_t modbusId)
 {
+
   // First Step : All relay 0 -> off
   int i;
   uint16_t retValue;
+  // P15V를 공급한다. 
+  digitalWrite(RELAY_2, RELAY_OFF   );
+  delay(100);
+  digitalWrite(RELAY_1, RELAY_OFF   );
+  delay(500);
 
   //for(i=1;i<=systemDefaultValue.installed_cells;i++)
   //ESP_LOGW("MODULE", "Step 1 All Relay 1 Off(%d) Command %d",i,systemDefaultValue.installed_cells);
@@ -320,6 +326,13 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
     ESP_LOGW("MODULE", "Step5 Error %d moduleState %d",i,moduleState);
     return false;// 6가 리턴되어야 한다.
   }
+  // 외부 배터리를 연결한다. 
+  ESP_LOGI("MODULE", "Step4 ");
+  digitalWrite(RELAY_1, RELAY_ON   );
+  delay(1000);
+  digitalWrite(RELAY_2, RELAY_ON   );
+  delay(1000);
+
   return true;
 }
 uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode)

@@ -30,8 +30,6 @@
 // #include <esp_task.h>
 #include <esp_task_wdt.h>
 
-#define RELAY_OFF   1  
-#define RELAY_ON    0 
 
 #define WDT_TIMEOUT 60 
 // 기본 vSPI와 일치한다

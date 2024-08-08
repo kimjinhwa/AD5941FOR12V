@@ -29,6 +29,9 @@
 #define RELAY_1             0  // + 릴레이 
 #define RELAY_2             25 // - 릴레이 
 
+#define RELAY_OFF   1  
+#define RELAY_ON    0 
+
 #define ESP_INTR_FLAG_DEFAULT 0
 #define ESP_INTR_FLAG_DEFAULT 0
 
