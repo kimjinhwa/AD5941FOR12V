@@ -485,6 +485,24 @@ void id_configCallback(cmd *cmdPtr){
     simpleCli.outputStream->printf("\r\nmodbus is Changed to %d",systemDefaultValue.modbusId);
   }
 }
+void p15relay_configCallback(cmd *cmdPtr){
+  Command cmd(cmdPtr);
+  Argument arg = cmd.getArgument(0);
+  String argVal = arg.getValue();
+  if (argVal.length() == 0) return; 
+  int8_t mode = argVal.toInt(); 
+
+  simpleCli.outputStream->printf("\r\nPower Relay %s", mode==1 ?"ON":"OFF");
+  if(mode == 1){
+    digitalWrite(RELAY_1, RELAY_ON);
+    digitalWrite(RELAY_2, RELAY_ON);
+  }
+  else {
+    digitalWrite(RELAY_1, RELAY_OFF);
+    digitalWrite(RELAY_2, RELAY_OFF);
+  }
+
+}
 void mode_configCallback(cmd *cmdPtr){
   Command cmd(cmdPtr);
   Argument arg = cmd.getArgument(0);
@@ -703,6 +721,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config.addFlagArg("off");
   cmd_config.setDescription("relay on off controll \r\n relay -s/el [1] [-off]");
   cmd_config = addSingleArgCmd("runmode", mode_configCallback);
+  cmd_config = addSingleArgCmd("p15relay", p15relay_configCallback);
   cmd_config = addSingleArgCmd("id", id_configCallback);
   cmd_config = addSingleArgCmd("cal/ibration", calibration_configCallback);
   cmd_config = addSingleArgCmd("bat/number", batnumber_configCallback);
