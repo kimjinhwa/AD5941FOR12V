@@ -251,20 +251,20 @@ int readModuleRelayStatus(uint8_t modbusId)
 하나라도 통신이 안되거나 12값이 아니면 켜져 있는 것이다.*/
 int isModuleAllOff(){
   int i;
-  int moduleState;
+  int moduleState1;
   //12,12의 값이 리턴될것이다. 
   for (i = 1; i <= systemDefaultValue.installed_cells+1; i++)
   {
-    moduleState = readModuleRelayStatus(i);
-    //ESP_LOGW("MODULE", "Step3 %d moduleState %d",i,moduleState);
-    if (moduleState == -1 || moduleState != 12)
+    moduleState1 = readModuleRelayStatus(i);
+    //ESP_LOGW("MODULE", "Step3 %d moduleState1 %d",i,moduleState1);
+    if (moduleState1 == -1 || moduleState1 != 12)
     {
       // 통신에러이며 더이상 진행하지 않는다.
       //ESP_LOGI("MODBUS","ID %d CELL OFF OR COMM ERROR",i);
-      return moduleState;
+      return moduleState1;
     }
   }
-  return moduleState;
+  return moduleState1;
 }
 bool SelectBatteryMinusPlus(uint8_t modbusId)
 {
@@ -287,48 +287,48 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   // 모든 모듈의 2번 릴레이를 OFF한다.
   //ESP_LOGW("MODULE", "Step2 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
   if(!CellOnOff(255,1,CELLOFF))return false;
-  vTaskDelay(200);
+  vTaskDelay(20);
 
-  int moduleState;
+  int moduleState1;
+  int moduleState2;
   if( isModuleAllOff() != 12){
-    ESP_LOGW("MODULE", "Step3 Error %d moduleState %d",i,moduleState);
+    ESP_LOGW("MODULE", "Step3 Error All Off moduleState1 d");
     return false; //12,12의 값이 리턴될것이다. 
   }
-  // 주어진 modbusid의 1번 릴레이를 ON한다.
-  if(!CellOnOff(modbusId,0,CELLON))return false;
-  vTaskDelay(200);
-  //9,12의 값이 리턴될것이다. 
-  // moduleState = readModuleRelayStatus(modbusId);
-  // if(moduleState!=9){
-  //   ESP_LOGW("MODULE", "Step4 Error %d moduleState %d",i,moduleState);
-  //   return false;// 9가 리턴되어야 한다.
-  // }
-  moduleState = readModuleRelayStatus(modbusId+1);
-  // if(moduleState!=12)
-  // {
-  //   ESP_LOGW("MODULE", "Step4 Error %d moduleState %d",i,moduleState);
-  //   return false;// 12가 리턴되어야 한다.
-  // }
-
-  // 주어진 modbusid의 다음번  2번 릴레이를 ON한다.
+  /*
+  중요한 Debuging이 있다. 1번은 GND이므로 이것을 나중에 연결하여 한다. 
+  배터리의 전압으로 인해 센싱이 방해 받는 것을 방지하기 위함이다. 
+  2번릴레이를 먼저 연결하면, 12 6이 리턴된다. 이경우 릴레이 2번은 잘 연결되었다는 경우이다. 
+  이제 1번 릴레이를 ON하면  1번릴레이는 9의 값을 갖으며, 
+  2번 릴레이는 배터리의 전압(액 9V이상으로 인해 ) 값 2을 갖는다. 
+  */
+  // 주어진 modbusid +1 의 2번 릴레이(+)를 ON한다.
   if(!CellOnOff(modbusId+1,1,CELLON))return false;
-  vTaskDelay(200);
-  //9,6의 값이 리턴될것이다. 
-  moduleState = readModuleRelayStatus(modbusId);
-  // if(moduleState!=9){
-  //   ESP_LOGW("MODULE", "Step5 Error %d moduleState %d",i,moduleState);
-  //   return false;// 9가 리턴되어야 한다.
-  // }
-  moduleState = readModuleRelayStatus(modbusId+1);
-  // if(moduleState!=6){
-  //   ESP_LOGW("MODULE", "Step5 Error %d moduleState %d",i,moduleState);
-  //   return false;// 6가 리턴되어야 한다.
-  // }
+  vTaskDelay(20);
+  // 모듈 1은 앞서 검사를 했기 때문에 2번만 검사를 하며 6의 값이 리턴될것이다. 
+  moduleState1 = readModuleRelayStatus(modbusId);
+  moduleState2 = readModuleRelayStatus(modbusId+1);
+  ESP_LOGW("MODULE", "Step5 %d moduleState2 %d ",modbusId,moduleState2);
+  if(moduleState2!=6){
+    ESP_LOGW("MODULE", "Step5 Error %d moduleState %d %d",modbusId,moduleState1,moduleState2);
+    return false;// 9가 리턴되어야 한다.
+  }
+  if(!CellOnOff(modbusId,0,CELLON))return false;
+  vTaskDelay(20);
+  //9와 ,6또는 2의 값이 리턴될것이다. 
+  moduleState1 = readModuleRelayStatus(modbusId);
+  moduleState2 = readModuleRelayStatus(modbusId+1);
+  ESP_LOGW("MODULE", "Step4 %d moduleState %d %d",modbusId,moduleState1,moduleState2);
+  if(moduleState1 !=9 ){
+    ESP_LOGW("MODULE", "Step4 Error %d moduleState1 %d %d",modbusId,moduleState1,moduleState2);
+    return false;// 9가 리턴되어야 한다.
+  }
+
   //외부 배터리를 연결한다. 
-  ESP_LOGI("MODULE", "Step4 ");
-  digitalWrite(RELAY_1, RELAY_ON   );
+  ESP_LOGI("MODULE", "Step6 ");
+  digitalWrite(RELAY_1, RELAY_ON   );  // + 라인
   delay(1000);
-  digitalWrite(RELAY_2, RELAY_ON   );
+  digitalWrite(RELAY_2, RELAY_ON   ); // - 라인
   delay(1000);
 
   return true;
@@ -515,9 +515,9 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
   //ESP_LOGW("MODULE", "LcdCell485.isSuspendedTask() %d", 1);
   // for (i = 1; i <= systemDefaultValue.installed_cells+1; i++)
   // {
-  //   moduleState = readModuleRelayStatus(i);
-  //   ESP_LOGW("MODULE", "Step3 %d moduleState %d",i,moduleState);
-  //   // if (moduleState == -1 || moduleState != 12)
+  //   moduleState1 = readModuleRelayStatus(i);
+  //   ESP_LOGW("MODULE", "Step3 %d moduleState1 %d",i,moduleState1);
+  //   // if (moduleState1 == -1 || moduleState1 != 12)
   //   // {
   //   //   // 통신에러이며 더이상 진행하지 않는다.
   //   //   ESP_LOGI("MODBUS","ID %d CELL OFF OR COMM ERROR",i);
