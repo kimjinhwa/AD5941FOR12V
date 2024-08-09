@@ -501,6 +501,8 @@ void loop(void)
             AD5940_Main(parameters); // for test 무한 루프
         }
         if(systemDefaultValue.runMode ==0) break;
+        if(!CellOnOff(255,0,CELLOFF)) ;
+        if(!CellOnOff(255,1,CELLOFF));
         vTaskDelay(1000);
       }
     }
