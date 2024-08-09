@@ -4,8 +4,6 @@
 #include "modbusRtu.h"
 #include "AD5940.h"
 
-#define CELLOFF 0x0000
-#define CELLON 0xFF00
 extern ModbusServerRTU LcdCell485;
 extern ModbusServerRTU external485;
 extern uint8_t selecectedCellNumber ;
@@ -300,33 +298,33 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   if(!CellOnOff(modbusId,0,CELLON))return false;
   vTaskDelay(200);
   //9,12의 값이 리턴될것이다. 
-  moduleState = readModuleRelayStatus(modbusId);
-  if(moduleState!=9){
-    ESP_LOGW("MODULE", "Step4 Error %d moduleState %d",i,moduleState);
-    return false;// 9가 리턴되어야 한다.
-  }
+  // moduleState = readModuleRelayStatus(modbusId);
+  // if(moduleState!=9){
+  //   ESP_LOGW("MODULE", "Step4 Error %d moduleState %d",i,moduleState);
+  //   return false;// 9가 리턴되어야 한다.
+  // }
   moduleState = readModuleRelayStatus(modbusId+1);
-  if(moduleState!=12)
-  {
-    ESP_LOGW("MODULE", "Step4 Error %d moduleState %d",i,moduleState);
-    return false;// 12가 리턴되어야 한다.
-  }
+  // if(moduleState!=12)
+  // {
+  //   ESP_LOGW("MODULE", "Step4 Error %d moduleState %d",i,moduleState);
+  //   return false;// 12가 리턴되어야 한다.
+  // }
 
   // 주어진 modbusid의 다음번  2번 릴레이를 ON한다.
   if(!CellOnOff(modbusId+1,1,CELLON))return false;
   vTaskDelay(200);
   //9,6의 값이 리턴될것이다. 
   moduleState = readModuleRelayStatus(modbusId);
-  if(moduleState!=9){
-    ESP_LOGW("MODULE", "Step5 Error %d moduleState %d",i,moduleState);
-    return false;// 9가 리턴되어야 한다.
-  }
+  // if(moduleState!=9){
+  //   ESP_LOGW("MODULE", "Step5 Error %d moduleState %d",i,moduleState);
+  //   return false;// 9가 리턴되어야 한다.
+  // }
   moduleState = readModuleRelayStatus(modbusId+1);
-  if(moduleState!=6){
-    ESP_LOGW("MODULE", "Step5 Error %d moduleState %d",i,moduleState);
-    return false;// 6가 리턴되어야 한다.
-  }
-  // 외부 배터리를 연결한다. 
+  // if(moduleState!=6){
+  //   ESP_LOGW("MODULE", "Step5 Error %d moduleState %d",i,moduleState);
+  //   return false;// 6가 리턴되어야 한다.
+  // }
+  //외부 배터리를 연결한다. 
   ESP_LOGI("MODULE", "Step4 ");
   digitalWrite(RELAY_1, RELAY_ON   );
   delay(1000);

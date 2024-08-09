@@ -482,7 +482,10 @@ void loop(void)
         esp_task_wdt_reset();
         //TODO: 아래의 펑션은 MODBUS 루틴을 변경하기 위해 임시로 막는다
         //readModuleRelayStatus(1);
-        SelectBatteryMinusPlus(i);
+        bRet = SelectBatteryMinusPlus(i);
+        if(bRet == false){
+        ESP_LOGE("BAT", "Select Battery %dth Error",i); 
+        }
         time_t startRead = millis();
         float batVoltage = 0.0;
         batVoltage = batDevice.readBatAdcValue(i, 600);
@@ -498,6 +501,8 @@ void loop(void)
             AD5940_Main(parameters); // for test 무한 루프
         }
         if(systemDefaultValue.runMode ==0) break;
+        if(!CellOnOff(255,0,CELLOFF)) ;
+        if(!CellOnOff(255,1,CELLOFF));
         vTaskDelay(1000);
       }
     }

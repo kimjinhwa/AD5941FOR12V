@@ -10,9 +10,15 @@
 
 using std::queue;
 
+#define CELLOFF 0x0000
+#define CELLON 0xFF00
+
 void modbusCellModuleSetup();
 bool SelectBatteryMinusPlus(uint8_t modbusId);
 int readModuleRelayStatus(uint8_t modbusId);
+bool CellOnOff(uint8_t modbusId, uint16_t relay, uint16_t onoff);
+
+
 uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len);
 typedef struct
 {
