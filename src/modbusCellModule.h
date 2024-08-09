@@ -10,6 +10,9 @@
 
 using std::queue;
 
+#define CELLOFF 0x0000
+#define CELLON 0xFF00
+
 void modbusCellModuleSetup();
 bool SelectBatteryMinusPlus(uint8_t modbusId);
 int readModuleRelayStatus(uint8_t modbusId);
