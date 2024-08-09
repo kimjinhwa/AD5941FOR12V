@@ -15,6 +15,7 @@ using std::queue;
 
 void modbusCellModuleSetup();
 bool SelectBatteryMinusPlus(uint8_t modbusId);
+bool checkVoltageoff();
 int readModuleRelayStatus(uint8_t modbusId);
 bool CellOnOff(uint8_t modbusId, uint16_t relay, uint16_t onoff);
 

@@ -10,6 +10,7 @@ class BatDeviceInterface
 {
     public:
     BatDeviceInterface();
+    float readBatAdcValueExt(float filter);
     float readBatAdcValue(uint16_t cellNumbver, float filter);
     float getBatVoltage(float batVoltageAdcValue);
     float batVoltageAdcValue ;

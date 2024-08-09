@@ -3,6 +3,7 @@
 #include "ModbusServerRTU.h"
 #include "modbusRtu.h"
 #include "AD5940.h"
+#include "batDeviceInterface.h"
 
 extern ModbusServerRTU LcdCell485;
 extern ModbusServerRTU external485;
@@ -331,6 +332,30 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   digitalWrite(RELAY_2, RELAY_ON   ); // - 라인
   delay(1000);
 
+  return true;
+}
+/*
+* 모든 릴레이를 OFF상태로 놓은 다음에 전압을 측정한다. 
+* 이때 전압 값이 0이 나와야 한다. 
+* 문제가 없다면 이제 메인보드의 파워릴레이를 OFF한다.
+*/
+
+extern BatDeviceInterface batDevice;
+bool checkVoltageoff(){
+
+  if(!CellOnOff(255,0,CELLOFF)) return false;
+  // 모든 모듈의 2번 릴레이를 OFF한다.
+  //ESP_LOGW("MODULE", "Step2 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
+  if(!CellOnOff(255,1,CELLOFF))return false;
+
+  float batVoltage = 0.0;
+  batVoltage = batDevice.readBatAdcValueExt(10);
+  ESP_LOGI("Voltage", "--->Bat Voltage is : %3.3f ", batVoltage);
+  vTaskDelay(20);
+  digitalWrite(RELAY_2, RELAY_OFF   );
+  delay(100);
+  digitalWrite(RELAY_1, RELAY_OFF   );
+  delay(500);
   return true;
 }
 uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode)
