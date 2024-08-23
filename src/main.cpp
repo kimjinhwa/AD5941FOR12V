@@ -524,7 +524,7 @@ void loop(void)
           if (systemDefaultValue.runMode == 3)
             AD5940_Main(parameters); // for test 무한 루프
         }
-        checkVoltageoff();
+        checkVoltageoff(i);
         if(systemDefaultValue.runMode ==0) break;
         //vTaskDelay(300);
       }

@@ -11,6 +11,7 @@
 #include "ModbusTypeDefs.h"
 #include "EEPROM.h"
 #include "ModbusServerRTU.h"
+#include "../../../src/modbusCellModule.h"
 
 LittleFileSystem lsFile;
 SimpleCLI simpleCli;
@@ -25,12 +26,11 @@ extern "C" {
 }
 //int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t len);
 void AD5940_Main(void *parameters);
-uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len);
 int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len,uint16_t timeout);
 void setRtcNewTime(RtcDateTime rtc);
 void readnWriteEEProm();
 RtcDateTime getDs1302GetRtcTime();
-bool SelectBatteryMinusPlus(uint8_t modbusId);
+//bool SelectBatteryMinusPlus(uint8_t modbusId);
 void getTime(){
 
   RtcDateTime now;

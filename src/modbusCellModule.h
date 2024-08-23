@@ -15,12 +15,12 @@ using std::queue;
 
 void modbusCellModuleSetup();
 bool SelectBatteryMinusPlus(uint8_t modbusId);
-bool checkVoltageoff();
+bool checkVoltageoff(uint8_t modbusID);
 int readModuleRelayStatus(uint8_t modbusId);
 bool CellOnOff(uint8_t modbusId, uint16_t relay, uint16_t onoff);
 
 
-uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len);
+uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t data);
 typedef struct
 {
     uint16_t modbusId;

@@ -279,10 +279,12 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   digitalWrite(RELAY_FP_IO, SENSE_MODE);
   delay(10);
 
+  if(!CellOnOff(0,0,CELLOFF)) return false;
+  if(!CellOnOff(0,1,CELLOFF))return false;
   // 모든 모듈의 1번 릴레이를 OFF한다.  //ESP_LOGW("MODULE", "Step1 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
-  if(!CellOnOff(255,0,CELLOFF)) return false;
+  if(!CellOnOff(modbusId,0,CELLOFF))return false;
+  if(!CellOnOff(modbusId+1,1,CELLOFF))return false;
   // 모든 모듈의 2번 릴레이를 OFF한다.  //ESP_LOGW("MODULE", "Step2 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
-  if(!CellOnOff(255,1,CELLOFF))return false;
   vTaskDelay(20);
 
   int moduleState1;
@@ -365,13 +367,17 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
 */
 
 extern BatDeviceInterface batDevice;
-bool checkVoltageoff(){
+bool checkVoltageoff(uint8_t modbusID)
+{
 
   AD5940_ShutDown();
-  if(!CellOnOff(255,0,CELLOFF)) return false;
+  if(!CellOnOff(0,0,CELLOFF)) return false;
+  if(!CellOnOff(0,1,CELLOFF))return false;
+
+  if(!CellOnOff(modbusID,0,CELLOFF)) return false;
   // 모든 모듈의 2번 릴레이를 OFF한다.
   //ESP_LOGW("MODULE", "Step2 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
-  if(!CellOnOff(255,1,CELLOFF))return false;
+  if(!CellOnOff(modbusID+1,1,CELLOFF))return false;
 
   float batVoltage = 0.0;
   batVoltage = batDevice.readBatAdcValueExt(10);
@@ -462,7 +468,7 @@ ModbusMessage  syncRequestCellModule(uint32_t token,uint8_t modbusId, uint8_t fC
     LcdCell485.resumeTask();
     return rc    ;
 }
-uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len)
+uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t data)
 {
     uint16_t checkSum;
     uint16_t retValue=0;
@@ -474,14 +480,40 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
     //vTaskDelay(10);
     // Select cell module and set can sendData;
     // Dont care true or false, because modBusRtuCellModule will use probe pin
-    if(modbusId != 255){
-      ModbusMessage rc  = modBusRtuCellModule.syncRequest(token, modbusId, fCode, startAddress,  len);
+    if(modbusId == 0){
+      // Error err  = modBusRtuCellModule.addRequest(token, modbusId, fCode, startAddress,  data);
+      uint8_t buf[5];
+      buf[0] = fCode;
+      buf[1] = startAddress >> 8;
+      buf[2] = startAddress &  0x00ff;
+      buf[3] = data >> 8;
+      buf[4] = data &  0x00ff;
+
+      Error err = modBusRtuCellModule.addBroadcastMessage(buf,5);
+      vTaskDelay(100);
+      retValue =1;
+      data_ready = true;
+      if(err == SUCCESS){
+          //ESP_LOGI("modbus", "No error Multicast");
+      }
+      else {
+          ESP_LOGI("modbus", "error Multicast %d",err);
+      }
+    }
+    else if(modbusId != 255){
+      ModbusMessage rc  = modBusRtuCellModule.syncRequest(token, modbusId, fCode, startAddress,  data);
       if(rc.getError() == 0) //에러가 없으면.
+      {
+          //ESP_LOGI("modbus", "No error Modbus");
+      }
+      else {
+          ESP_LOGI("modbus", "error %d",rc.getError());
+      }
       //ModbusMessage rc = m.setMessage(std::forward<Args>(args) ...);
       handleData(rc,token);
     }
     else{
-      //Error err  = modBusRtuCellModule.addRequest(token, modbusId, fCode, startAddress,  len);
+      //Error err  = modBusRtuCellModule.addRequest(token, modbusId, fCode, startAddress,  data);
       // for(int i =0;i<100;i++){
       //   vTaskDelay(10);
       //   if(data_ready)break;
