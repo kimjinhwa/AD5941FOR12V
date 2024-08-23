@@ -1,10 +1,12 @@
 # TIA Resistance Measurement System.
 ## BOARD DEBUGGING
-  * WIFI 안테나 부분을 파자.
-  * R1  100K를 200K로 하자.
+  * WIFI 안테나 부분을 판다.
+  * R1  100K를 200K로 .
+  * P15V출력에 Toggle Switch를 달아 준다.
+  * ADG656_SEL IO27 및 점퍼를 사용하지 않고 GPIO2_EXT로 확정한다 ( J2 삭제)
+  * SENSE_P 과 SENSE_N을 바꿔준다.(회로도에서.. 상관은 없으나 이렇게 해주는게 좋다)
   *  adc_filter.Sinc2NotchEnable = bTRUE; 이것이 활성화 되어 있지 않다.    
      다시 확인을 하자. 
-  * P15V출력에 Toggle Switch를 달아 준다.
 ## BLUETOOTH COMMAND
 ### offset #
  #### offset    [-ia cellno value ] [-va  cellno value ]    [-i  cellno value ] 

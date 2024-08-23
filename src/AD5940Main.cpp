@@ -25,7 +25,7 @@ Analog Devices Software License Agreement.
 #include "ad5940.h"
 #include <esp_task_wdt.h>
 
-#define MAX_LOOP_COUNT 40
+#define MAX_LOOP_COUNT 30
 #define APPBUFF_SIZE 512
 
 static Print *outputStream;
@@ -46,25 +46,27 @@ void addResult(uint32_t *pData, uint32_t DataCount)
 {
   fImpCar_Type Average;
   fImpCar_Type *pImp = (fImpCar_Type *)pData;
-  if (DataCount == 10)
-  {
-    Average.Real = pImp->Real;
-    Average.Image = pImp->Image;
-  }
+  // if (DataCount == 10)
+  // {
+  //   Average.Real = pImp->Real;
+  //   Average.Image = pImp->Image;
+  // }
   pImpResult[DataCount].Real = pImp->Real;
   pImpResult[DataCount].Image = pImp->Image;
   if (DataCount == (MAX_LOOP_COUNT - 1))
   {
     // MAX_LOOP_COUNT가 30이라면 20부터 시작해서 29까지 이나까.. 10개의 평균이다.
-    for (int16_t i = MAX_LOOP_COUNT - 10; i < MAX_LOOP_COUNT; i++)
+    Average.Real = pImp->Real;
+    Average.Image = pImp->Image;
+    for (int16_t i = MAX_LOOP_COUNT - 5; i < MAX_LOOP_COUNT; i++)
     {
       Average.Real += pImpResult[i].Real;
       Average.Real /= 2.0;
       Average.Image += pImpResult[i].Image;
       Average.Image /= 2.0;
     }
-    ESP_LOGI("AVERAGE", "Average(real, image) = , %f ,%f ,%f mOhm \n", Average.Real, Average.Image, AD5940_ComplexMag(&Average));
-    outputStream->printf("\nAverage(real, image) = , %f ,%f ,%f mOhm \n", Average.Real, Average.Image, AD5940_ComplexMag(&Average));
+    ESP_LOGI("AVERAGE", "Average(real, image) = , %3.3f ,%3.3f ,%3.3f mOhm \n", Average.Real, Average.Image, AD5940_ComplexMag(&Average));
+    outputStream->printf("\nAverage(real, image) = , %3.3f ,%3.3f ,%3.3f mOhm \n", Average.Real, Average.Image, AD5940_ComplexMag(&Average));
     // 보정값을 적용하여 주자
     float readImpdance ;
     readImpdance =  AD5940_ComplexMag(&Average);
@@ -189,12 +191,12 @@ void AD5940BATStructInit(void)
   pBATCfg->MaxSeqLen = 512;
   pBATCfg->RcalVal = 56.0;  							/* Value of RCAL on EVAL-AD5941BATZ board is 50mOhm */
   pBATCfg->ACVoltPP = 300.0f;							/* Pk-pk amplitude is 300mV */
-  pBATCfg->DCVolt = 1200.0f;							/* Offset voltage of 1.2V*/
+  pBATCfg->DCVolt = 400.0f;							/* Offset voltage of 1.2V*/
   pBATCfg->DftNum = DFTNUM_8192;
   
   pBATCfg->FifoThresh = 2;      					/* 2 results in FIFO, real and imaginary part. */
 	
-	pBATCfg->SinFreq = 1000;									/* Sin wave frequency. THis value has no effect if sweep is enabled */
+	pBATCfg->SinFreq = 5000/3;									/* Sin wave frequency. THis value has no effect if sweep is enabled */
 	
 	pBATCfg->SweepCfg.SweepEn = bFALSE;			/* Set to bTRUE to enable sweep function */
 	pBATCfg->SweepCfg.SweepStart = 900.0f;		/* Start sweep at 1Hz  */
@@ -229,15 +231,23 @@ void AD5940_Main_init()
 /* Return RcalVolt magnitude 
 * 
 */
-float AD5940_calibration(float *real , float *image){
-  uint16_t loopCount=100 ;
+float AD5940_calibration(float *real , float *image)
+{
+  bool SelectBatteryMinusPlus(uint8_t modbusId);
+  bool bRet = SelectBatteryMinusPlus(1);
+  if (bRet == false)
+  {
+    ESP_LOGE("BAT", "Select %dth Battery For calibratiron  Error", 1);
+  }
+  uint16_t loopCount = 100;
   AD5940PlatformCfg();
-  AD5940BATStructInit(); /* Configure your parameters in this function */
-  AppBATInit(AppBuff, APPBUFF_SIZE);    /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
-  *real  = 0.0f; *image = 0.0f;
+  AD5940BATStructInit();             /* Configure your parameters in this function */
+  AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
+  *real = 0.0f;
+  *image = 0.0f;
   while (loopCount--)
   {
-    ESP_LOGI(TAG, "Now on calibration(%d)...",loopCount);
+    ESP_LOGI(TAG, "Now on calibration(%d)...", loopCount);
     time_t startTime = millis();
     if (AD5940ERR_WAKEUP == AppBATCtrl(BATCTRL_MRCAL, 0))
     {
@@ -248,20 +258,21 @@ float AD5940_calibration(float *real , float *image){
     //          AppBATCfg.RcalVolt.Real,
     //          AppBATCfg.RcalVolt.Image,
     //          AD5940_ComplexMag(&AppBATCfg.RcalVolt),endTime-startTime);
-    if(outputStream != nullptr)
-    outputStream->printf("\r\n%d: R I Mag:%6.2f\t %6.2f\t %6.2f (%dmills)", 
-             loopCount,
-             AppBATCfg.RcalVolt.Real,
-             AppBATCfg.RcalVolt.Image,
-             AD5940_ComplexMag(&AppBATCfg.RcalVolt),endTime-startTime);
+    if (outputStream != nullptr)
+      outputStream->printf("\r\n%d: R I Mag:%6.2f\t %6.2f\t %6.2f (%dmills)",
+                           loopCount,
+                           AppBATCfg.RcalVolt.Real,
+                           AppBATCfg.RcalVolt.Image,
+                           AD5940_ComplexMag(&AppBATCfg.RcalVolt), endTime - startTime);
     delay(100);
-    if(loopCount < 10){
+    if (loopCount < 10)
+    {
       *real += AppBATCfg.RcalVolt.Real;
       *image += AppBATCfg.RcalVolt.Image;
     }
   };
   *real /= 10.0f;
-  *image /=10.0f;
+  *image /= 10.0f;
   AD5940_ShutDown();
   return AD5940_ComplexMag(&AppBATCfg.RcalVolt);
 }
@@ -344,7 +355,7 @@ void AD5940_Main(void *parameters)
       AppBATISR(AppBuff, &temp); /* Deal with it and provide a buffer to store data we got */
       AD5940_Delay10us(100000);
       addResult(AppBuff, loopCount);
-      //BATShowResult(AppBuff, temp); /* Print measurement results over UART */
+      BATShowResult(AppBuff, temp); /* Print measurement results over UART */
       //if(outputStream != nullptr)
       //BATShowResultBLE(AppBuff, temp); /* Print measurement results over UART */
 

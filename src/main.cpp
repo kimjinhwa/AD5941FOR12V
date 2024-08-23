@@ -73,6 +73,7 @@ extern WebServer webServer;
 #endif
 
 void AD5940_ShutDown();
+bool checkBooting();
 void pinsetup()
 {
     pinMode(READ_BATVOL, INPUT);
@@ -82,8 +83,8 @@ void pinsetup()
     pinMode(SERIAL_SEL_ADDR1, OUTPUT);
     pinMode(SERIAL_TX2 , OUTPUT);
     pinMode(LED_OP, OUTPUT);
-    pinMode(RELAY_1, OUTPUT);
-    pinMode(RELAY_2, OUTPUT);
+    pinMode(RELAY_FP_IO, OUTPUT);
+    pinMode(RELAY_FN_GND, OUTPUT);
 
     pinMode(RTC1305_EN, OUTPUT);
     pinMode(AD636_SEL, OUTPUT);
@@ -96,8 +97,8 @@ void pinsetup()
 
     digitalWrite(AD636_SEL,LOW );//REFERANCE
     digitalWrite(CS_5940, HIGH);
-    digitalWrite(RELAY_1, RELAY_OFF   );
-    digitalWrite(RELAY_2, RELAY_OFF   );
+    digitalWrite(RELAY_FP_IO, P15_MODE);  //이것이 IO0에 연결되어 있으면 서부모듈의 릴레이 2에 해당한다
+    digitalWrite(RELAY_FN_GND, SENSE_MODE   );
     digitalWrite(AD5940_ISR, HIGH);
     digitalWrite(CELL485_DE, LOW);
 };
@@ -300,6 +301,20 @@ void initCellValue()
     }
   }
 }
+bool checkBooting()
+{
+  int moduleState1;
+  simpleCli.outputStream->printf("\nWaiting For Module Booting");
+  //ESP_LOGI(TAG, "\nWaiting For Module Booting");
+  for (int i = 1; i <= systemDefaultValue.installed_cells + 1; i++){
+    moduleState1 = readModuleRelayStatus(i);
+    simpleCli.outputStream->printf("\nModule %d Booting state is %d",i,moduleState1);
+    //ESP_LOGI(TAG, "\nModule %d Booting state is %d", i, moduleState1);
+    if (moduleState1 != 8)
+      return false;
+  }
+  return true;
+}
 // 인터럽트 서비스 루틴 (ISR)
 // void IRAM_ATTR handleInterrupt() {
 //   // 인터럽트가 발생했을 때 실행될 코드
@@ -420,7 +435,7 @@ void setup()
   xTaskCreate(blueToothTask, "blueToothTask", 4000, NULL, 1, h_pxblueToothTask);
   ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
   AD5940_ShutDown();
-
+  simpleCli.outputStream = &Serial;
 #ifdef WEBOTA
   webInit(); 
 #endif
@@ -449,6 +464,7 @@ uint8_t impedanceCellPosition=1;
 static timeval tmv;
 int16_t logForHour=0;
 uint32_t loopCount=0;
+static bool isModuleBootingOK=false;
 void loop(void)
 {
   bool bRet;
@@ -457,6 +473,10 @@ void loop(void)
   if(WiFi.isConnected()) webServer.handleClient();
 #endif
   parameters = simpleCli.outputStream;
+  while(!isModuleBootingOK ){
+    isModuleBootingOK = checkBooting();
+    delay(1000);
+  }
   now = millis(); 
 
   esp_task_wdt_reset();
@@ -478,31 +498,35 @@ void loop(void)
         parameters = simpleCli.outputStream;
         //modbusRequestModule.addToQueue(millis(), i, READ_INPUT_REGISTER, 0, 3);
         //TODO: 임시로 막는 다>
-        sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER, 0, 3);
+        time_t startRead = millis();
+        time_t endRead ;
+        sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER, 0, 3); // 40mills
+        endRead = millis();             // take 300ms
+        ESP_LOGI("TIME", "Elasp time Step 1 : %ld milisecond", endRead - startRead);
         esp_task_wdt_reset();
         //TODO: 아래의 펑션은 MODBUS 루틴을 변경하기 위해 임시로 막는다
-        //readModuleRelayStatus(1);
         bRet = SelectBatteryMinusPlus(i);
+        endRead = millis();             // take 300ms
+        ESP_LOGI("TIME", "Elasp time Step 1 : %ld milisecond", endRead - startRead);
         if(bRet == false){
         ESP_LOGE("BAT", "Select Battery %dth Error",i); 
         }
-        time_t startRead = millis();
         float batVoltage = 0.0;
         batVoltage = batDevice.readBatAdcValue(i, 600);
         if (batVoltage > 18.0)
           batVoltage = 0.0;
         cellvalue[i - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
-        time_t endRead = millis();             // take 300ms
+        endRead = millis();             // take 300ms
         ESP_LOGI("Voltage", "Bat(%d) Voltage is : %3.3f (%ldmilisecond)", i,batVoltage, endRead - startRead);
         simpleCli.outputStream->printf("\nBat(%i) Voltage is : %3.3f (%ldmilisecond)\n",i, batVoltage, endRead - startRead);
-        //if (batVoltage > 2.0)
+        if (batVoltage > 2.0)
         {
           if (systemDefaultValue.runMode == 3)
             AD5940_Main(parameters); // for test 무한 루프
         }
-        if(systemDefaultValue.runMode ==0) break;
         checkVoltageoff();
-        vTaskDelay(1000);
+        if(systemDefaultValue.runMode ==0) break;
+        //vTaskDelay(300);
       }
     }
  //   globalModbusId = globalModbusId > 4 ? 1 : globalModbusId ;

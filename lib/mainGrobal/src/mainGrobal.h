@@ -26,11 +26,11 @@
 #define RTC1305_EN          33 // OK  RTC 칩을 Enable한다.
 #define LED_OP              25 // system operating 상태 
 
-#define RELAY_1             0  // + 릴레이 
-#define RELAY_2             25 // - 릴레이 
+#define RELAY_FP_IO             0  // + 릴레이 
+#define RELAY_FN_GND             25 // - 릴레이 
 
-#define RELAY_OFF   1  
-#define RELAY_ON    0 
+#define P15_MODE   1  // F+ 즉 셋서 리딩모드
+#define SENSE_MODE    0  // P15V출력모드
 
 #define ESP_INTR_FLAG_DEFAULT 0
 #define ESP_INTR_FLAG_DEFAULT 0

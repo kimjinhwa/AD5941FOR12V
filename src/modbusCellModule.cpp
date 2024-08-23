@@ -246,11 +246,11 @@ int readModuleRelayStatus(uint8_t modbusId)
   LcdCell485.resumeTask();
   return modbusCellrelay.bitData;
 };
-/*isModuleAllOff() */
+/*isModuleAllSameValue(int value) */
 /* 정상적이면 OFF값인 12가 리턴된다 */
 /* 설치되어 있는 모든셀에 대하여 검사한다. 
 하나라도 통신이 안되거나 12값이 아니면 켜져 있는 것이다.*/
-int isModuleAllOff(){
+int isModuleAllSameValue(int value){
   int i;
   int moduleState1;
   //12,12의 값이 리턴될것이다. 
@@ -258,7 +258,7 @@ int isModuleAllOff(){
   {
     moduleState1 = readModuleRelayStatus(i);
     //ESP_LOGW("MODULE", "Step3 %d moduleState1 %d",i,moduleState1);
-    if (moduleState1 == -1 || moduleState1 != 12)
+    if (moduleState1 == -1 || moduleState1 != value)
     {
       // 통신에러이며 더이상 진행하지 않는다.
       //ESP_LOGI("MODBUS","ID %d CELL OFF OR COMM ERROR",i);
@@ -274,27 +274,23 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   int i;
   uint16_t retValue;
   // P15V를 공급한다. 
-  digitalWrite(RELAY_2, RELAY_OFF   );
-  delay(100);
-  digitalWrite(RELAY_1, RELAY_OFF   );
-  delay(500);
+  digitalWrite(RELAY_FN_GND, SENSE_MODE);
+  delay(10);
+  digitalWrite(RELAY_FP_IO, SENSE_MODE);
+  delay(10);
 
-  //for(i=1;i<=systemDefaultValue.installed_cells;i++)
-  //ESP_LOGW("MODULE", "Step 1 All Relay 1 Off(%d) Command %d",i,systemDefaultValue.installed_cells);
-  
-  // 모든 모듈의 1번 릴레이를 OFF한다.
-  //ESP_LOGW("MODULE", "Step1 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
+  // 모든 모듈의 1번 릴레이를 OFF한다.  //ESP_LOGW("MODULE", "Step1 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
   if(!CellOnOff(255,0,CELLOFF)) return false;
-  // 모든 모듈의 2번 릴레이를 OFF한다.
-  //ESP_LOGW("MODULE", "Step2 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
+  // 모든 모듈의 2번 릴레이를 OFF한다.  //ESP_LOGW("MODULE", "Step2 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
   if(!CellOnOff(255,1,CELLOFF))return false;
   vTaskDelay(20);
 
   int moduleState1;
   int moduleState2;
-  if( isModuleAllOff() != 12){
-    ESP_LOGW("MODULE", "Step3 Error All Off moduleState1 d");
-    return false; //12,12의 값이 리턴될것이다. 
+  moduleState1 = isModuleAllSameValue(0);
+  if( moduleState1 != 0 ){
+    ESP_LOGW("MODULE", "Step1 Error All Off moduleState1 %d",moduleState1 );
+    return false; 
   }
   /*
   중요한 Debuging이 있다. 1번은 GND이므로 이것을 나중에 연결하여 한다. 
@@ -304,33 +300,61 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   2번 릴레이는 배터리의 전압(액 9V이상으로 인해 ) 값 2을 갖는다. 
   */
   // 주어진 modbusid +1 의 2번 릴레이(+)를 ON한다.
-  if(!CellOnOff(modbusId+1,1,CELLON))return false;
-  vTaskDelay(20);
-  // 모듈 1은 앞서 검사를 했기 때문에 2번만 검사를 하며 6의 값이 리턴될것이다. 
-  moduleState1 = readModuleRelayStatus(modbusId);
-  moduleState2 = readModuleRelayStatus(modbusId+1);
-  ESP_LOGW("MODULE", "Step5 %d moduleState2 %d ",modbusId,moduleState2);
-  if(moduleState2!=6){
-    ESP_LOGW("MODULE", "Step5 Error %d moduleState %d %d",modbusId,moduleState1,moduleState2);
-    return false;// 9가 리턴되어야 한다.
+  digitalWrite(RELAY_FP_IO, P15_MODE);
+  delay(50);
+  digitalWrite(RELAY_FN_GND, SENSE_MODE);
+  delay(50);
+  moduleState1  = isModuleAllSameValue(8);
+  if( moduleState1   != 8 ){
+    ESP_LOGW("MODULE", "Step3 Error All Off moduleState1 %d",moduleState1   );
+    return false; 
   }
+  digitalWrite(RELAY_FP_IO, SENSE_MODE);
+  delay(50);
+  digitalWrite(RELAY_FN_GND, P15_MODE);
+  delay(50);
+  moduleState1  = isModuleAllSameValue(4);
+  if( moduleState1   != 4 ){
+    ESP_LOGW("MODULE", "Step3 Error All Off moduleState1 %d",moduleState1   );
+    return false; 
+  }
+  delay(100);
+  //여기까지 문제가 없다면 모든셀의 릴레이는 정상적으로 OFF상태에 있다고 확인된다>
+  // 	7. 다시 RL1과 RL2를 ON상태로 하여 F+ 와 F-에 연결한다. 
+  digitalWrite(RELAY_FN_GND, SENSE_MODE);
+  delay(30);
+  digitalWrite(RELAY_FP_IO, SENSE_MODE);
+  delay(100);
+  //	8. 모듈1의 릴레이 1번을 ON하여 배터리의 - 단자에 연결한다.
   if(!CellOnOff(modbusId,0,CELLON))return false;
-  vTaskDelay(20);
-  //9와 ,6또는 2의 값이 리턴될것이다. 
   moduleState1 = readModuleRelayStatus(modbusId);
-  moduleState2 = readModuleRelayStatus(modbusId+1);
-  ESP_LOGW("MODULE", "Step4 %d moduleState %d %d",modbusId,moduleState1,moduleState2);
-  if(moduleState1 !=9 ){
-    ESP_LOGW("MODULE", "Step4 Error %d moduleState1 %d %d",modbusId,moduleState1,moduleState2);
+  if(!(moduleState1 & 0x01)  ){
+    ESP_LOGW("MODULE", "Step8 Error %d moduleState1 %d ",modbusId,moduleState1);
     return false;// 9가 리턴되어야 한다.
   }
+  if(!CellOnOff(modbusId+1,1,CELLON))return false;
+  //	10. 모듈 2의 릴레이 2번을 ON 하여 배터리의 + 단자에 연결한다. 
+  moduleState2 = readModuleRelayStatus(modbusId+1);
+  //모듈 2의 값이 2인것을 확인한다 
+  if(!(moduleState2 & 0x02)  ){
+    ESP_LOGW("MODULE", "Step11 Error %d moduleState2 %d ",modbusId,moduleState2);
+    return false;// 9가 리턴되어야 한다.
+  }
+  //9와 ,6또는 2의 값이 리턴될것이다. 
+  // moduleState1 = readModuleRelayStatus(modbusId);
+  // moduleState2 = readModuleRelayStatus(modbusId+1);
+  // ESP_LOGW("MODULE", "Step4 %d moduleState %d %d",modbusId,moduleState1,moduleState2);
+  // if(moduleState1 !=9 ){
+  //   ESP_LOGW("MODULE", "Step4 Error %d moduleState1 %d %d",modbusId,moduleState1,moduleState2);
+  //   return false;// 9가 리턴되어야 한다.
+  // }
 
   //외부 배터리를 연결한다. 
-  ESP_LOGI("MODULE", "Step6 ");
-  digitalWrite(RELAY_1, RELAY_ON   );  // + 라인
-  delay(1000);
-  digitalWrite(RELAY_2, RELAY_ON   ); // - 라인
-  delay(1000);
+  // ESP_LOGI("MODULE", "Step6 ");
+  // digitalWrite(RELAY_FP_IO, SENSE_MODE   );  // + 라인
+  // delay(1000);
+  // digitalWrite(RELAY_FN_GND, SENSE_MODE   ); // - 라인
+  // delay(1000);
 
   return true;
 }
@@ -343,6 +367,7 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
 extern BatDeviceInterface batDevice;
 bool checkVoltageoff(){
 
+  AD5940_ShutDown();
   if(!CellOnOff(255,0,CELLOFF)) return false;
   // 모든 모듈의 2번 릴레이를 OFF한다.
   //ESP_LOGW("MODULE", "Step2 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
@@ -350,12 +375,10 @@ bool checkVoltageoff(){
 
   float batVoltage = 0.0;
   batVoltage = batDevice.readBatAdcValueExt(10);
-  ESP_LOGI("Voltage", "--->Bat Voltage is : %3.3f ", batVoltage);
-  vTaskDelay(20);
-  digitalWrite(RELAY_2, RELAY_OFF   );
-  delay(100);
-  digitalWrite(RELAY_1, RELAY_OFF   );
-  delay(500);
+  if(batVoltage != 0.0) ESP_LOGE("Voltage", "Bat OFF Check Voltage is : %3.3f ", batVoltage);
+  digitalWrite(RELAY_FN_GND, SENSE_MODE);
+  digitalWrite(RELAY_FP_IO, SENSE_MODE   );
+  delay(50);
   return true;
 }
 uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode)
@@ -448,7 +471,7 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
     AD5940_ShutDown();  // 전류의 흐름을 없애기 위하여 혹시 파형을 출력 중이면 정지 시킨다.
     LcdCell485.suspendTask(); //
     extendSerial.selectCellModule(true);
-    vTaskDelay(10);
+    //vTaskDelay(10);
     // Select cell module and set can sendData;
     // Dont care true or false, because modBusRtuCellModule will use probe pin
     if(modbusId != 255){
@@ -1000,3 +1023,8 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //   extendSerial.selectCellModule(false);
 //   return 1;
 // }
+
+
+  //for(i=1;i<=systemDefaultValue.installed_cells;i++)
+  //ESP_LOGW("MODULE", "Step 1 All Relay 1 Off(%d) Command %d",i,systemDefaultValue.installed_cells);
+  

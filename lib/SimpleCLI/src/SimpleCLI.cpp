@@ -490,16 +490,35 @@ void p15relay_configCallback(cmd *cmdPtr){
   Argument arg = cmd.getArgument(0);
   String argVal = arg.getValue();
   if (argVal.length() == 0) return; 
-  int8_t mode = argVal.toInt(); 
-
-  simpleCli.outputStream->printf("\r\nPower Relay %s", mode==1 ?"ON":"OFF");
-  if(mode == 1){
-    digitalWrite(RELAY_1, RELAY_ON);
-    digitalWrite(RELAY_2, RELAY_ON);
+  // int8_t mode = argVal.toInt(); 
+  argVal.trim();
+  simpleCli.outputStream->printf("\r\nargVal = %s ",argVal.c_str());
+  if(argVal.equals("00")){
+    digitalWrite(RELAY_FP_IO, P15_MODE);
+    digitalWrite(RELAY_FN_GND, P15_MODE);
+    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, P15_MODE");
+    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, P15_MODE");
+  }
+  if(argVal.equals("01")){
+    digitalWrite(RELAY_FP_IO, P15_MODE);
+    digitalWrite(RELAY_FN_GND, SENSE_MODE);
+    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, P15_MODE");
+    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, SENSE_MODE");
+  }
+  if(argVal.equals("10")){
+    digitalWrite(RELAY_FP_IO, SENSE_MODE);
+    digitalWrite(RELAY_FN_GND, P15_MODE);
+    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, SENSE_MODE");
+    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, P15_MODE");
+  }
+  if(argVal.equals("11")){
+    digitalWrite(RELAY_FP_IO, SENSE_MODE);
+    digitalWrite(RELAY_FN_GND, SENSE_MODE);
+    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, SENSE_MODE");
+    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, SENSE_MODE");
   }
   else {
-    digitalWrite(RELAY_1, RELAY_OFF);
-    digitalWrite(RELAY_2, RELAY_OFF);
+    simpleCli.outputStream->printf("\r\nPower Relay value is only 00,01,10,11 ");
   }
 
 }
