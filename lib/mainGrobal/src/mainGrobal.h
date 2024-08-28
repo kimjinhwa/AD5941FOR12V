@@ -60,6 +60,7 @@ typedef struct
     int16_t impendanceCompensation[40];// 156 + 80 = 236
     float real_Cal;  // 236+4 = 240
     float image_Cal; // 240 + 4 = 248
+    uint8_t logLevel; // 240 + 4 = 248
 } nvsSystemSet;
 extern nvsSystemSet systemDefaultValue;
 

@@ -138,6 +138,7 @@ void readnWriteEEProm()
     }
     systemDefaultValue.real_Cal = -33410.0f;
     systemDefaultValue.image_Cal = 35511.0f;
+    systemDefaultValue.logLevel = ESP_LOG_INFO;
     EEPROM.writeByte(0, 0x55);
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
@@ -439,6 +440,29 @@ void setup()
 #ifdef WEBOTA
   webInit(); 
 #endif
+esp_log_level_t level;
+switch (systemDefaultValue.logLevel)
+{
+case 0:
+  level = ESP_LOG_NONE;
+  break;
+case 1:
+  ESP_LOG_ERROR;
+  break;
+case 2:
+  ESP_LOG_WARN;
+  break;
+case 3:
+  ESP_LOG_INFO;
+  break;
+case 4:
+  ESP_LOG_DEBUG;
+  break;
+case 5:
+  ESP_LOG_VERBOSE;
+  break;
+}
+esp_log_level_set("*",level);
 };
 static unsigned long previousSecondmills = 0;
 static int everySecondInterval = 1000;
@@ -469,6 +493,7 @@ void loop(void)
 {
   bool bRet;
   void *parameters;
+  esp_log_level_set("*",ESP_LOG_INFO);
 #ifdef WEBOTA
   if(WiFi.isConnected()) webServer.handleClient();
 #endif
@@ -502,12 +527,12 @@ void loop(void)
         time_t endRead ;
         sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER, 0, 3); // 40mills
         endRead = millis();             // take 300ms
-        ESP_LOGI("TIME", "Elasp time Step 1 : %ld milisecond", endRead - startRead);
+        //ESP_LOGI("TIME", "Elasp time Step 1 : %ld milisecond", endRead - startRead);
         esp_task_wdt_reset();
         //TODO: 아래의 펑션은 MODBUS 루틴을 변경하기 위해 임시로 막는다
         bRet = SelectBatteryMinusPlus(i);
         endRead = millis();             // take 300ms
-        ESP_LOGI("TIME", "Elasp time Step 1 : %ld milisecond", endRead - startRead);
+        //ESP_LOGI("TIME", "Elasp time Step 1 : %ld milisecond", endRead - startRead);
         if(bRet == false){
         ESP_LOGE("BAT", "Select Battery %dth Error",i); 
         }
@@ -517,7 +542,7 @@ void loop(void)
           batVoltage = 0.0;
         cellvalue[i - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
         endRead = millis();             // take 300ms
-        ESP_LOGI("Voltage", "Bat(%d) Voltage is : %3.3f (%ldmilisecond)", i,batVoltage, endRead - startRead);
+        //ESP_LOGI("Voltage", "Bat(%d) Voltage is : %3.3f (%ldmilisecond)", i,batVoltage, endRead - startRead);
         simpleCli.outputStream->printf("\nBat(%i) Voltage is : %3.3f (%ldmilisecond)\n",i, batVoltage, endRead - startRead);
         if (batVoltage > 2.0)
         {

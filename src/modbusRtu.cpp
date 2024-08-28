@@ -48,6 +48,8 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   sendValue[123]=now.Hour();
   sendValue[124]=now.Minute();
   sendValue[125]=now.Second();
+  // ESP_LOGE("TIME","%d-%d-%d %d:%d:%d", 
+  //   now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
   sendValue[126]= systemDefaultValue.modbusId ;
   sendValue[127]= systemDefaultValue.installed_cells;
   sendValue[128]= systemDefaultValue.AlarmTemperature;

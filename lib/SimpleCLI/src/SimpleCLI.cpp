@@ -522,6 +522,48 @@ void p15relay_configCallback(cmd *cmdPtr){
   }
 
 }
+void loglevel_configCallback(cmd *cmdPtr)
+{
+  Command cmd(cmdPtr);
+  Argument arg = cmd.getArgument(0);
+  String argVal = arg.getValue();
+  if (argVal.length() == 0)
+  {
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    simpleCli.outputStream->printf("\r\nCurrent MODBUS loglevel is %d", esp_log_level_get("MODBUS"));
+    return;
+  }
+  int8_t mode = argVal.toInt();
+  esp_log_level_t level;
+  systemDefaultValue.logLevel = mode;
+  switch (systemDefaultValue.logLevel)
+  {
+  case 0:
+    level = ESP_LOG_NONE;
+    break;
+  case 1:
+    ESP_LOG_ERROR;
+    break;
+  case 2:
+    ESP_LOG_WARN;
+    break;
+  case 3:
+    ESP_LOG_INFO;
+    break;
+  case 4:
+    ESP_LOG_DEBUG;
+    break;
+  case 5:
+    ESP_LOG_VERBOSE;
+    break;
+  }
+  EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  EEPROM.commit();
+  EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  simpleCli.outputStream->printf("\r\nLoglevel Changed %d", systemDefaultValue.logLevel);
+  esp_log_level_set("*",level);
+}
+
 void mode_configCallback(cmd *cmdPtr){
   Command cmd(cmdPtr);
   Argument arg = cmd.getArgument(0);
@@ -740,6 +782,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config.addFlagArg("off");
   cmd_config.setDescription("relay on off controll \r\n relay -s/el [1] [-off]");
   cmd_config = addSingleArgCmd("runmode", mode_configCallback);
+  cmd_config = addSingleArgCmd("loglevel", loglevel_configCallback);
   cmd_config = addSingleArgCmd("p15relay", p15relay_configCallback);
   cmd_config = addSingleArgCmd("id", id_configCallback);
   cmd_config = addSingleArgCmd("cal/ibration", calibration_configCallback);
