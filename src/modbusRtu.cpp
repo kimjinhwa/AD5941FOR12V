@@ -10,6 +10,20 @@ extern ModbusClientRTU modBusRtuCellModule;
 void setRtcNewTime(RtcDateTime rtc);
 ModbusMessage  syncRequestCellModule(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len);
 
+char strErrorMessage[40];
+void setErrorMessageToModbus(bool setError,const char* msg)
+{
+  memset(strErrorMessage,0x00,sizeof(strErrorMessage));
+  if(setError == false ) return;
+  if(setError){
+    strErrorMessage[0]=1;
+    strncpy(strErrorMessage + 1, msg, sizeof(strErrorMessage) - 2);
+    strErrorMessage[sizeof(strErrorMessage) - 1] = '\0';
+  }
+  else {
+    strErrorMessage[0]=0;
+  }
+};
 void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   struct timeval tmv;
   gettimeofday(&tmv, NULL);
@@ -27,8 +41,10 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
     for(int i=80;i<120;i++){
       sendValue[i] = (uint16_t)(cellvalue[i-80].impendance*100);
     }
+    //에러가 있다면 여기에 값을 적어 넣는다. 최대 100글자이다.
   }
-  if(fCode== 3){
+  if(fCode== 3)
+  {
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     for(int i=0;i<40;i++){
       sendValue[i] = (uint16_t)(systemDefaultValue.voltageCompensation[i]);
@@ -56,9 +72,20 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   sendValue[129]= systemDefaultValue.alarmHighCellVoltage ;
   sendValue[130]=systemDefaultValue.alarmLowCellVoltage;
   sendValue[131]= systemDefaultValue.AlarmAmpere ;  // 200A
+
+  //char *dest = (char*)&sendValue[140];
+  char *dest ;
+  dest = (char*)(sendValue+140);
+  strncpy(dest ,strErrorMessage,sizeof(strErrorMessage)-2);
+  dest[sizeof(strErrorMessage)-1]=0x00;
+  // Serial.printf("\n---> sendValue %s",dest+1);
+  // Serial.printf("\n---> sendValue %s",(char*)(sendValue+141));
+
+
 }
 
-ModbusMessage FC03(ModbusMessage request) {
+ModbusMessage FC03(ModbusMessage request) 
+{
   uint16_t address;           // requested register address
   uint16_t writeAddress;           // requested register address
   uint16_t words;             // requested number of registers
@@ -134,7 +161,7 @@ ModbusMessage FC04(ModbusMessage request) {
   } 
   response.add(request.getServerID(), request.getFunctionCode(), (uint8_t)(words * 2));
 
-  if ((address + words) < 0x100)
+  if ((address + words) < 0x100)// 256보다 작으면...
   {
     //Serial.printf("\nFunction code 04 %d[%d] %d ",address,writeAddress,words);
       for (i = address; i < words + address; i++)

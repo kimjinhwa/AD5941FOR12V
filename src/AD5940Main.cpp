@@ -73,14 +73,18 @@ void addResult(uint32_t *pData, uint32_t DataCount)
     readImpdance  += systemDefaultValue.impendanceCompensation[selecectedCellNumber - 1] / 100.0;
     cellvalue[selecectedCellNumber - 1].impendance= readImpdance ;
     //위의 값은 다 버리고 다시 적용하자...이것은 임시로 적용한다.
+
+     /*
     float compensation = 0.0f;
     if (systemDefaultValue.modbusId == 1)
     {
       //측정된 전압값을 반영 한다 
       cellvalue[selecectedCellNumber - 1].impendance =
           measuredImpedance_1[selecectedCellNumber - 1];
-      //읽은 전압 값이 4V미만이면 임피던스는 0으로 놓는다.
-      if(cellvalue[selecectedCellNumber - 1].voltage < 4) cellvalue[selecectedCellNumber - 1].impendance = 0.0f;
+      //읽은 전압 값이 0.6V미만이면 임피던스는 0으로 놓는다.
+      if(cellvalue[selecectedCellNumber - 1].voltage < 0.6){
+        cellvalue[selecectedCellNumber - 1].impendance = 0.0f;
+      } 
       float vGap = 10.0f*(  measuredVoltage_1[selecectedCellNumber - 1]/100.0f - cellvalue[selecectedCellNumber - 1].voltage )
                       / float(measuredVoltage_1[selecectedCellNumber - 1]/100.0f); //전압 변화량
       //전압변화량이 +로 증가하면, 즉 기준값보다 읽은 값이 작다면 내부저항을 높여 준다.
@@ -99,6 +103,7 @@ void addResult(uint32_t *pData, uint32_t DataCount)
                       / float(measuredVoltage_2[selecectedCellNumber - 1]/100.0f); //전압 변화량
       cellvalue[selecectedCellNumber - 1].impendance += vGap;
     }
+    */
   }
 }
 
@@ -124,6 +129,7 @@ int32_t BATShowResult(uint32_t *pData, uint32_t DataCount)
   for(int i=0;i<DataCount;i++)
   {
     printf("Freq: %f (real, image) = ,%6.3f , %6.3f ,%6.3f mOhm \n",freq, pImp[i].Real,pImp[i].Image,AD5940_ComplexMag(&pImp[i]));
+    outputStream->printf("Freq: %f (real, image) = ,%6.3f , %6.3f ,%6.3f mOhm \n",freq, pImp[i].Real,pImp[i].Image,AD5940_ComplexMag(&pImp[i]));
   }
   return 0;
 }

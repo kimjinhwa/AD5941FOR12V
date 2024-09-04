@@ -146,35 +146,24 @@ int UpdateSize;
 void readFileToWeb(const char *content_type, const char *filename);
 void serverOnset();
 void webInit();
-void onWiFiEvent(WiFiEvent_t event) {
-  switch (event) {
-    case SYSTEM_EVENT_STA_CONNECTED:
-      Serial.println("Connected to WiFi");
-      webServer.begin();
-      break;
-    case SYSTEM_EVENT_STA_DISCONNECTED:
-      Serial.println("Disconnected from WiFi");
-      // WiFi 재연결 로직 추가 가능
-      break;
-  }
-}
 void webInit()
 {
-    //WiFi.onEvent(onWiFiEvent);
     serverOnset();
-    WiFi.mode(WIFI_STA);
+    //WiFi.mode(WIFI_STA);
     // WiFi.config(
     //     IPAddress(192,168,0,60),
     //     IPAddress(192,168,0,1),
     //     IPAddress(244,255,255,0)
     // );
-    WiFi.begin("iptime_mbhong");
-    while (WiFi.waitForConnectResult() != WL_CONNECTED)
-    {
-        Serial.println("Connection Failed! Rebooting...");
-        delay(2000);
-        ESP.restart();
-    }
+    // WiFi.begin("iptime_mbhong");
+    // while (WiFi.waitForConnectResult() != WL_CONNECTED)
+    // {
+    //     Serial.println("Connection Failed! Rebooting...");
+    //     delay(2000);
+    //     ESP.restart();
+    // }
+    //Serial.println("Connected OK");
+    // Serial.printf("IPADDRESS : %s",WiFi.localIP().toString().c_str());
     // webServer.begin();
 }
 

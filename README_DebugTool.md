@@ -131,7 +131,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
          ```
           cellvalue[i].impendance = cellvalue[i].impendance +   systemDefaultValue.impendanceCompensation[i] / 100.f;   
           ```
-      따라서 Value는 1/100로 적용하기 때문에 100을 곱한 
+      따라서 Value는 + - 값이다. 
       값으로 준다.   
  * [-va  cellno value ]  전압에 대한 옵셋을 맞춘다. 
       * cellno : 셀번호 1번부터시작한다.   

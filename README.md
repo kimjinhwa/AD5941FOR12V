@@ -12,8 +12,8 @@
  #### offset    [-ia cellno value ] [-va  cellno value ]    [-i  cellno value ] 
  * [-ia cellno value ] 임피던스에 대한 옵셋을 맞춘다. 
    * cellno : 셀번호 1번부터시작한다.   
-                  0 이 주어지면 모든셀에 대하여 적용한다.   
-       * value    
+     0 이 주어지면 모든셀에 대하여 적용한다.   
+   * value    
          systemDefaultValue.impendanceCompensation[i]의 
          값에 주어진 값을 += 한다.   
          ```

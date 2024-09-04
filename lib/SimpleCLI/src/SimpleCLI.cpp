@@ -15,7 +15,6 @@
 
 LittleFileSystem lsFile;
 SimpleCLI simpleCli;
-extern ModbusServerRTU LcdCell485;
 extern BatDeviceInterface batDevice;
 extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
 static char TAG[] ="CLI" ;
@@ -131,6 +130,7 @@ void batnumber_configCallback(cmd *cmdPtr)
   EEPROM.commit();
   EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
   simpleCli.outputStream->printf("\nChanged EEPROM installed Bat number %d", systemDefaultValue.installed_cells);
+  esp_restart();
 }
 
 
@@ -239,10 +239,10 @@ void offset_configCallback(cmd *cmdPtr)
     value = cmd.getArgument("value").getValue().toInt();
     if (number == 0)
     {
-      simpleCli.outputStream->printf("\nAll Cell will be compansate to Value %d", value);
+      simpleCli.outputStream->printf("\nAll Cell will be compansate to same Value %d", value);
       for (int i = 0; i < systemDefaultValue.installed_cells; i++)
       {
-        systemDefaultValue.voltageCompensation[i] += value; // cellvalue[0].voltage - cellvalue[i].voltage;
+        systemDefaultValue.voltageCompensation[i] = value; // cellvalue[0].voltage - cellvalue[i].voltage;
         simpleCli.outputStream->printf("\ncompansation %d ", systemDefaultValue.voltageCompensation[i]);
       }
       cellvalue[number-1].voltage= cellvalue[number-1].voltage+ systemDefaultValue.voltageCompensation[number-1] ;
@@ -577,7 +577,7 @@ void mode_configCallback(cmd *cmdPtr){
     return;
   }
   int8_t mode = argVal.toInt(); 
-  if(mode == 0 || mode == 1 || mode == 3){
+  if(mode == 0 || mode == 1 || mode == 2 || mode == 3 || mode == 4){
     systemDefaultValue.runMode = mode; 
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
@@ -633,9 +633,6 @@ void relay_configCallback(cmd *cmdPtr){
   // if(arg.isSet()){
   //   uint32_t failedBatteryH,failedBatteryL;
   //   uint16_t retValue;
-  // LcdCell485.suspendTask();
-  //     retValue=checkAlloff(&failedBatteryH,&failedBatteryL);
-  // LcdCell485.resumeTask();
   //     simpleCli.outputStream->printf("retValue :0x%02x 0x%04x%04x\n",retValue,failedBatteryH,failedBatteryL);
   // }
   // arg = cmd.getArgument("test");

@@ -2,13 +2,35 @@
 #include <WiFi.h>
 #include "mainGrobal.h"
 
+#ifdef WEBOTA
+#include <WebServer.h>
+#include "esp32WebOTA.h"
+
 //#include <openVPNClinet.h>
+
 
 const char *soft_ap_ssid ="IMP_";
 const char *soft_ap_password = "87654321";
+
+extern WebServer webServer;
+
+void onWiFiEvent(WiFiEvent_t event) {
+  switch (event) {
+    case SYSTEM_EVENT_STA_CONNECTED:
+      Serial.println("Connected to WiFi");
+      printf(WiFi.localIP().toString().c_str());
+      webServer.begin();
+      break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+      Serial.println("Disconnected from WiFi");
+      // WiFi 재연결 로직 추가 가능
+      break;
+  }
+}
 void NetworkTask(void *parameter)
 {
     //WiFi.begin(systemDefaultValue.ssid, systemDefaultValue.ssid_password);
+    WiFi.onEvent(onWiFiEvent);
     WiFi.begin("iptime_mbhong", "");
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
@@ -18,6 +40,8 @@ void NetworkTask(void *parameter)
     printf("wifi connected");
     printf("ip address: ");
     printf(WiFi.localIP().toString().c_str());
+
+  webInit(); 
 
     // String macAddress = String(soft_ap_ssid) + String(WiFi.macAddress());
     // printf("\r\nWiFi.softAP(soft_ap_ssid=%s, soft_ap_password=%s)", soft_ap_ssid, soft_ap_password);
@@ -30,6 +54,10 @@ void NetworkTask(void *parameter)
 
     for (;;)
     {
-        delay(500);
+        #ifdef WEBOTA
+        if(WiFi.isConnected()) webServer.handleClient();
+        #endif
+        delay(200);
     }
 }
+#endif

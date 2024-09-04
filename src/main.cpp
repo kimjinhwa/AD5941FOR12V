@@ -7,10 +7,6 @@
 #include "mainGrobal.h"
 #include "SimpleCLI.h"
 
-#ifdef WEBOTA
-#include <WebServer.h>
-#include "esp32WebOTA.h"
-#endif
 
 #include "stdio.h"
 //#include "ADuCM3029.h"
@@ -25,6 +21,7 @@
 #include "modbusRtu.h"
 #include "batDeviceInterface.h"
 #include "modbusCellModule.h"
+#include "modbusLcdModule.h"
 
 // #include <esp_int_wdt.h>
 // #include <esp_task.h>
@@ -48,10 +45,11 @@ static const int spiClk = 1000000; // 1 MHz
 static char TAG[] ="Main";
 
 TaskHandle_t *h_pxblueToothTask;
+TaskHandle_t *h_pxNetworkTask;
 nvsSystemSet systemDefaultValue;
 ThreeWire myWire(13, 14, 33); // IO, SCLK, CE
 RtcDS1302<ThreeWire> Rtc(myWire);
-ModbusServerRTU LcdCell485(2000,CELL485_DE);// LCD를 위하여 사용한다.
+
 ModbusServerRTU external485(2000,EXT_485EN_1);
 
 uint32_t request_time;
@@ -68,12 +66,13 @@ extern SimpleCLI simpleCli;
 BluetoothSerial SerialBT;
 
 
-#ifdef WEBOTA
-extern WebServer webServer;
-#endif
 
 void AD5940_ShutDown();
 bool checkBooting();
+void setupModbusAgentForLcd();
+
+void setErrorMessageToModbus(bool setError,const char* msg);
+
 void pinsetup()
 {
     pinMode(READ_BATVOL, INPUT);
@@ -129,7 +128,7 @@ void readnWriteEEProm()
     strncpy(systemDefaultValue.ssid ,"iptime_mbhong",20);
     strncpy(systemDefaultValue.ssid_password,"",10);
     systemDefaultValue.SUBNETMASK =(uint32_t)IPAddress(255, 255, 255, 0); 
-    systemDefaultValue.installed_cells= 40;
+    systemDefaultValue.installed_cells= 20;
     strncpy(systemDefaultValue.userid,"admin",10);
     strncpy(systemDefaultValue.userpassword,"admin",10);
     for(int i=0;i<40;i++){
@@ -144,6 +143,7 @@ void readnWriteEEProm()
     EEPROM.commit();
   }
   EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  if(systemDefaultValue.runMode>3)systemDefaultValue.runMode=0;
 }
 
 void setRtcNewTime(RtcDateTime rtc){
@@ -219,6 +219,7 @@ void setRtc()
   if (now < compiled)
   {
     printf("\r\nSet data with compiled time"); //Rtc.SetDateTime(compiled);
+    Rtc.SetDateTime(compiled);
   }
   struct timeval tmv;
   tmv.tv_sec = now.TotalSeconds();
@@ -236,14 +237,9 @@ void setRtc()
   
   
 
-void setupModbusAgentForLcd(){
+void setupModbusAgentForexternal485(){
   //address는 항상 1이다.
   uint8_t address_485 = systemDefaultValue.modbusId; 
-  LcdCell485.useStopControll =1;
-  LcdCell485.begin(Serial2,BAUDRATESERIAL2,1);
-  LcdCell485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
-  LcdCell485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
-  LcdCell485.registerWorker(address_485,WRITE_HOLD_REGISTER,&FC06);
 
   external485.useStopControll =0;
   external485.begin(Serial1,BAUDRATE,1);
@@ -304,15 +300,30 @@ void initCellValue()
 }
 bool checkBooting()
 {
+  String msg;
+  if(systemDefaultValue.runMode ==4 ){
+    msg = "Module Ext485 Test Mode\n";
+    setErrorMessageToModbus(true,msg.c_str());
+    simpleCli.outputStream->printf(msg.c_str());
+    delay(1000);
+    return false;
+  }
   int moduleState1;
-  simpleCli.outputStream->printf("\nWaiting For Module Booting");
+  simpleCli.outputStream->printf("\nWaiting For Module Booting\n");
   //ESP_LOGI(TAG, "\nWaiting For Module Booting");
   for (int i = 1; i <= systemDefaultValue.installed_cells + 1; i++){
     moduleState1 = readModuleRelayStatus(i);
-    simpleCli.outputStream->printf("\nModule %d Booting state is %d",i,moduleState1);
+    msg ="\nMod ";
+    msg += i;msg += " Boot State "; msg += moduleState1;
+    simpleCli.outputStream->printf(msg.c_str());
     //ESP_LOGI(TAG, "\nModule %d Booting state is %d", i, moduleState1);
-    if (moduleState1 != 8)
+    if (moduleState1 != 8){
+      setErrorMessageToModbus(true,msg.c_str());
+      delay(1000);
       return false;
+    }
+    else 
+      setErrorMessageToModbus(false,"");
   }
   return true;
 }
@@ -321,72 +332,87 @@ bool checkBooting()
 //   // 인터럽트가 발생했을 때 실행될 코드
 //   Serial.println("Interrupt detected!");
 // }
+bool bootingReasonCheck()
+{
+  esp_reset_reason_t resetReson = esp_reset_reason();
 
+  String strReset[]{
+      // ESP_RST_UNKNOWN:
+      " Reset reason can not be determined",
+      // case ESP_RST_POWERON:
+      " Reset due to power-on event",
+      // case ESP_RST_EXT:
+      " Reset by external pin (not applicable for ESP32)",
+      // case ESP_RST_SW:
+      " Software reset via esp_restart",
+      // case ESP_RST_PANIC:
+      " Software reset due to exception/panic",
+      // case ESP_RST_INT_WDT:
+      " Reset (software or hardware) due to interrupt watchdog",
+      // case ESP_RST_TASK_WDT:
+      " Reset due to task watchdog",
+      // case ESP_RST_WDT:
+      " Reset due to other watchdogs",
+      // case ESP_RST_DEEPSLEEP:
+      " Reset after exiting deep sleep mode",
+      // case ESP_RST_BROWNOUT:
+      " Brownout reset (software or hardware)",
+      // case ESP_RST_SDIO:
+      " Reset over SDIO",
+  };
+
+  FILE *fp;
+  timeval tv;
+  //struct tm *timeinfo;
+
+  //gettimeofday(&tv, NULL);
+  RtcDateTime now = Rtc.GetDateTime();
+  //now = RtcDateTime(tv.tv_sec);
+  //timeinfo = localtime(&tv.tv_sec);
+  char timeString[30];
+  //strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", timeinfo);
+  sprintf(timeString,"%04d-%02d-%02d %0d:%02d:%02d",now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
+  String strReason = timeString;
+  strReason += strReset[resetReson];
+  strReason += "\n";
+  Serial.println("\n--------------------------------");
+  Serial.println(strReason.c_str());
+  Serial.println("--------------------------------");
+  fp = fopen("/spiffs/bootLog.txt", "a+");
+  if (fp == NULL)
+  {
+    Serial.printf("\ncellDataLogCreate Error");
+  }
+  else
+  {
+    fwrite(strReason.c_str(), strReason.length(), 1, fp);
+    fclose(fp);
+  }
+  // Serial.printf("\nRead LogFile\n");
+  // lsFile.cat("/spiffs/bootLog.txt");
+  //fp = fopen("/spiffs/bootLog.txt", "a+");
+  lsFile.rm("bootLog.txt");
+  if( resetReson != 0 ) return true;
+  else return false;
+}
 void setup()
 {
 
-  EEPROM.begin(sizeof(nvsSystemSet)+1);
+  EEPROM.begin(sizeof(nvsSystemSet) + 1);
   readnWriteEEProm();
   pinsetup();
-   // 인터럽트 핸들러를 연결
-  //attachInterrupt(digitalPinToInterrupt(AD5940_ISR), handleInterrupt, FALLING);
+  // 인터럽트 핸들러를 연결
+  // attachInterrupt(digitalPinToInterrupt(AD5940_ISR), handleInterrupt, FALLING);
   Serial.begin(115200);
   // 외부 485통신에 사용한다.
   Serial1.begin(BAUDRATE, SERIAL_8N1, SERIAL_RX1, SERIAL_TX1);
-  esp_reset_reason_t resetReson =  esp_reset_reason();
-  String strResetReason="System booting reason is  ";
-  bool dataReload=false;
-  switch (resetReson )
-  {
-  case ESP_RST_UNKNOWN:
-    strResetReason +=" Reset reason can not be determined";
-    dataReload = true;
-    break;
-  case ESP_RST_POWERON:
-    strResetReason +=" Reset due to power-on event";
-    dataReload = true;
-    break;
-  case ESP_RST_EXT:
-    strResetReason +=" Reset by external pin (not applicable for ESP32)";
-    break;
-  case ESP_RST_SW:
-    strResetReason +=" Software reset via esp_restart";
-    dataReload = true;
-    break;
-  case ESP_RST_PANIC:
-    strResetReason +=" Software reset due to exception/panic";
-    dataReload = true;
-    break;
-  case ESP_RST_INT_WDT:
-    strResetReason +=" Reset (software or hardware) due to interrupt watchdog";
-    dataReload = true;
-    break;
-  case ESP_RST_TASK_WDT:
-    strResetReason +=" Reset due to task watchdog";
-    dataReload = true;
-    break;
-  case ESP_RST_WDT:
-    strResetReason +=" Reset due to other watchdogs";
-    dataReload = true;
-    break;
-  case ESP_RST_DEEPSLEEP:
-    strResetReason +=" Reset after exiting deep sleep mode";
-    dataReload = true;
-    break;
-  case ESP_RST_BROWNOUT:
-    strResetReason +=" Brownout reset (software or hardware)";
-    dataReload = true;
-    break;
-  case ESP_RST_SDIO:
-    strResetReason +=" Reset over SDIO";
-    dataReload = true;
-    break;
-  default:
-    break;
-  }
-  Serial.println("--------------------------------");
-  Serial.println(strResetReason);
-  Serial.println("--------------------------------");
+
+  String strResetReason = "System booting reason is  ";
+  bool dataReload = false;
+  setRtc();
+  Serial.println("Flash Memory Init....Waiting....");
+  lsFile.littleFsInitFast(0);
+  dataReload = bootingReasonCheck();
 
   // 내부의 LCD와 셀의 온도및 릴레이를 위해 사용한다.
   Serial2.begin(BAUDRATESERIAL2, SERIAL_8N1, SERIAL_RX2, SERIAL_TX2);
@@ -404,22 +430,21 @@ void setup()
     cellvalue[i].impendanceCompensation = 0;
   }
 
-
   setupModbusAgentForLcd();
+  setupModbusAgentForexternal485();
   modbusCellModuleSetup();
-  String bleName ="TIMP_"; 
+  String bleName = "TIMP_";
   String WifiAddress = WiFi.macAddress();
-  bleName += WifiAddress ;
+  bleName += WifiAddress;
   bleName += "_";
   bleName += systemDefaultValue.modbusId;
-  SerialBT.begin(bleName.c_str() );
+  SerialBT.begin(bleName.c_str());
   wifiApmodeConfig();
 
-  Serial.println("Flash Memory Init....Waiting....");
-  lsFile.littleFsInitFast(0);
-  setRtc();
+  // setRtc();
   lsFile.writeLogString(strResetReason);
-  if(dataReload)lsFile.readCellDataLog(1);
+  if (dataReload)
+    lsFile.readCellDataLog(1);
 
   SPI.setFrequency(spiClk);
   SPI.begin(SCK, MISO, MOSI, CS_5940);
@@ -429,40 +454,40 @@ void setup()
   AD5940_Main_init();
   vTaskDelay(1000);
   ESP_LOGI(TAG, "System Started at %s mode", systemDefaultValue.runMode == 0 ? "Manual" : "Auto");
-  ESP_LOGI(TAG,"\nEEPROM installed Bat number %d", systemDefaultValue.installed_cells);
+  ESP_LOGI(TAG, "\nEEPROM installed Bat number %d", systemDefaultValue.installed_cells);
   esp_task_wdt_init(WDT_TIMEOUT, true);
   esp_task_wdt_add(NULL);
-  // xTaskCreate(NetworkTask,"NetworkTask",5000,NULL,1,h_pxNetworkTask); //PCB 패턴문제로 사용하지 않는다.
-  xTaskCreate(blueToothTask, "blueToothTask", 4000, NULL, 1, h_pxblueToothTask);
+#ifdef WEBOTA
+  xTaskCreate(NetworkTask, "NetworkTask", 5000, NULL, 1, h_pxNetworkTask); // PCB 패턴문제로 사용하지 않는다.
+#endif
+
+  xTaskCreate(blueToothTask, "blueToothTask", 5000, NULL, 1, h_pxblueToothTask);
   ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
   AD5940_ShutDown();
   simpleCli.outputStream = &Serial;
-#ifdef WEBOTA
-  webInit(); 
-#endif
-esp_log_level_t level;
-switch (systemDefaultValue.logLevel)
-{
-case 0:
-  level = ESP_LOG_NONE;
-  break;
-case 1:
-  ESP_LOG_ERROR;
-  break;
-case 2:
-  ESP_LOG_WARN;
-  break;
-case 3:
-  ESP_LOG_INFO;
-  break;
-case 4:
-  ESP_LOG_DEBUG;
-  break;
-case 5:
-  ESP_LOG_VERBOSE;
-  break;
-}
-esp_log_level_set("*",level);
+  esp_log_level_t level;
+  switch (systemDefaultValue.logLevel)
+  {
+  case 0:
+    level = ESP_LOG_NONE;
+    break;
+  case 1:
+    ESP_LOG_ERROR;
+    break;
+  case 2:
+    ESP_LOG_WARN;
+    break;
+  case 3:
+    ESP_LOG_INFO;
+    break;
+  case 4:
+    ESP_LOG_DEBUG;
+    break;
+  case 5:
+    ESP_LOG_VERBOSE;
+    break;
+  }
+  esp_log_level_set("*", level);
 };
 static unsigned long previousSecondmills = 0;
 static int everySecondInterval = 1000;
@@ -494,13 +519,15 @@ void loop(void)
   bool bRet;
   void *parameters;
   esp_log_level_set("*",ESP_LOG_INFO);
-#ifdef WEBOTA
-  if(WiFi.isConnected()) webServer.handleClient();
-#endif
   parameters = simpleCli.outputStream;
   while(!isModuleBootingOK ){
     isModuleBootingOK = checkBooting();
-    delay(1000);
+    for(int i =0;i<10;i++){
+    AD5940_AGPIOToggle(AGPIO_Pin1);
+    //simpleCli.outputStream->printf("\nAGPIO_Pin1 Led Toggle");
+    delay(200);
+    }
+    esp_task_wdt_reset();
   }
   now = millis(); 
 
@@ -547,7 +574,9 @@ void loop(void)
         if (batVoltage > 2.0)
         {
           if (systemDefaultValue.runMode == 3)
-            AD5940_Main(parameters); // for test 무한 루프
+          {
+            AD5940_Main(parameters); 
+          }
         }
         checkVoltageoff(i);
         if(systemDefaultValue.runMode ==0) break;
