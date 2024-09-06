@@ -394,7 +394,7 @@ bool bootingReasonCheck()
   // Serial.printf("\nRead LogFile\n");
   // lsFile.cat("/spiffs/bootLog.txt");
   //fp = fopen("/spiffs/bootLog.txt", "a+");
-  lsFile.rm("bootLog.txt");
+  //lsFile.rm("bootLog.txt");
   if( resetReson != 0 ) return true;
   else return false;
 }
