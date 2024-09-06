@@ -6,7 +6,6 @@
 #include "modbusCellModule.h"
 #include <ModbusClientRTU.h>
 
-extern ModbusClientRTU modBusRtuCellModule;
 void setRtcNewTime(RtcDateTime rtc);
 ModbusMessage  syncRequestCellModule(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len);
 
@@ -14,14 +13,18 @@ char strErrorMessage[40];
 void setErrorMessageToModbus(bool setError,const char* msg)
 {
   memset(strErrorMessage,0x00,sizeof(strErrorMessage));
-  if(setError == false ) return;
   if(setError){
-    strErrorMessage[0]=1;
-    strncpy(strErrorMessage + 1, msg, sizeof(strErrorMessage) - 2);
+    strErrorMessage[0]=0;
+    strErrorMessage[1]=setError;
+    strncpy(strErrorMessage + 2, msg, sizeof(strErrorMessage) - 3);
+    strErrorMessage[strlen(msg)+2] = '\0';
+    //ESP_LOGI("MODBUS","--->StrLen is %d",strlen(msg));
     strErrorMessage[sizeof(strErrorMessage) - 1] = '\0';
   }
-  else {
+  else 
+  {
     strErrorMessage[0]=0;
+    strErrorMessage[1]=0;
   }
 };
 void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
@@ -41,7 +44,7 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
     for(int i=80;i<120;i++){
       sendValue[i] = (uint16_t)(cellvalue[i-80].impendance*100);
     }
-    //에러가 있다면 여기에 값을 적어 넣는다. 최대 100글자이다.
+    //에러가 있다면 여기에 값을 적어 넣는다. 최대 30글자이다.
   }
   if(fCode== 3)
   {
@@ -72,16 +75,18 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   sendValue[129]= systemDefaultValue.alarmHighCellVoltage ;
   sendValue[130]=systemDefaultValue.alarmLowCellVoltage;
   sendValue[131]= systemDefaultValue.AlarmAmpere ;  // 200A
+  for(int  i=132;i<160;i++) sendValue[i] =0x00;
 
-  //char *dest = (char*)&sendValue[140];
+  //setErrorMessageToModbus(true,"Hello....\n");
   char *dest ;
-  dest = (char*)(sendValue+140);
-  strncpy(dest ,strErrorMessage,sizeof(strErrorMessage)-2);
-  dest[sizeof(strErrorMessage)-1]=0x00;
-  // Serial.printf("\n---> sendValue %s",dest+1);
-  // Serial.printf("\n---> sendValue %s",(char*)(sendValue+141));
-
-
+  dest = (char*)(sendValue+141); //strncpy(dest ,strErrorMessage,sizeof(strErrorMessage)-2);
+  for(int i=0; i< 38;i++){
+    dest[i] = strErrorMessage[i+2]; // Serial.printf("%02x ",dest[i]);
+  }
+  //sendValue[140]= ((int)strErrorMessage[0] << 8) & ((int)strErrorMessage[1] & 0x00ff) ;
+  if(strErrorMessage[0] != 0 || strErrorMessage[1] != 0) sendValue[140]=1;
+  // ESP_LOGI("TEST","\n-------> send Message Value %s %d %d %d",
+  //   dest,sendValue[140],strErrorMessage[0],strErrorMessage[1] );
 }
 
 ModbusMessage FC03(ModbusMessage request) 
@@ -225,9 +230,7 @@ ModbusMessage FC04(ModbusMessage request) {
     uint32_t token=millis();
     uint32_t restoken=millis();
     //TODO: 
-    //modBusRtuCellModule
     ModbusMessage rc =  syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), 0,  3);
-    // ModbusMessage rc  = modBusRtuCellModule.syncRequest(token, 
     //   1, request.getFunctionCode(), 0,  3);
     ESP_LOGI("REQ","server id (%d) func %d ",request.getServerID(),request.getFunctionCode());
     ESP_LOGI("REQ","server id (%d) func %d error %d",rc.getServerID(),rc.getFunctionCode(),rc.getError());

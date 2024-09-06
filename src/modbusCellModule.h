@@ -99,10 +99,6 @@ class ExtendSerial//: public HardwareSerial
       digitalWrite(_addr0,true);
       digitalWrite(_addr1,false); 
     };
-    void ReleaseLcd(){
-      digitalWrite(_addr0,LOW);
-      digitalWrite(_addr1,LOW); 
-    };
 };
 extern ExtendSerial extendSerial;
 

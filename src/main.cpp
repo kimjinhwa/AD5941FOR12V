@@ -69,7 +69,6 @@ BluetoothSerial SerialBT;
 
 void AD5940_ShutDown();
 bool checkBooting();
-void setupModbusAgentForLcd();
 
 void setErrorMessageToModbus(bool setError,const char* msg);
 
@@ -305,6 +304,7 @@ bool checkBooting()
     msg = "Module Ext485 Test Mode\n";
     setErrorMessageToModbus(true,msg.c_str());
     simpleCli.outputStream->printf(msg.c_str());
+    setDataToLcd(120,40);//tims and message
     delay(1000);
     return false;
   }
@@ -316,15 +316,18 @@ bool checkBooting()
     msg ="\nMod ";
     msg += i;msg += " Boot State "; msg += moduleState1;
     simpleCli.outputStream->printf(msg.c_str());
-    //ESP_LOGI(TAG, "\nModule %d Booting state is %d", i, moduleState1);
     if (moduleState1 != 8){
+      ESP_LOGI(TAG, "setErrorMessageToModbus-------->%s",msg);
       setErrorMessageToModbus(true,msg.c_str());
+      setDataToLcd(120,40);//tims and message
       delay(1000);
       return false;
     }
-    else 
+    else {
       setErrorMessageToModbus(false,"");
+    }
   }
+  setDataToLcd(120,40);//tims and message
   return true;
 }
 // 인터럽트 서비스 루틴 (ISR)
@@ -416,11 +419,12 @@ void setup()
 
   // 내부의 LCD와 셀의 온도및 릴레이를 위해 사용한다.
   Serial2.begin(BAUDRATESERIAL2, SERIAL_8N1, SERIAL_RX2, SERIAL_TX2);
-  // ExtendSerial.selectCellModule(true);
+
   extendSerial.selectLcd(); // 232통신이다
                             //  485가 enable가 된다고 해도
                             //  그쪽으로는 출력이 되지 않으므로 상관이 없다.
 
+  digitalWrite(CELL485_DE, LOW);
   for (int i = 0; i < 40; i++)
   {
     cellvalue[i].voltage = 0;
@@ -430,7 +434,7 @@ void setup()
     cellvalue[i].impendanceCompensation = 0;
   }
 
-  setupModbusAgentForLcd();
+  modbusLcdSetup();
   setupModbusAgentForexternal485();
   modbusCellModuleSetup();
   String bleName = "TIMP_";
@@ -488,6 +492,7 @@ void setup()
     break;
   }
   esp_log_level_set("*", level);
+  for(int i=0;i<40;i++)cellvalue[i].impendance = 0.0;
 };
 static unsigned long previousSecondmills = 0;
 static int everySecondInterval = 1000;
@@ -514,6 +519,7 @@ static timeval tmv;
 int16_t logForHour=0;
 uint32_t loopCount=0;
 static bool isModuleBootingOK=false;
+static long elaspTime=-1;
 void loop(void)
 {
   bool bRet;
@@ -535,6 +541,7 @@ void loop(void)
   //moubusMouduleProc();
   if ((now - previousSecondmills > everySecondInterval))
   {
+    if(elaspTime != -1) elaspTime++;
     previousSecondmills = now;
   }
   if ((now - previous_3Secondmills > Interval_3Second))
@@ -543,11 +550,13 @@ void loop(void)
   }
   if ((now - previous_5Secondmills > Interval_5Second))
   {
+
     if (systemDefaultValue.runMode != 0)  // 자동 모드에서만 실행한다
     {
       for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
       {
         parameters = simpleCli.outputStream;
+        selecectedCellNumber = i-1;
         //modbusRequestModule.addToQueue(millis(), i, READ_INPUT_REGISTER, 0, 3);
         //TODO: 임시로 막는 다>
         time_t startRead = millis();
@@ -570,17 +579,28 @@ void loop(void)
         cellvalue[i - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
         endRead = millis();             // take 300ms
         //ESP_LOGI("Voltage", "Bat(%d) Voltage is : %3.3f (%ldmilisecond)", i,batVoltage, endRead - startRead);
-        simpleCli.outputStream->printf("\nBat(%i) Voltage is : %3.3f (%ldmilisecond)\n",i, batVoltage, endRead - startRead);
+        simpleCli.outputStream->printf("\ntime:%ld Bat(%i) Vol:%3.3f (%ldmili)\n",
+          elaspTime,i, batVoltage, endRead - startRead);
+        setDataToLcd(0,40); //voltage
+        vTaskDelay(100);
+        setDataToLcd(40,40);//temperature
+        vTaskDelay(100);
         if (batVoltage > 2.0)
         {
-          if (systemDefaultValue.runMode == 3)
+          if(elaspTime==-1)elaspTime=0;//처음으로 시작한다.
+          if (systemDefaultValue.runMode == 3 && (elaspTime%3600==0)) //매시간마다 실행한다
           {
             AD5940_Main(parameters); 
           }
         }
         checkVoltageoff(i);
+        //for(int i=0;i<40;i++)cellvalue[i].impendance = 123.56f;
+        //cellvalue[0].impendance = 123.56f*2;
+        setDataToLcd(80,40);//Impedance
+        vTaskDelay(100);
+        setDataToLcd(120,40);//tims and message
+        vTaskDelay(100);
         if(systemDefaultValue.runMode ==0) break;
-        //vTaskDelay(300);
       }
     }
  //   globalModbusId = globalModbusId > 4 ? 1 : globalModbusId ;

@@ -70,8 +70,12 @@ void addResult(uint32_t *pData, uint32_t DataCount)
     // 보정값을 적용하여 주자
     float readImpdance ;
     readImpdance =  AD5940_ComplexMag(&Average);
-    readImpdance  += systemDefaultValue.impendanceCompensation[selecectedCellNumber - 1] / 100.0;
-    cellvalue[selecectedCellNumber - 1].impendance= readImpdance ;
+    ESP_LOGI("AVERAGE", "Average(real, image) cellvalue[selecectedCellNumber ].impendance  %3.3f mOhm \n", 
+      readImpdance  );
+    readImpdance  += systemDefaultValue.impendanceCompensation[selecectedCellNumber ] / 100.0;
+    cellvalue[selecectedCellNumber ].impendance= readImpdance ;
+    ESP_LOGI("AVERAGE", "Average(real, image) cellvalue[selecectedCellNumber ].impendance  %3.3f mOhm \n", 
+      readImpdance  );
     //위의 값은 다 버리고 다시 적용하자...이것은 임시로 적용한다.
 
      /*
@@ -79,29 +83,29 @@ void addResult(uint32_t *pData, uint32_t DataCount)
     if (systemDefaultValue.modbusId == 1)
     {
       //측정된 전압값을 반영 한다 
-      cellvalue[selecectedCellNumber - 1].impendance =
-          measuredImpedance_1[selecectedCellNumber - 1];
+      cellvalue[selecectedCellNumber ].impendance =
+          measuredImpedance_1[selecectedCellNumber ];
       //읽은 전압 값이 0.6V미만이면 임피던스는 0으로 놓는다.
-      if(cellvalue[selecectedCellNumber - 1].voltage < 0.6){
-        cellvalue[selecectedCellNumber - 1].impendance = 0.0f;
+      if(cellvalue[selecectedCellNumber ].voltage < 0.6){
+        cellvalue[selecectedCellNumber ].impendance = 0.0f;
       } 
-      float vGap = 10.0f*(  measuredVoltage_1[selecectedCellNumber - 1]/100.0f - cellvalue[selecectedCellNumber - 1].voltage )
-                      / float(measuredVoltage_1[selecectedCellNumber - 1]/100.0f); //전압 변화량
+      float vGap = 10.0f*(  measuredVoltage_1[selecectedCellNumber ]/100.0f - cellvalue[selecectedCellNumber ].voltage )
+                      / float(measuredVoltage_1[selecectedCellNumber ]/100.0f); //전압 변화량
       //전압변화량이 +로 증가하면, 즉 기준값보다 읽은 값이 작다면 내부저항을 높여 준다.
       //반대의 경우는 낮추어 준다
       //전압변화량은 0~10까지 움직이므로 그 값을 그대로 합산한다.
       //13.5V->12.5로 변했다면 0.74가 합산되어 진다.
-      cellvalue[selecectedCellNumber - 1].impendance += vGap;
+      cellvalue[selecectedCellNumber ].impendance += vGap;
     }
     else
     {
-      cellvalue[selecectedCellNumber - 1].impendance =
-          measuredImpedance_2[selecectedCellNumber - 1];
+      cellvalue[selecectedCellNumber ].impendance =
+          measuredImpedance_2[selecectedCellNumber ];
       //읽은 전압 값이 4V미만이면 임피던스는 0으로 놓는다.
-      if(cellvalue[selecectedCellNumber - 1].voltage < 4) cellvalue[selecectedCellNumber - 1].impendance = 0.0f;
-      float vGap = 10.0f*(  measuredVoltage_2[selecectedCellNumber - 1]/100.0f - cellvalue[selecectedCellNumber - 1].voltage )
-                      / float(measuredVoltage_2[selecectedCellNumber - 1]/100.0f); //전압 변화량
-      cellvalue[selecectedCellNumber - 1].impendance += vGap;
+      if(cellvalue[selecectedCellNumber ].voltage < 4) cellvalue[selecectedCellNumber 1].impendance = 0.0f;
+      float vGap = 10.0f*(  measuredVoltage_2[selecectedCellNumber ]/100.0f - cellvalue[selecectedCellNumber ].voltage )
+                      / float(measuredVoltage_2[selecectedCellNumber ]/100.0f); //전압 변화량
+      cellvalue[selecectedCellNumber ].impendance += vGap;
     }
     */
   }
@@ -347,7 +351,7 @@ void AD5940_Main(void *parameters)
       if (millis() - startTime > 3000)
       {
         ESP_LOGW(TAG, "Time out reached %d", millis() - startTime);
-        break;
+        return ; 
       }
     }
     if(AD5940_GetMCUIntFlag())

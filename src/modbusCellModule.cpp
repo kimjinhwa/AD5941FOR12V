@@ -5,8 +5,6 @@
 #include "AD5940.h"
 #include "batDeviceInterface.h"
 
-extern ModbusServerRTU external485;
-extern uint8_t selecectedCellNumber ;
 void AD5940_ShutDown();
 
 uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode);
@@ -218,14 +216,12 @@ bool CellOnOff(uint8_t modbusId, uint16_t relay, uint16_t onoff)
   }
   return true;
 }
-extern ModbusServerRTU LcdCell485;
 int readModuleRelayStatus(uint8_t modbusId)
 {
   uint16_t checkSum;
   uint16_t retValue = 0;
   uint32_t token;
   AD5940_ShutDown();        // 전류의 흐름을 없애기 위하여 혹시 파형을 출력 중이면 정지 시킨다.
-  LcdCell485.suspendTask(); //
   extendSerial.selectCellModule(true);
   vTaskDelay(10);
   token = millis();
@@ -237,13 +233,11 @@ int readModuleRelayStatus(uint8_t modbusId)
   else {
      ESP_LOGE("MODULE", "MODBUS Error" );
     extendSerial.selectLcd();
-    LcdCell485.resumeTask();
      return -1;
   }
   //데이타는 여기에 수신이 된다. 
   //modbusCellrelay.bitData
   extendSerial.selectLcd();
-  LcdCell485.resumeTask();
   return modbusCellrelay.bitData;
 };
 /*isModuleAllSameValue(int value) */
@@ -417,7 +411,6 @@ uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode)
   uint16_t checkSum ;
   uint16_t value ;
   data_ready = false;
-  LcdCell485.suspendTask();
   vTaskDelay(100);
   uint8_t buf[64];
   data_ready = false;
@@ -429,9 +422,7 @@ uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode)
   //makeWriteSingleRegister(buf,255,fCode, 1, modbusId);
   uint32_t token=millis();
   sendGetModbusModuleData(token,1,WRITE_HOLD_REGISTER,1,change_id );
-  // extendSerial.selectLcd();
  
-  //extendSerial.selectCellModule(true);
   //data_ready  = readResponseDataForBrodcast(modbusId,fCode, buf,8,500); 
   if (data_ready)
   {
@@ -445,7 +436,6 @@ uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode)
     ESP_LOGI("modbus","Receive Failed");
     return false;
   }
-  // extendSerial.selectLcd();
  
   return value;
 
@@ -454,7 +444,6 @@ ModbusMessage  syncRequestCellModule(uint32_t token,uint8_t modbusId, uint8_t fC
 {
     uint16_t retValue=0;
     data_ready = false;
-    LcdCell485.suspendTask(); //
     extendSerial.selectCellModule(true);
     vTaskDelay(1); // Select cell module and set can sendData;
     Error err;
@@ -466,12 +455,10 @@ ModbusMessage  syncRequestCellModule(uint32_t token,uint8_t modbusId, uint8_t fC
         ModbusError e(err);
         ESP_LOGE("MODBUS", "Error creating request: %02X - %s\n", (int)e, (const char *)e);
         extendSerial.selectLcd();
-        LcdCell485.resumeTask();
         return rc   ;
     }
     handleData(rc,token);
     extendSerial.selectLcd();
-    LcdCell485.resumeTask();
     return rc    ;
 }
 uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t data)
@@ -481,7 +468,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 
     data_ready = false;
     AD5940_ShutDown();  // 전류의 흐름을 없애기 위하여 혹시 파형을 출력 중이면 정지 시킨다.
-    LcdCell485.suspendTask(); //
     extendSerial.selectCellModule(true);
     //vTaskDelay(10);
     // Select cell module and set can sendData;
@@ -542,7 +528,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
     }
     if(modbusId == 255 )retValue=1;
     extendSerial.selectLcd();
-    LcdCell485.resumeTask();
     return retValue ;
 };
 
@@ -568,7 +553,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //   uint8_t buf[64];
 //   data_ready = false;
 //   makeTemperatureData(buf,modbusId,fCode,0,2);
-//   extendSerial.selectCellModule(false);
 //   ESP_LOGI("modbus","getTemp");
 //   data_ready  = readResponseData(modbusId,fCode, buf,9,500); 
 //   if (data_ready)
@@ -582,7 +566,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //     value =0;
 //     ESP_LOGI("modbus","Receive Failed");
 //   }
-//   extendSerial.selectLcd();
 
 //   return value;
 // };
@@ -757,12 +740,9 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //   buf[6] = checkSum & 0x00FF;
 //   buf[7] = checkSum >> 8    ;
 
-//   extendSerial.selectCellModule(false);//change to read Mode
 //   clearSerialGarbageData(&Serial2,300);
-//   extendSerial.selectCellModule(true); vTaskDelay(1);
 //   Serial2.write(buf,8);
 //   Serial2.flush();
-//   extendSerial.selectCellModule(false);  //change to read Mode
 //   return 1;
 // }
 // uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumberL)
@@ -782,7 +762,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //     while(retryCount--){
 //       vTaskDelay(100);
 //       makeRelayControllData(buf, modbusId, READ_COIL, 0, 2);     // Read coil data 2 개
-//       extendSerial.selectCellModule(false);                      // 읽기 모드로 전환
 //       isOK = readResponseData(modbusId, READ_COIL, buf, 6, 500); // * 100 즉 0.3초 us buf[3]이 Relay 데이타 이다.
 //       if(isOK)break;
 //     }
@@ -830,7 +809,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //   // 4. modbusID+1를 켠다
 //   // 에러가 없다면 정상적으로 켜졌을 것이고, 확인 루틴은 다음번에 셀을 선택할 때 한다 
 //   AD5940_ShutDown();  // 전류의 흐름을 없애기 위하여 혹시 파형을 출력 중이면 정지 시킨다.
-//   selecectedCellNumber = modbusId;
 //   uint16_t checkSum;
 //   uint8_t buf[64];
 //   uint16_t readCount ;
@@ -838,35 +816,30 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //   uint16_t retValue;
 
 //   makeRelayControllData(buf, 0xFF, WRITE_COIL, 0, 0x00); // 0xff BROADCAST
-//   extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
 //   ClearoutReceviveData(&Serial2,300);
 //   //readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
 
 //   vTaskDelay(100);
   
 //   makeRelayControllData(buf, 0xFF, WRITE_COIL, 1, 0x00); // 0xff BROADCAST
-//   extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
 //   ClearoutReceviveData(&Serial2,300);
 //   //readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
 //   vTaskDelay(500);
 //   //makeRelayControllData(buf, modbusId, READ_COIL, 0, 2); // Read coil data 2 개
 
 
-//   //extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
 //   //vTaskDelay(100);  //이값을 주고 나서야 릴레이가 제대로 동작하였다.
 //   // retValue는 반드시 0이어야 하고...
 //   // 총셀은 20셀으므로 상위 바이트는 0X000F
 //   //  하위 바이트는 0XFFFF이어야 한다.
 //   {
 //     makeRelayControllData(buf, modbusId, WRITE_COIL, 0, 0xFF00); // 해당 셀을 ON 시킨다
-//     extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
 //     readCount = readResponseData(modbusId, WRITE_COIL, buf, 8, 500); // buf[3]이 Relay 데이타 이다.
 //     if(readCount == 1){
 //       ESP_LOGI(TAG,"relay %d Minus(-) ON ",modbusId);
 //     }
 //     // Verify
 //     makeRelayControllData(buf, modbusId, READ_COIL, 0, 2);          // Read coil data 2 개
-//     extendSerial.selectCellModule(false);                           // 읽기 모드로 전환
 //     readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
 //     ESP_LOGI(TAG, "relay %d Minus(-) ON Value is %d", modbusId, buf[3]);
 //     if(readCount == 1 && buf[3]==1) readCount = 1;
@@ -880,14 +853,12 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //     }
 //     // Verify
 //     makeRelayControllData(buf, modbusId+1, READ_COIL, 0, 2);          // Read coil data 2 개
-//     extendSerial.selectCellModule(false);                           // 읽기 모드로 전환
 //     readCount = readResponseData(modbusId+1, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
 //     ESP_LOGI(TAG, "relay %d Plus(+) ON Value is %d", modbusId+1, buf[3]);
 //     if(readCount == 1 && buf[3]==2) readCount = 1;
 //     else readCount = 0;
 //     vTaskDelay(200);
 //   }
-//   extendSerial.selectLcd();
 //   return readCount ;
 // }
 // bool sendSelectBattery(uint8_t modbusId)
@@ -899,7 +870,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //   // 4. modbusID+1를 켠다
 //   // 에러가 없다면 정상적으로 켜졌을 것이고, 확인 루틴은 다음번에 셀을 선택할 때 한다 
 //   AD5940_ShutDown();  // 전류의 흐름을 없애기 위하여 혹시 파형을 출력 중이면 정지 시킨다.
-//   selecectedCellNumber = modbusId;
 //   uint16_t checkSum;
 //   uint8_t buf[64];
 //   uint16_t readCount;
@@ -907,20 +877,17 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //   uint16_t retValue;
 
 //   makeRelayControllData(buf, 0xFF, WRITE_COIL, 0, 0x00); // 0xff BROADCAST
-//   extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
 //   ClearoutReceviveData(&Serial2,300);
 //   //readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
 //   vTaskDelay(100);
   
 //   makeRelayControllData(buf, 0xFF, WRITE_COIL, 1, 0x00); // 0xff BROADCAST
-//   extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
 //   ClearoutReceviveData(&Serial2,300);
 //   //readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
 //   vTaskDelay(500);
 
 
 //   retValue = checkAlloff(&failedBatteryH, &failedBatteryL);
-//   extendSerial.selectCellModule(false);                                     // 읽기 모드로 전환
 //   vTaskDelay(200);  //이값을 주고 나서야 릴레이가 제대로 동작하였다.
 //   // retValue는 반드시 0이어야 하고...
 //   // 총셀은 20셀으므로 상위 바이트는 0X000F
@@ -938,7 +905,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //   if (retValue == 0 && checkH == failedBatteryH && checkL == failedBatteryL)
 //   {
 //     makeRelayControllData(buf, modbusId, WRITE_COIL, 0, 0xFF00);     // 해당 셀을 ON 시킨다
-//     extendSerial.selectCellModule(false);                            // 읽기 모드로 전환
 //     readCount = readResponseData(modbusId, WRITE_COIL, buf, 8, 500); // buf[3]이 Relay 데이타 이다.
 //     if (readCount == 1)
 //     {
@@ -946,7 +912,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //     }
 //     // Verify
 //     makeRelayControllData(buf, modbusId, READ_COIL, 0, 2);          // Read coil data 2 개
-//     extendSerial.selectCellModule(false);                           // 읽기 모드로 전환
 //     readCount = readResponseData(modbusId, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
 //     ESP_LOGI(TAG, "relay %d Minus(-) ON Value is %d", modbusId, buf[3]);
 //     if(readCount == 1 && buf[3]==1) readCount = 1;
@@ -961,7 +926,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //     }
 //     // Verify
 //     makeRelayControllData(buf, modbusId+1, READ_COIL, 0, 2);          // Read coil data 2 개
-//     extendSerial.selectCellModule(false);                           // 읽기 모드로 전환
 //     readCount = readResponseData(modbusId+1, READ_COIL, buf, 6, 500); // buf[3]이 Relay 데이타 이다.
 //     ESP_LOGI(TAG, "relay %d Plus(+) ON Value is %d", modbusId+1, buf[3]);
 //     if(readCount == 1 && buf[3]==2) readCount = 1;
@@ -973,7 +937,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //     ESP_LOGI(TAG,"All relay off fail or communication fails ");
 //     readCount = 0;
 //   }
-//   extendSerial.selectLcd();
 //   return readCount ;
 // }
   // Focde is 06
@@ -985,7 +948,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
   //  uint8_t buf[64];
   //  data_ready = false;
   //  makeTemperatureData(buf,modbusId,fCode,0,2);
-  //  extendSerial.selectCellModule(false);
   //  ESP_LOGI("modbus","getTemp");
   //  data_ready  = readResponseData(modbusId,fCode, buf,9,500);
   //  if (data_ready)
@@ -996,7 +958,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
   //  {
   //    value =0;
   //  }
-  //  extendSerial.selectLcd();
 // int makeWriteSingleRegister(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t data)
 // {
 //   //Header	None
@@ -1020,13 +981,10 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //   buf[6] = checkSum & 0x00FF;
 //   buf[7] = checkSum >> 8    ;
 
-//   extendSerial.selectCellModule(false);
 //   clearSerialGarbageData(&Serial2,300);
-//   extendSerial.selectCellModule(true);
 //   vTaskDelay(5);
 //   Serial2.write(buf,8);
 //   Serial2.flush();
-//   extendSerial.selectCellModule(false);
 //   return 1;
 // }
 // int makeTemperatureData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t len)
@@ -1042,13 +1000,10 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //   buf[6] = checkSum & 0x00FF;
 //   buf[7] = checkSum >> 8    ;
 
-//   extendSerial.selectCellModule(false);
 //   clearSerialGarbageData(&Serial2,300);
-//   extendSerial.selectCellModule(true);
 //   vTaskDelay(5);
 //   Serial2.write(buf,8);
 //   Serial2.flush();
-//   extendSerial.selectCellModule(false);
 //   return 1;
 // }
 
