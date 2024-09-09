@@ -326,7 +326,7 @@ void AD5940_Main(void *parameters)
   ESP_LOGI(TAG, "AppBATInit %d %s ",error ,error == AD5940ERR_OK ?"성공":"실패");
   //if(outputStream != nullptr)
   outputStream->printf( "AppBATInit %d %s ",error ,error == AD5940ERR_OK ?"성공":"실패");
-  digitalWrite(AD636_SEL,HIGH);
+  //digitalWrite(EXT_P15_RELAY,HIGH);
   //30개를 읽고 
   //앞의 10개는 버리고 
   //뒤의 20개는 평균을 내서 

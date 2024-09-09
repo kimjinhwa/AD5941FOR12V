@@ -109,7 +109,7 @@ AD5940Err AppBATCtrl(int32_t BatCtrl, void *pPara)
       if(AppBATCfg.BATInited == bFALSE)
         return AD5940ERR_APPERROR;
       AD5940_WriteReg(REG_AFE_SWMUX, 1<<0); 				/* control ADG636 to measure battery */
-      digitalWrite(AD636_SEL,LOW);
+      //digitalWrite(EXT_P15_RELAY,LOW);
 			AD5940_WriteReg(REG_AFE_SYNCEXTDEVICE, 0x0);
       PreCharge(PRECHARGE_BAT);
       PreCharge(PRECHARGE_AMP);
@@ -166,7 +166,7 @@ AD5940Err AppBATCtrl(int32_t BatCtrl, void *pPara)
         return AD5940ERR_WAKEUP;
     //Settle input RC filter.
     AD5940_WriteReg(REG_AFE_SWMUX, 0); //control ADG636 to measure rcal
-    digitalWrite(AD636_SEL,HIGH);
+    //digitalWrite(EXT_P15_RELAY,HIGH);
 		AD5940_WriteReg(REG_AFE_SYNCEXTDEVICE, 0x4); // GPIO2
     PreCharge(PRECHARGE_RCAL);
     PreCharge(PRECHARGE_AMP);

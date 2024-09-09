@@ -6,7 +6,7 @@
 //#include "AD5940.h"
 
 
-ModbusClientRTU modBusRtuLcd(100);
+ModbusClientRTU modBusRtuLcd(-1,100);
 static uint32_t request_response ;
 static bool data_ready = false;
 extern ExtendSerial extendSerial;

@@ -85,7 +85,7 @@ void pinsetup()
     pinMode(RELAY_FN_GND, OUTPUT);
 
     pinMode(RTC1305_EN, OUTPUT);
-    pinMode(AD636_SEL, OUTPUT);
+    pinMode(EXT_P15_RELAY, OUTPUT);
     pinMode(CS_5940, OUTPUT);
     pinMode(EXT_485EN_1, OUTPUT);
     pinMode(RESET_N, OUTPUT);
@@ -93,7 +93,7 @@ void pinsetup()
     pinMode(CELL485_DE, OUTPUT);
 
 
-    digitalWrite(AD636_SEL,LOW );//REFERANCE
+    digitalWrite(EXT_P15_RELAY,LOW);// Moduble Power OFF
     digitalWrite(CS_5940, HIGH);
     digitalWrite(RELAY_FP_IO, P15_MODE);  //이것이 IO0에 연결되어 있으면 서부모듈의 릴레이 2에 해당한다
     digitalWrite(RELAY_FN_GND, SENSE_MODE   );
@@ -305,7 +305,6 @@ bool checkBooting()
     setErrorMessageToModbus(true,msg.c_str());
     simpleCli.outputStream->printf(msg.c_str());
     setDataToLcd(120,40);//tims and message
-    delay(1000);
     return false;
   }
   int moduleState1;
@@ -526,12 +525,23 @@ void loop(void)
   void *parameters;
   esp_log_level_set("*",ESP_LOG_INFO);
   parameters = simpleCli.outputStream;
-  while(!isModuleBootingOK ){
+  while (!isModuleBootingOK)
+  {
+    Serial.println("Power 15V OFF");
+    digitalWrite(EXT_P15_RELAY, HIGH); // Power ON Normal Close
+    delay(1000);
+    Serial.println("Power 15V ON");
+    digitalWrite(EXT_P15_RELAY, LOW); // Power ON Normal Close
+    delay(1000);
     isModuleBootingOK = checkBooting();
-    for(int i =0;i<10;i++){
-    AD5940_AGPIOToggle(AGPIO_Pin1);
-    //simpleCli.outputStream->printf("\nAGPIO_Pin1 Led Toggle");
-    delay(200);
+    if (isModuleBootingOK == false)
+    {
+      for (int i = 0; i < 10; i++)
+      {
+        AD5940_AGPIOToggle(AGPIO_Pin1);
+        // simpleCli.outputStream->printf("\nAGPIO_Pin1 Led Toggle");
+        delay(200);
+      }
     }
     esp_task_wdt_reset();
   }
@@ -541,17 +551,19 @@ void loop(void)
   //moubusMouduleProc();
   if ((now - previousSecondmills > everySecondInterval))
   {
-    if(elaspTime != -1) elaspTime++;
+    //if(elaspTime != -1) 
+    elaspTime++;
     previousSecondmills = now;
   }
   if ((now - previous_3Secondmills > Interval_3Second))
   {
     previous_3Secondmills= now;
   }
-  if ((now - previous_5Secondmills > Interval_5Second))
+  if ((now - previous_5Secondmills > Interval_5Second) && (elaspTime %60 ==0))
   {
-
-    if (systemDefaultValue.runMode != 0)  // 자동 모드에서만 실행한다
+    //if(elaspTime==-1)elaspTime=0;//처음으로 시작한다.
+    if ((systemDefaultValue.runMode != 0) )  // 자동 모드에서만 실행한다
+                                          // 또한 매 분 실행한다.
     {
       for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
       {
@@ -587,7 +599,6 @@ void loop(void)
         vTaskDelay(100);
         if (batVoltage > 2.0)
         {
-          if(elaspTime==-1)elaspTime=0;//처음으로 시작한다.
           if (systemDefaultValue.runMode == 3 && (elaspTime%3600==0)) //매시간마다 실행한다
           {
             AD5940_Main(parameters); 

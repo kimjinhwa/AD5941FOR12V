@@ -19,7 +19,7 @@
 #define SCK                 14  // ok
 #define CS_5940             15  // test ok
 #define CELL485_DE          21  // 셀센서를 읽기 위한 485 DE 
-#define AD636_SEL           27  //Ref를 읽는지 Battery를 읽는지 결정한다. 
+#define EXT_P15_RELAY           27  //Ref를 읽는지 Battery를 읽는지 결정한다. 
                                 // 0 :REF, 1: BAT  TEST OK
                                 // TEST OK
 #define AD5940_ISR          32  // OK  RTC 칩을 Enable한다.
