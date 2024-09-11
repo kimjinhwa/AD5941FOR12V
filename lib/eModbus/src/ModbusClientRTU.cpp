@@ -10,7 +10,7 @@
 // #define LOCAL_LOG_LEVEL LOG_LEVEL_VERBOSE
 #include "Logging.h"
 
-// Constructor takes Serial reference and optional DE/RE pin
+// Constructor takes an optional DE/RE pin and queue size
 ModbusClientRTU::ModbusClientRTU(int8_t rtsPin, uint16_t queueLimit) :
   ModbusClient(),
   MR_serial(nullptr),
@@ -32,7 +32,7 @@ ModbusClientRTU::ModbusClientRTU(int8_t rtsPin, uint16_t queueLimit) :
     }
 }
 
-// Alternative constructor takes Serial reference and RTS callback function
+// Alternative constructor takes an RTS callback function
 ModbusClientRTU::ModbusClientRTU(RTScallback rts, uint16_t queueLimit) :
   ModbusClient(),
   MR_serial(nullptr),
@@ -54,20 +54,20 @@ ModbusClientRTU::~ModbusClientRTU() {
 }
 
 // begin: start worker task - general version
-void ModbusClientRTU::begin(Stream& serial, uint32_t baudRate, int coreID) {
+void ModbusClientRTU::begin(Stream& serial, uint32_t baudRate, int coreID, uint32_t userInterval) {
   MR_serial = &serial;
-  doBegin(baudRate, coreID);
+  doBegin(baudRate, coreID, userInterval);
 }
 
 // begin: start worker task - HardwareSerial version
-void ModbusClientRTU::begin(HardwareSerial& serial, int coreID) {
+void ModbusClientRTU::begin(HardwareSerial& serial, int coreID, uint32_t userInterval) {
   MR_serial = &serial;
   uint32_t baudRate = serial.baudRate();
   serial.setRxFIFOFull(1);
-  doBegin(baudRate, coreID);
+  doBegin(baudRate, coreID, userInterval);
 }
 
-void ModbusClientRTU::doBegin(uint32_t baudRate, int coreID) {
+void ModbusClientRTU::doBegin(uint32_t baudRate, int coreID, uint32_t userInterval) {
   // Task already running? End it in case
   end();
 
@@ -77,11 +77,16 @@ void ModbusClientRTU::doBegin(uint32_t baudRate, int coreID) {
   // Set minimum interval time
   MR_interval = RTUutils::calculateInterval(baudRate);
 
+  // If user defined interval is longer, use that
+  if (MR_interval < userInterval) {
+    MR_interval = userInterval;
+  }
+
   // Create unique task name
   char taskName[18];
   snprintf(taskName, 18, "Modbus%02XRTU", instanceCounter);
   // Start task to handle the queue
-  xTaskCreatePinnedToCore((TaskFunction_t)&handleConnection, taskName, 4096, this, 6, &worker, coreID >= 0 ? coreID : NULL);
+  xTaskCreatePinnedToCore((TaskFunction_t)&handleConnection, taskName, CLIENT_TASK_STACK, this, 6, &worker, coreID >= 0 ? coreID : NULL);
 
   LOG_D("Client task %d started. Interval=%d\n", (uint32_t)worker, MR_interval);
 }
@@ -102,6 +107,7 @@ void ModbusClientRTU::end() {
     // Kill task
     vTaskDelete(worker);
     LOG_D("Client task %d killed.\n", (uint32_t)worker);
+    worker = nullptr;
   }
 }
 
@@ -140,11 +146,19 @@ uint32_t ModbusClientRTU::pendingRequests() {
   return requests.size();
 }
 
+// Remove all pending request from queue
+void ModbusClientRTU::clearQueue()
+{
+  std::queue<RequestEntry> empty;
+  LOCK_GUARD(lockGuard, qLock);
+  std::swap(requests, empty);
+}
+
 // Base addRequest taking a preformatted data buffer and length as parameters
 Error ModbusClientRTU::addRequestM(ModbusMessage msg, uint32_t token) {
   Error rc = SUCCESS;        // Return value
 
-  //LOG_D("request for %02X/%02X\n", msg.getServerID(), msg.getFunctionCode());
+  LOG_D("request for %02X/%02X\n", msg.getServerID(), msg.getFunctionCode());
 
   // Add it to the queue, if valid
   if (msg) {
@@ -155,7 +169,7 @@ Error ModbusClientRTU::addRequestM(ModbusMessage msg, uint32_t token) {
     }
   }
 
-  //LOG_D("RC=%02X\n", rc);
+  LOG_D("RC=%02X\n", rc);
   return rc;
 }
 
@@ -227,7 +241,7 @@ bool ModbusClientRTU::addToQueue(uint32_t token, ModbusMessage request, bool syn
     }
   }
 
-  //LOG_D("RC=%02X\n", rc);
+  LOG_D("RC=%02X\n", rc);
   return rc;
 }
 
@@ -245,12 +259,12 @@ void ModbusClientRTU::handleConnection(ModbusClientRTU *instance) {
       // Yes. pull it.
       RequestEntry request = instance->requests.front();
 
-      //LOG_D("Pulled request from queue\n");
+      LOG_D("Pulled request from queue\n");
 
       // Send it via Serial
       RTUutils::send(*(instance->MR_serial), instance->MR_lastMicros, instance->MR_interval, instance->MTRSrts, request.msg, instance->MR_useASCII);
 
-      //LOG_D("Request sent.\n");
+      LOG_D("Request sent.\n");
       // HEXDUMP_V("Data", request.msg.data(), request.msg.size());
 
       // For a broadcast, we will not wait for a response
@@ -265,7 +279,7 @@ void ModbusClientRTU::handleConnection(ModbusClientRTU *instance) {
           instance->MR_useASCII,
           instance->MR_skipLeadingZeroByte);
   
-        //LOG_D("%s response (%d bytes) received.\n", response.size()>1 ? "Data" : "Error", response.size());
+        LOG_D("%s response (%d bytes) received.\n", response.size()>1 ? "Data" : "Error", response.size());
         HEXDUMP_V("Data", response.data(), response.size());
   
         // No error in receive()?
@@ -286,8 +300,8 @@ void ModbusClientRTU::handleConnection(ModbusClientRTU *instance) {
           response.setError(request.msg.getServerID(), request.msg.getFunctionCode(), static_cast<Error>(response[0]));
         }
   
-        //LOG_D("Response generated.\n");
-        //HEXDUMP_V("Response packet", response.data(), response.size());
+        LOG_D("Response generated.\n");
+        HEXDUMP_V("Response packet", response.data(), response.size());
 
         // If we got an error, count it
         if (response.getError() != SUCCESS) {

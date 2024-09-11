@@ -39,7 +39,7 @@ void modbusLcdSetup()
   modBusRtuLcd.onDataHandler(&handleDataLcd);
   modBusRtuLcd.onErrorHandler(&handleErrorLcd);
   modBusRtuLcd.setTimeout(1000);
-  modBusRtuLcd.begin(Serial2,BAUDRATESERIAL2,1);
+  modBusRtuLcd.begin(Serial2,BAUDRATESERIAL2,1,2000);
 }
 
 void setSendbuffer(uint8_t fCode,uint16_t *sendValue);

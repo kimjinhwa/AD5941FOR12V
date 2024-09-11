@@ -4,6 +4,7 @@
 #include "modbusRtu.h"
 #include "AD5940.h"
 #include "batDeviceInterface.h"
+#include <esp_task_wdt.h>
 
 void AD5940_ShutDown();
 
@@ -31,7 +32,7 @@ void modbusCellModuleSetup()
   modBusRtuCellModule.onDataHandler(&handleData);
   modBusRtuCellModule.onErrorHandler(&handleError);
   modBusRtuCellModule.setTimeout(1000);
-  modBusRtuCellModule.begin(Serial2,BAUDRATESERIAL2,1);
+  modBusRtuCellModule.begin(Serial2,BAUDRATESERIAL2,1,2000);
 }
 
 void handleData(ModbusMessage response, uint32_t token)
@@ -78,6 +79,7 @@ void handleData(ModbusMessage response, uint32_t token)
         }
         request_response = token;
         data_ready = true;
+        cellvalue[modbusCellData.modbusid- 1].temperature =modbusCellData.temperature ;
     }
     else if (func == WRITE_COIL){
       //01 05 00 00 FF 00 8C 3A 
@@ -202,6 +204,7 @@ bool CellOnOff(uint8_t modbusId, uint16_t relay, uint16_t onoff)
   }
   for (i = startId; i <= endId; i++)
   {
+    delay(100);
     retValue = sendGetModbusModuleData(millis(), i, WRITE_COIL, relay, onoff);
     if (retValue != 0 )
     {
@@ -216,27 +219,37 @@ bool CellOnOff(uint8_t modbusId, uint16_t relay, uint16_t onoff)
   }
   return true;
 }
-int readModuleRelayStatus(uint8_t modbusId)
+int readModuleRelayStatus(uint8_t modbusId,uint16_t retryCount)
 {
   uint16_t checkSum;
   uint16_t retValue = 0;
   uint32_t token;
-  AD5940_ShutDown();        // 전류의 흐름을 없애기 위하여 혹시 파형을 출력 중이면 정지 시킨다.
+  AD5940_ShutDown(); // 전류의 흐름을 없애기 위하여 혹시 파형을 출력 중이면 정지 시킨다.
   extendSerial.selectCellModule(true);
   vTaskDelay(10);
   token = millis();
   data_ready = false;
-  ModbusMessage response = modBusRtuCellModule.syncRequest(token,
-                               modbusId, READ_COIL, 0, 4);
-  if (response .getError() == 0) // 에러가 없으면.
-     handleData(response , token);
-  else {
-     ESP_LOGE("MODULE", "MODBUS Error" );
-    extendSerial.selectLcd();
-     return -1;
+  ModbusMessage response;
+  for (int retry = 0; retry < retryCount; retry++)
+  {
+    delay(100);
+    response = modBusRtuCellModule.syncRequest(token, modbusId, READ_COIL, 0, 4);
+    if (response.getError() == 0) // 에러가 없으면.
+    {
+      handleData(response, token);
+      break;
+    }
+    ESP_LOGE("MODULE", "Retry... %d", retry);
+    delay(400);
   }
-  //데이타는 여기에 수신이 된다. 
-  //modbusCellrelay.bitData
+  if (response.getError() != 0)
+  {
+    ESP_LOGE("MODULE", "MODBUS Error");
+    extendSerial.selectLcd();
+    return -1;
+  }
+  // 데이타는 여기에 수신이 된다.
+  // modbusCellrelay.bitData
   extendSerial.selectLcd();
   return modbusCellrelay.bitData;
 };
@@ -250,8 +263,7 @@ int isModuleAllSameValue(int value){
   //12,12의 값이 리턴될것이다. 
   for (i = 1; i <= systemDefaultValue.installed_cells+1; i++)
   {
-    moduleState1 = readModuleRelayStatus(i);
-    //ESP_LOGW("MODULE", "Step3 %d moduleState1 %d",i,moduleState1);
+    moduleState1 = readModuleRelayStatus(i,5);
     if (moduleState1 == -1 || moduleState1 != value)
     {
       // 통신에러이며 더이상 진행하지 않는다.
@@ -277,6 +289,8 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   if(!CellOnOff(0,1,CELLOFF))return false;
   // 모든 모듈의 1번 릴레이를 OFF한다.  //ESP_LOGW("MODULE", "Step1 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
   if(!CellOnOff(modbusId,0,CELLOFF))return false;
+  if(!CellOnOff(modbusId,1,CELLOFF))return false;
+  if(!CellOnOff(modbusId+1,0,CELLOFF))return false;
   if(!CellOnOff(modbusId+1,1,CELLOFF))return false;
   // 모든 모듈의 2번 릴레이를 OFF한다.  //ESP_LOGW("MODULE", "Step2 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
   vTaskDelay(20);
@@ -284,10 +298,10 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   int moduleState1;
   int moduleState2;
   //moduleState1 = isModuleAllSameValue(0);
-  moduleState1 = readModuleRelayStatus(modbusId);
-  moduleState2 = readModuleRelayStatus(modbusId+1);
+  moduleState1 = readModuleRelayStatus(modbusId,5);
+  moduleState2 = readModuleRelayStatus(modbusId+1,5);
   if( moduleState1 != 0 || moduleState2 !=0 ){
-    ESP_LOGW("MODULE", "Step1 Error All Off moduleState1 %d",moduleState1 );
+    ESP_LOGW("MODULE", "Step1 Error All Off %d State1 %d State2 %d",modbusId,moduleState1,moduleState2  );
     return false; 
   }
   /*
@@ -301,23 +315,34 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   digitalWrite(RELAY_FP_IO, P15_MODE);
   delay(50);
   digitalWrite(RELAY_FN_GND, SENSE_MODE);
-  delay(50);
+  delay(100);
+
   //moduleState1  = isModuleAllSameValue(8);
-  moduleState1 = readModuleRelayStatus(modbusId);
-  moduleState2 = readModuleRelayStatus(modbusId+1);
+  moduleState1 = readModuleRelayStatus(modbusId,5);
+  moduleState2 = readModuleRelayStatus(modbusId+1,5);
+  int dispcount=0;
   if( moduleState1 != 8 || moduleState2 !=8 ){
-    ESP_LOGW("MODULE", "Step3 Error All Off moduleState1 %d",moduleState1   );
+    ESP_LOGW("MODULE", "Step2 Error %d Module State1 %d  %d",modbusId, moduleState1,moduleState2      );
     return false; 
   }
   digitalWrite(RELAY_FP_IO, SENSE_MODE);
   delay(50);
   digitalWrite(RELAY_FN_GND, P15_MODE);
-  delay(50);
+  delay(100);
   //moduleState1  = isModuleAllSameValue(4);
-  moduleState1 = readModuleRelayStatus(modbusId);
-  moduleState2 = readModuleRelayStatus(modbusId+1);
+  moduleState1 = readModuleRelayStatus(modbusId,5);
+  moduleState2 = readModuleRelayStatus(modbusId+1,5);
+  // if(modbusId==3)
+  // while(1){
+  //   esp_task_wdt_reset();
+  //   moduleState1 = readModuleRelayStatus(modbusId);
+  //   moduleState2 = readModuleRelayStatus(modbusId+1);
+  //   ESP_LOGW("MODULE", "Step3 Waiting...%d %d %d",
+  //     dispcount++ ,moduleState1 ,moduleState2  );
+  //   delay(1000);
+  // }
   if( moduleState1 != 4 || moduleState2 !=4 ){
-    ESP_LOGW("MODULE", "Step3 Error All Off moduleState1 %d",moduleState1   );
+    ESP_LOGW("MODULE", "Step3 Error All Off Status1(%d) %d Status2 %d",modbusId,moduleState1,moduleState2    );
     return false; 
   }
   delay(100);
@@ -329,14 +354,14 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   delay(100);
   //	8. 모듈1의 릴레이 1번을 ON하여 배터리의 - 단자에 연결한다.
   if(!CellOnOff(modbusId,0,CELLON))return false;
-  moduleState1 = readModuleRelayStatus(modbusId);
+  moduleState1 = readModuleRelayStatus(modbusId,5);
   if(!(moduleState1 & 0x01)  ){
     ESP_LOGW("MODULE", "Step8 Error %d moduleState1 %d ",modbusId,moduleState1);
     return false;// 9가 리턴되어야 한다.
   }
   if(!CellOnOff(modbusId+1,1,CELLON))return false;
   //	10. 모듈 2의 릴레이 2번을 ON 하여 배터리의 + 단자에 연결한다. 
-  moduleState2 = readModuleRelayStatus(modbusId+1);
+  moduleState2 = readModuleRelayStatus(modbusId+1,5);
   //모듈 2의 값이 2인것을 확인한다 
   if(!(moduleState2 & 0x02)  ){
     ESP_LOGW("MODULE", "Step11 Error %d moduleState2 %d ",modbusId,moduleState2);
@@ -469,7 +494,7 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
     data_ready = false;
     AD5940_ShutDown();  // 전류의 흐름을 없애기 위하여 혹시 파형을 출력 중이면 정지 시킨다.
     extendSerial.selectCellModule(true);
-    //vTaskDelay(10);
+    vTaskDelay(10);
     // Select cell module and set can sendData;
     // Dont care true or false, because modBusRtuCellModule will use probe pin
     if(modbusId == 0){
@@ -492,40 +517,39 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
           ESP_LOGI("modbus", "error Multicast %d",err);
       }
     }
-    else if(modbusId != 255){
-      ModbusMessage rc  = modBusRtuCellModule.syncRequest(token, modbusId, fCode, startAddress,  data);
-      if(rc.getError() == 0) //에러가 없으면.
-      {
+    else if (modbusId != 255)
+    {
+      ModbusMessage rc ;
+      for(int retry=0;retry<5;retry++){
+        rc = modBusRtuCellModule.syncRequest(token, modbusId, fCode, startAddress, data);
+        if (rc.getError() == 0) // 에러가 없으면.
+        {
           //ESP_LOGI("modbus", "No error Modbus");
+          handleData(rc, token);
+          retValue=data_ready;
+          data_ready=true;
+          break;
+        }
+        ESP_LOGI("modbus", "Retry ...%d",retry);
+        delay(500);
       }
-      else {
-          ESP_LOGI("modbus", "error %d",rc.getError());
-      }
-      //ModbusMessage rc = m.setMessage(std::forward<Args>(args) ...);
-      handleData(rc,token);
-    }
-    else{
-      //Error err  = modBusRtuCellModule.addRequest(token, modbusId, fCode, startAddress,  data);
-      // for(int i =0;i<100;i++){
-      //   vTaskDelay(10);
-      //   if(data_ready)break;
-      //   ESP_LOGI("modbus", "Waiting....%d",i);
-      // }
-
-    }
-    if (data_ready)
-    {
-        //token이 같은지 검사하자
-        // ESP_LOGI("modbus", " %d %d Modbusid %d Temperature %d baudrate %d",token, request_response ,
-        //                     modbusCellData.modbusid,  modbusCellData.temperature, modbusCellData.baudrate);
-        cellvalue[modbusCellData.modbusid- 1].temperature =modbusCellData.temperature ;
-        retValue=request_response ;
-        data_ready=false;
-    }
-    else
-    {
+      if (rc.getError() != 0)
+      {
+        ESP_LOGI("modbus", "error %d", rc.getError());
         retValue=0;
+      }
+      // ModbusMessage rc = m.setMessage(std::forward<Args>(args) ...);
     }
+    // if (data_ready)
+    // {
+    //     //token이 같은지 검사하자
+    //     // ESP_LOGI("modbus", " %d %d Modbusid %d Temperature %d baudrate %d",token, request_response ,
+    //     //   modbusCellData.modbusid,  modbusCellData.temperature, modbusCellData.baudrate);
+    // }
+    // else
+    // {
+    //     retValue=0;
+    // }
     if(modbusId == 255 )retValue=1;
     extendSerial.selectLcd();
     return retValue ;
@@ -581,7 +605,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
   // for (i = 1; i <= systemDefaultValue.installed_cells+1; i++)
   // {
   //   moduleState1 = readModuleRelayStatus(i);
-  //   ESP_LOGW("MODULE", "Step3 %d moduleState1 %d",i,moduleState1);
   //   // if (moduleState1 == -1 || moduleState1 != 12)
   //   // {
   //   //   // 통신에러이며 더이상 진행하지 않는다.

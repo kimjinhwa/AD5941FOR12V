@@ -35,6 +35,9 @@ public:
   // begin: start worker task
   void begin(int coreID = -1);
 
+  // end: stop worker task
+  void end();
+
   // Set default timeout value (and interval)
   void setTimeout(uint32_t timeout = DEFAULTTIMEOUT, uint32_t interval = TARGETHOSTINTERVAL);
 
@@ -43,6 +46,9 @@ public:
 
   // Return number of unprocessed requests in queue
   uint32_t pendingRequests();
+
+  // Remove all pending request from queue
+  void clearQueue();
 
 protected:
   // class describing a target server

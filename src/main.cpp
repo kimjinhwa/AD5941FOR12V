@@ -240,8 +240,8 @@ void setupModbusAgentForexternal485(){
   //address는 항상 1이다.
   uint8_t address_485 = systemDefaultValue.modbusId; 
 
-  external485.useStopControll =0;
-  external485.begin(Serial1,BAUDRATE,1);
+  //external485.useStopControll =0;
+  external485.begin(Serial1,BAUDRATE,1,2000);
   external485.registerWorker(address_485,READ_COIL,&FC01);
   external485.registerWorker(address_485,READ_HOLD_REGISTER,&FC03);
   external485.registerWorker(address_485,READ_INPUT_REGISTER,&FC04);
@@ -311,14 +311,14 @@ bool checkBooting()
   simpleCli.outputStream->printf("\nWaiting For Module Booting\n");
   //ESP_LOGI(TAG, "\nWaiting For Module Booting");
   for (int i = 1; i <= systemDefaultValue.installed_cells + 1; i++){
-    moduleState1 = readModuleRelayStatus(i);
+    moduleState1 = readModuleRelayStatus(i,1);
     msg ="\nMod ";
     msg += i;msg += " Boot State "; msg += moduleState1;
     simpleCli.outputStream->printf(msg.c_str());
     if (moduleState1 != 8){
       ESP_LOGI(TAG, "setErrorMessageToModbus-------->%s",msg);
       setErrorMessageToModbus(true,msg.c_str());
-      setDataToLcd(120,40);//tims and message
+      setDataToLcd(120,40);//tims and message 모드버스를 이용해서 데이타를 전송한다>
       delay(1000);
       return false;
     }
@@ -327,6 +327,26 @@ bool checkBooting()
     }
   }
   setDataToLcd(120,40);//tims and message
+  digitalWrite(RELAY_FP_IO,SENSE_MODE    );  //이것이 IO0에 연결되어 있으면 서부모듈의 릴레이 2에 해당한다
+  delay(20);
+  digitalWrite(RELAY_FN_GND, P15_MODE);
+  delay(100);
+  for (int i = 1; i <= systemDefaultValue.installed_cells + 1; i++){
+    moduleState1 = readModuleRelayStatus(i,1);
+    msg ="\nMod ";
+    msg += i;msg += " Second test Err " ; msg += moduleState1;
+    simpleCli.outputStream->printf(msg.c_str());
+    if(moduleState1 != 4){
+      setErrorMessageToModbus(true,msg.c_str());
+      setDataToLcd(120,40);//tims and message 모드버스를 이용해서 데이타를 전송한다>
+      delay(3000);
+      i = 1;
+    }
+  }
+  digitalWrite(RELAY_FP_IO, P15_MODE);  //이것이 IO0에 연결되어 있으면 서부모듈의 릴레이 2에 해당한다
+  delay(20);
+  digitalWrite(RELAY_FN_GND, SENSE_MODE   );
+  delay(100);
   return true;
 }
 // 인터럽트 서비스 루틴 (ISR)
@@ -407,6 +427,7 @@ void setup()
   // attachInterrupt(digitalPinToInterrupt(AD5940_ISR), handleInterrupt, FALLING);
   Serial.begin(115200);
   // 외부 485통신에 사용한다.
+  RTUutils::prepareHardwareSerial(Serial1);
   Serial1.begin(BAUDRATE, SERIAL_8N1, SERIAL_RX1, SERIAL_TX1);
 
   String strResetReason = "System booting reason is  ";
@@ -417,6 +438,7 @@ void setup()
   dataReload = bootingReasonCheck();
 
   // 내부의 LCD와 셀의 온도및 릴레이를 위해 사용한다.
+  RTUutils::prepareHardwareSerial(Serial2);
   Serial2.begin(BAUDRATESERIAL2, SERIAL_8N1, SERIAL_RX2, SERIAL_TX2);
 
   extendSerial.selectLcd(); // 232통신이다
@@ -442,12 +464,13 @@ void setup()
   bleName += "_";
   bleName += systemDefaultValue.modbusId;
   SerialBT.begin(bleName.c_str());
+  Serial.printf("\nBluetooth Name : %s\n",bleName.c_str());
   wifiApmodeConfig();
 
   // setRtc();
   lsFile.writeLogString(strResetReason);
-  if (dataReload)
-    lsFile.readCellDataLog(1);
+  // if (dataReload)
+  //   lsFile.readCellDataLog(1);
 
   SPI.setFrequency(spiClk);
   SPI.begin(SCK, MISO, MOSI, CS_5940);
@@ -553,20 +576,24 @@ void loop(void)
   {
     //if(elaspTime != -1) 
     elaspTime++;
+    simpleCli.outputStream->printf("\nTIme Controll(1) : %d",elaspTime);
     previousSecondmills = now;
   }
   if ((now - previous_3Secondmills > Interval_3Second))
   {
     previous_3Secondmills= now;
   }
-  if ((now - previous_5Secondmills > Interval_5Second) && (elaspTime %60 ==0))
+  if ((now - previous_5Secondmills > Interval_5Second) && (elaspTime % 60 ==0))
   {
-    //if(elaspTime==-1)elaspTime=0;//처음으로 시작한다.
     if ((systemDefaultValue.runMode != 0) )  // 자동 모드에서만 실행한다
                                           // 또한 매 분 실행한다.
     {
       for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
       {
+        if(elaspTime==0) //처음으로 실행하는 것이면 
+          elaspTime=3590; //이렇게 해서 처음에는 전압만 읽고
+                          //다시 임피던스를 읽는 방식으로 하자.
+        simpleCli.outputStream->printf("\nTIme Controll(2) : %d",elaspTime);
         parameters = simpleCli.outputStream;
         selecectedCellNumber = i-1;
         //modbusRequestModule.addToQueue(millis(), i, READ_INPUT_REGISTER, 0, 3);
@@ -578,12 +605,15 @@ void loop(void)
         //ESP_LOGI("TIME", "Elasp time Step 1 : %ld milisecond", endRead - startRead);
         esp_task_wdt_reset();
         //TODO: 아래의 펑션은 MODBUS 루틴을 변경하기 위해 임시로 막는다
-        bRet = SelectBatteryMinusPlus(i);
+        for(int retry=0;retry<10;retry++){
+          bRet = SelectBatteryMinusPlus(i);
+          if(bRet == false){
+            ESP_LOGE("BAT", "Select Battery %dth Error",i); 
+          }
+          else break;
+        }
         endRead = millis();             // take 300ms
         //ESP_LOGI("TIME", "Elasp time Step 1 : %ld milisecond", endRead - startRead);
-        if(bRet == false){
-        ESP_LOGE("BAT", "Select Battery %dth Error",i); 
-        }
         float batVoltage = 0.0;
         batVoltage = batDevice.readBatAdcValue(i, 600);
         if (batVoltage > 18.0)
@@ -624,17 +654,13 @@ void loop(void)
   }
   if ((now - previous_60Secondmills > Interval_60Second))
   {
-    gettimeofday(&tmv, NULL);
-    struct tm *timeinfo = gmtime(&tmv.tv_sec);
-    simpleCli.outputStream->printf("\r\nEveryMinute reached  ... %d %d %d",timeinfo->tm_min,logForHour,timeinfo->tm_hour);
-    if(logForHour != timeinfo->tm_hour){ //매시간마다 로그를 기록한다.
-      logForHour = timeinfo->tm_hour;
-      lsFile.writeCellDataLog();
-    }
-    // sendSelectBattery(impedanceCellPosition);//selecectedCellNumber를 변화 시킨다
-    // AD5940_Main(parameters);  
-    // impedanceCellPosition++;
-    // if(impedanceCellPosition >= INSTALLED_CELLS)impedanceCellPosition =1;
+    // gettimeofday(&tmv, NULL);
+    // struct tm *timeinfo = gmtime(&tmv.tv_sec);
+    // simpleCli.outputStream->printf("\r\nEveryMinute reached  ... %d %d %d",timeinfo->tm_min,logForHour,timeinfo->tm_hour);
+    // if(logForHour != timeinfo->tm_hour){ //매시간마다 로그를 기록한다.
+    //   logForHour = timeinfo->tm_hour;
+    //   lsFile.writeCellDataLog();
+    //}
     previous_60Secondmills= now;
   }
   vTaskDelay(100);
