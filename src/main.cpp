@@ -65,6 +65,7 @@ extern SimpleCLI simpleCli;
 
 BluetoothSerial SerialBT;
 
+BatDeviceInterface batDevice;
 
 
 void AD5940_ShutDown();
@@ -142,7 +143,6 @@ void readnWriteEEProm()
     EEPROM.commit();
   }
   EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
-  if(systemDefaultValue.runMode>3)systemDefaultValue.runMode=0;
 }
 
 void setRtcNewTime(RtcDateTime rtc){
@@ -300,20 +300,24 @@ void initCellValue()
 bool checkBooting()
 {
   String msg;
-  if(systemDefaultValue.runMode ==4 ){
-    msg = "Module Ext485 Test Mode\n";
-    setErrorMessageToModbus(true,msg.c_str());
-    simpleCli.outputStream->printf(msg.c_str());
-    setDataToLcd(120,40);//tims and message
-    return false;
-  }
+  float batVoltage = 0.0;
+  msg = "Now On Booting\n";
+  setErrorMessageToModbus(true,msg.c_str());
+  setDataToLcd(120,40);//tims and message
   int moduleState1;
   simpleCli.outputStream->printf("\nWaiting For Module Booting\n");
   //ESP_LOGI(TAG, "\nWaiting For Module Booting");
+  msg = "Check Step 1\n";
+  setErrorMessageToModbus(true,msg.c_str());
+  setDataToLcd(120,40);//tims and message
   for (int i = 1; i <= systemDefaultValue.installed_cells + 1; i++){
     moduleState1 = readModuleRelayStatus(i,1);
     msg ="\nMod ";
     msg += i;msg += " Boot State "; msg += moduleState1;
+
+    batVoltage = batDevice.readBatAdcValueExt(10);
+    msg +=" Vol:";msg +=batVoltage ;
+
     simpleCli.outputStream->printf(msg.c_str());
     if (moduleState1 != 8){
       ESP_LOGI(TAG, "setErrorMessageToModbus-------->%s",msg);
@@ -326,7 +330,6 @@ bool checkBooting()
       setErrorMessageToModbus(false,"");
     }
   }
-  setDataToLcd(120,40);//tims and message
   digitalWrite(RELAY_FP_IO,SENSE_MODE    );  //이것이 IO0에 연결되어 있으면 서부모듈의 릴레이 2에 해당한다
   delay(20);
   digitalWrite(RELAY_FN_GND, P15_MODE);
@@ -334,7 +337,10 @@ bool checkBooting()
   for (int i = 1; i <= systemDefaultValue.installed_cells + 1; i++){
     moduleState1 = readModuleRelayStatus(i,1);
     msg ="\nMod ";
-    msg += i;msg += " Second test Err " ; msg += moduleState1;
+    msg += i;msg += " Second test " ; msg += moduleState1;
+
+    batVoltage = batDevice.readBatAdcValueExt(10);
+    msg +=" Vol:";msg +=batVoltage ;
     simpleCli.outputStream->printf(msg.c_str());
     if(moduleState1 != 4){
       setErrorMessageToModbus(true,msg.c_str());
@@ -343,6 +349,34 @@ bool checkBooting()
       i = 1;
     }
   }
+
+  msg = "Check Step 3\n";
+  setErrorMessageToModbus(true,msg.c_str());
+  setDataToLcd(120,40);//tims and message
+
+  digitalWrite(RELAY_FP_IO,SENSE_MODE    );  //이것이 IO0에 연결되어 있으면 서부모듈의 릴레이 2에 해당한다
+  delay(20);
+  digitalWrite(RELAY_FN_GND,SENSE_MODE    );
+  delay(100);
+  for (int i = 1; i <= systemDefaultValue.installed_cells + 1; i++){
+    moduleState1 = readModuleRelayStatus(i,1);
+    msg ="\nMod ";
+    msg += i;msg += " Third test " ; msg += moduleState1;
+
+    batVoltage = batDevice.readBatAdcValueExt(10);
+    msg +=" Vol:";msg +=batVoltage ;
+    simpleCli.outputStream->printf(msg.c_str());
+    if(moduleState1 != 0)
+    {
+      setErrorMessageToModbus(true,msg.c_str());
+      setDataToLcd(120,40);//tims and message 모드버스를 이용해서 데이타를 전송한다>
+      delay(3000);
+      i = 1;
+    }
+  }
+
+  setErrorMessageToModbus(false,"");
+  setDataToLcd(120,40);//tims and message
   digitalWrite(RELAY_FP_IO, P15_MODE);  //이것이 IO0에 연결되어 있으면 서부모듈의 릴레이 2에 해당한다
   delay(20);
   digitalWrite(RELAY_FN_GND, SENSE_MODE   );
@@ -535,7 +569,6 @@ static unsigned long now;
 //각각의 시간은 병렬로 수행된다.
 
 //uint8_t globalModbusId =1;
-BatDeviceInterface batDevice;
 uint8_t impedanceCellPosition=1;
 static timeval tmv;
 int16_t logForHour=0;
@@ -590,6 +623,8 @@ void loop(void)
     {
       for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
       {
+        time_t startRead = millis();
+        time_t endTime ;
         if(elaspTime==0) //처음으로 실행하는 것이면 
           elaspTime=3590; //이렇게 해서 처음에는 전압만 읽고
                           //다시 임피던스를 읽는 방식으로 하자.
@@ -598,11 +633,9 @@ void loop(void)
         selecectedCellNumber = i-1;
         //modbusRequestModule.addToQueue(millis(), i, READ_INPUT_REGISTER, 0, 3);
         //TODO: 임시로 막는 다>
-        time_t startRead = millis();
-        time_t endRead ;
         sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER, 0, 3); // 40mills
-        endRead = millis();             // take 300ms
-        //ESP_LOGI("TIME", "Elasp time Step 1 : %ld milisecond", endRead - startRead);
+        endTime = millis();             // take 300ms
+        //ESP_LOGI("TIME", "Elasp time Step 1 : %ld milisecond", endTime - startRead);
         esp_task_wdt_reset();
         //TODO: 아래의 펑션은 MODBUS 루틴을 변경하기 위해 임시로 막는다
         for(int retry=0;retry<10;retry++){
@@ -612,24 +645,25 @@ void loop(void)
           }
           else break;
         }
-        endRead = millis();             // take 300ms
-        //ESP_LOGI("TIME", "Elasp time Step 1 : %ld milisecond", endRead - startRead);
+        endTime = millis();             // take 300ms
         float batVoltage = 0.0;
         batVoltage = batDevice.readBatAdcValue(i, 600);
         if (batVoltage > 18.0)
           batVoltage = 0.0;
         cellvalue[i - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
-        endRead = millis();             // take 300ms
-        //ESP_LOGI("Voltage", "Bat(%d) Voltage is : %3.3f (%ldmilisecond)", i,batVoltage, endRead - startRead);
+        endTime = millis();             // take 300ms
+        //ESP_LOGI("TIME", "Elasp time Step 2 : %ld milisecond", endTime - startRead);
+        //ESP_LOGI("Voltage", "Bat(%d) Voltage is : %3.3f (%ldmilisecond)", i,batVoltage, endTime - startRead);
         simpleCli.outputStream->printf("\ntime:%ld Bat(%i) Vol:%3.3f (%ldmili)\n",
-          elaspTime,i, batVoltage, endRead - startRead);
+          elaspTime,i, batVoltage, endTime - startRead);
         setDataToLcd(0,40); //voltage
-        vTaskDelay(100);
+        vTaskDelay(10);
         setDataToLcd(40,40);//temperature
-        vTaskDelay(100);
+        vTaskDelay(10);
         if (batVoltage > 2.0)
         {
-          if (systemDefaultValue.runMode == 3 && (elaspTime%3600==0)) //매시간마다 실행한다
+          // 4는 cheating mode이다.
+          if (systemDefaultValue.runMode >= 3 && (elaspTime%3600==0)) //매시간마다 실행한다
           {
             AD5940_Main(parameters); 
           }
@@ -638,9 +672,9 @@ void loop(void)
         //for(int i=0;i<40;i++)cellvalue[i].impendance = 123.56f;
         //cellvalue[0].impendance = 123.56f*2;
         setDataToLcd(80,40);//Impedance
-        vTaskDelay(100);
+        vTaskDelay(10);
         setDataToLcd(120,40);//tims and message
-        vTaskDelay(100);
+        vTaskDelay(10);
         if(systemDefaultValue.runMode ==0) break;
       }
     }

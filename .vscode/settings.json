@@ -56,6 +56,7 @@
         "mutex": "cpp",
         "stdexcept": "cpp",
         "thread": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "bitset": "cpp"
     }
 }

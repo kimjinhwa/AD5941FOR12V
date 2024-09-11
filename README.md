@@ -1,4 +1,24 @@
 # TIA Resistance Measurement System.
+## 에러 유형 
+  *  checkVoltageoff(): [Voltage] Bat OFF Check Voltage is : 18.994 
+## 시스템설정
+  * runmode  
+    - 0 : Nothing
+    - 1 : Read Voltage 
+    - 2 : Not Defined 
+    - 3 : Read Impedance 
+    - 4 : Impedance Cheating Mode. 
+  * bat <num>
+    - 설치된 축전지 수를 설정한다. 
+  * id <num>
+    - modbus id 를 설정한다. 
+  * offset [i][ia][v][va][vv] <num> <value>
+     - -ia : 모든 셀에 대하여 공통적용한다.
+     - -iv : num을 0으로 주면 모든 셀에 대하여 공통적용한다.
+     - offset 0 0 현재의 설정된 값을 보여준다.
+       대략적으로 1 스텝에 15mv로 본다.   
+       offset 0 "-36"  와 같이 입력한다
+
 ## BOARD DEBUGGING
   * WIFI 안테나 부분을 판다.
   * R1  100K를 200K로 .
