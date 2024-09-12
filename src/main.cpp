@@ -634,7 +634,7 @@ void loop(void)
         selecectedCellNumber = i-1;
         //modbusRequestModule.addToQueue(millis(), i, READ_INPUT_REGISTER, 0, 3);
         //TODO: 임시로 막는 다>
-        sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER, 0, 3); // 40mills
+        sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER, 0, 3,5); // 40mills
         endTime = millis();             // take 300ms
         //ESP_LOGI("TIME", "Elasp time Step 1 : %ld milisecond", endTime - startRead);
         esp_task_wdt_reset();

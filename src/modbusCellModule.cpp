@@ -9,7 +9,7 @@
 void AD5940_ShutDown();
 
 uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode);
-uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode);
+uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t ChangeId,uint8_t fCode);
 void handleData(ModbusMessage response, uint32_t token);
 void handleError(Error error, uint32_t token) ;
 
@@ -204,7 +204,7 @@ bool CellOnOff(uint8_t modbusId, uint16_t relay, uint16_t onoff)
   }
   for (i = startId; i <= endId; i++)
   {
-    retValue = sendGetModbusModuleData(millis(), i, WRITE_COIL, relay, onoff);
+    retValue = sendGetModbusModuleData(millis(), i, WRITE_COIL, relay, onoff,5);
     if (retValue != 0 )
     {
       // ESP_LOGE("MODULE", "Succeed %d", retValue);
@@ -412,12 +412,12 @@ bool checkVoltageoff(uint8_t modbusID)
 uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode)
 {
   uint16_t retValue;
-  retValue = sendGetModbusModuleData(millis(), 1, READ_INPUT_REGISTER, 0, 3);
+  retValue = sendGetModbusModuleData(millis(), modbusId, READ_INPUT_REGISTER, 0, 3,1);
 
   if (retValue != 0)
   {
-    ESP_LOGE("MODULE", "Succeed %d modbusCellData %d", retValue,
-             modbusCellData.modbusid);
+    ESP_LOGE("MODULE", "Succeed %d modbus ID %d temp %d", retValue,
+             modbusCellData.modbusid,modbusCellData.temperature);
     return modbusCellData.modbusid;
   }
   else
@@ -428,7 +428,7 @@ uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode)
   return modbusCellData.modbusid;
 };
 
-uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode)
+uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t ChangeId,uint8_t fCode)
 {//Focde is 06
   uint16_t checkSum ;
   uint16_t value ;
@@ -436,13 +436,12 @@ uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode)
   uint8_t buf[64];
   data_ready = false;
   extendSerial.selectCellModule(true);
-  uint16_t change_id=modbusId;
   vTaskDelay(10);
   // change_id=  sendGetModuleId(255,4);
   // ESP_LOGI("modbus","change module id %d ",modbusId);
   //makeWriteSingleRegister(buf,255,fCode, 1, modbusId);
   uint32_t token=millis();
-  sendGetModbusModuleData(token,1,WRITE_HOLD_REGISTER,1,change_id );
+  sendGetModbusModuleData(token,modbusId,WRITE_HOLD_REGISTER,1,ChangeId,5 );
  
   //data_ready  = readResponseDataForBrodcast(modbusId,fCode, buf,8,500); 
   if (data_ready)
@@ -482,7 +481,7 @@ ModbusMessage  syncRequestCellModule(uint32_t token,uint8_t modbusId, uint8_t fC
     extendSerial.selectLcd();
     return rc    ;
 }
-uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t data)
+uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t data,int retryCount)
 {
     uint16_t checkSum;
     uint16_t retValue=0;
@@ -516,7 +515,7 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
     else if (modbusId != 255)
     {
       ModbusMessage rc ;
-      for(int retry=0;retry<5;retry++){
+      for(int retry=0;retry<retryCount;retry++){
         rc = modBusRtuCellModule.syncRequest(token, modbusId, fCode, startAddress, data);
         if (rc.getError() == 0) // 에러가 없으면.
         {
@@ -562,7 +561,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //bool sendSelectBattery(uint8_t modbusId);
 //int makeWriteSingleRegister(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t data);
 //int makeTemperatureData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t len);
-// uint32_t sendGetModbusModuleData_old(uint8_t modbusId, uint8_t fCode)
 // {
 //   uint16_t checkSum ;
 //   uint16_t value ;

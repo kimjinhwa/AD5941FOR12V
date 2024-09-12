@@ -395,23 +395,40 @@ void offset_configCallback(cmd *cmdPtr)
   // return;
 }
 
-uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t fCode);
+uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t ChangeId,uint8_t fCode);
 uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode);
-void moduleid_configCallback(cmd *cmdPtr){
-  uint16_t  moduleId;
+void moduleid_configCallback(cmd *cmdPtr)
+{
+  uint16_t moduleId;
+  uint16_t changeId;
   Command cmd(cmdPtr);
   Argument arg = cmd.getArgument(0);
   String argVal = arg.getValue();
-  simpleCli.outputStream->printf("\r\n%s",argVal.c_str());
-  if(argVal.length() > 0 ){
-    moduleId= sendGetChangeModuleId(argVal.toInt(), 06);
-    simpleCli.outputStream->printf("\r\nModule Id Changed to: %d",moduleId);
-    return;
-  }
-  else{
-    moduleId= sendGetModuleId(255, 04);
-    simpleCli.outputStream->printf("\r\nModule Id is  %d",moduleId);
-    return;
+
+  simpleCli.outputStream->printf("\r\narg lenth %d", argVal.length());
+  if (argVal.length() > 0)
+  {
+    moduleId = cmd.getArgument("beforeId").getValue().toInt();
+    changeId = cmd.getArgument("changeId").getValue().toInt();
+    if (moduleId != 0)
+    {
+      simpleCli.outputStream->printf("\n\rid %d to change %d", moduleId, changeId);
+      // moduleId=argVal.toInt();
+      moduleId = sendGetChangeModuleId(moduleId, changeId, 06);
+      simpleCli.outputStream->printf("\r\nModule Id Changed to: %d", moduleId);
+      return;
+    }
+    else
+    {
+      for (int i = 1; i < 255; i++)
+      {
+        moduleId = sendGetModuleId(i, 04);
+        simpleCli.outputStream->printf("\r\nFind Module Id is  %d", moduleId);
+        if (moduleId != 0)
+          break;
+      }
+      return;
+    }
   }
 }
 void temperature_configCallback(cmd *cmdPtr){
@@ -422,13 +439,13 @@ void temperature_configCallback(cmd *cmdPtr){
   simpleCli.outputStream->printf("\r\n%s",argVal.c_str());
   if(argVal.length() > 0 ){
 
-    batTemperature = sendGetModbusModuleData(millis(), argVal.toInt(), READ_INPUT_REGISTER,0,3);
+    batTemperature = sendGetModbusModuleData(millis(), argVal.toInt(), READ_INPUT_REGISTER,0,3,5);
     simpleCli.outputStream->printf("\r\n[%d]Bat Temperature : %3.2f",argVal.toInt(),batTemperature/100.0f);
     return;
   }
   for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
   {
-    batTemperature = sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER,0,3);
+    batTemperature = sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER,0,3,5);
     simpleCli.outputStream->printf("\r\n[%d]Bat Temperature : %3.2f",i,batTemperature/100.0f);
   }
 }
@@ -786,7 +803,9 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config = addSingleArgCmd("bat/number", batnumber_configCallback);
   cmd_config = addCommand("imp/edance", impedance_configCallback);
   cmd_config = addSingleArgCmd("temp/erature", temperature_configCallback);
-  cmd_config = addSingleArgCmd("mod/uledid", moduleid_configCallback);
+  cmd_config = addCommand("mod/uleid", moduleid_configCallback);
+  cmd_config.addPositionalArgument("beforeId");
+  cmd_config.addPositionalArgument("changeId");
 
   cmd_config = addCommand("writecellLog",writeCellLog_configCallback);
   cmd_config = addCommand("readcellLog",readCellLog_configCallback);
@@ -1125,7 +1144,6 @@ void SimpleCLI::setOnError(void (* onError)(cmd_error* e)) {
 void SimpleCLI::setErrorCallback(void (* onError)(cmd_error* e)) {
     setOnError(onError);
 }
-    //sendGetModbusModuleData(uint8_t modbusId, uint8_t fCode);
     // simpleCli.outputStream->printf("\ncount is %d",cmd.countArgs()); 
     // simpleCli.outputStream->printf("\nfirst arg is %s",cmd.getArgument(0).getName()); 
     // simpleCli.outputStream->printf("\nfirst arg is %s",cmd.getArgument(0).getValue()); 
@@ -1139,4 +1157,3 @@ void SimpleCLI::setErrorCallback(void (* onError)(cmd_error* e)) {
   // cmd_config.addFlagArgument("v");
   // cmd_config.addPositionalArgument("num");
   // cmd_config.addPositionalArgument("value");
-    //batTemperature = sendGetModbusModuleData(i, 04);

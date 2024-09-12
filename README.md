@@ -37,10 +37,12 @@
   - p15relay 00 로 해서 센서 부팅라인에 전원을 공급하고나    
     케이스를 열고 점퍼를 뺀 후  케이블에 하나의 라인만 연결한다. 
   
-  - mod <number> 로 아이디를 변경한다.
-  - mod 를 입력하여 현재의 id를 확인한다.  ## 에러 유형 
+  - mod 0 0 를 입력하여 현재의 id를 확인한다. 
+  - mod <modbusid > <변경할 아이디> 로 아이디를 변경한다.
 
+## 에러 유형 
   *  checkVoltageoff(): [Voltage] Bat OFF Check Voltage is : 18.994 
+
 ## BOARD DEBUGGING
   * WIFI 안테나 부분을 판다.
   * R1  100K를 200K로 .

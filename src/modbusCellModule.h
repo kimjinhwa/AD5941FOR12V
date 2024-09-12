@@ -20,7 +20,7 @@ int readModuleRelayStatus(uint8_t modbusId,uint16_t retryCount);
 bool CellOnOff(uint8_t modbusId, uint16_t relay, uint16_t onoff);
 
 
-uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t data);
+uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t data,int retryCount);
 typedef struct
 {
     uint16_t modbusId;
@@ -171,7 +171,7 @@ public:
           reqEntry.modbusID,
           reqEntry.func,
           reqEntry.address,
-          reqEntry.lendata);
+          reqEntry.lendata,5);
       delay(50);
     }
   };
