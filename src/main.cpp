@@ -609,7 +609,8 @@ void loop(void)
   {
     //if(elaspTime != -1) 
     elaspTime++;
-    simpleCli.outputStream->printf("\nTIme Controll(1) : %d",elaspTime);
+    if( elaspTime%10 ==0 )
+      simpleCli.outputStream->printf("\nTime elasped(1) : %d",elaspTime);
     previousSecondmills = now;
   }
   if ((now - previous_3Secondmills > Interval_3Second))
