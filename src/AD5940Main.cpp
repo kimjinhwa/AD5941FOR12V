@@ -24,6 +24,7 @@ Analog Devices Software License Agreement.
 #include "BATImpedance.h"
 #include "ad5940.h"
 #include <esp_task_wdt.h>
+#include "SimpleCLI.h"
 
 #define MAX_LOOP_COUNT 30
 #define APPBUFF_SIZE 512
@@ -39,6 +40,7 @@ extern int measuredImpedance_1[20];
 extern int measuredImpedance_2[20];
 extern int measuredVoltage_1[20];
 extern int measuredVoltage_2[20];
+extern SimpleCLI simpleCli;
 fImpCar_Type pImpResult[MAX_LOOP_COUNT +1];
 
 void AD5940_ShutDown();
@@ -84,7 +86,7 @@ void addResult(uint32_t *pData, uint32_t DataCount)
       {
         // 측정된 전압값을 반영 한다
         cellvalue[selecectedCellNumber].impendance =
-            measuredImpedance_1[selecectedCellNumber];
+            measuredImpedance_1[selecectedCellNumber]/100.0f;
         // 읽은 전압 값이 0.6V미만이면 임피던스는 0으로 놓는다.
         if (cellvalue[selecectedCellNumber].voltage < 0.6)
         {
@@ -100,7 +102,7 @@ void addResult(uint32_t *pData, uint32_t DataCount)
       else
       {
         cellvalue[selecectedCellNumber].impendance =
-            measuredImpedance_2[selecectedCellNumber];
+            measuredImpedance_2[selecectedCellNumber]/100.0f;
         // 읽은 전압 값이 4V미만이면 임피던스는 0으로 놓는다.
         if (cellvalue[selecectedCellNumber].voltage < 4)
           cellvalue[selecectedCellNumber].impendance = 0.0f;
@@ -247,7 +249,7 @@ float AD5940_calibration(float *real , float *image)
   bool bRet = SelectBatteryMinusPlus(1);
   if (bRet == false)
   {
-    ESP_LOGE("BAT", "Select %dth Battery For calibratiron  Error", 1);
+    ESP_LOGE("BAT", "\nSelect %dth Battery For calibratiron  Error", 1);
   }
   uint16_t loopCount = 100;
   AD5940PlatformCfg();
@@ -255,21 +257,22 @@ float AD5940_calibration(float *real , float *image)
   AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
   *real = 0.0f;
   *image = 0.0f;
+  simpleCli.outputStream->printf("Now on calibration(...");
   while (loopCount--)
   {
-    ESP_LOGI(TAG, "Now on calibration(%d)...", loopCount);
+    //simpleCli.outputStream->
+    //simpleCli.outputStream->printf("Now on calibration(%d)...", loopCount);
     time_t startTime = millis();
     if (AD5940ERR_WAKEUP == AppBATCtrl(BATCTRL_MRCAL, 0))
     {
-      ESP_LOGW(TAG, "\nWakeup Error..retry...");
+      simpleCli.outputStream->printf("\nWakeup Error..retry...");
     }; /* Measur RCAL each point in sweep */
     time_t endTime = millis();
     // ESP_LOGI("IMP", "RcalVolt Real Image IMP:%f\t %f\t %f (%dmills)",
     //          AppBATCfg.RcalVolt.Real,
     //          AppBATCfg.RcalVolt.Image,
     //          AD5940_ComplexMag(&AppBATCfg.RcalVolt),endTime-startTime);
-    if (outputStream != nullptr)
-      outputStream->printf("\r\n%d: R I Mag:%6.2f\t %6.2f\t %6.2f (%dmills)",
+    simpleCli.outputStream->printf("\r\n%d: R I Mag:%6.2f\t %6.2f\t %6.2f (%dmills)",
                            loopCount,
                            AppBATCfg.RcalVolt.Real,
                            AppBATCfg.RcalVolt.Image,
