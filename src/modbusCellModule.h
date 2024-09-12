@@ -186,4 +186,3 @@ public:
 };
 extern ModbusRequestModule modbusRequestModule;
 #endif
-//uint32_t sendGetModbusModuleData_old(uint8_t modbusId, uint8_t fCode);
