@@ -6,6 +6,7 @@
 #include "batDeviceInterface.h"
 #include <esp_task_wdt.h>
 
+extern uint16_t startBatnumber;
 void AD5940_ShutDown();
 
 uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode);
@@ -259,7 +260,7 @@ int isModuleAllSameValue(int value){
   int i;
   int moduleState1;
   //12,12의 값이 리턴될것이다. 
-  for (i = 1; i <= systemDefaultValue.installed_cells+1; i++)
+  for (i = startBatnumber; i <= systemDefaultValue.installed_cells+1; i++)
   {
     moduleState1 = readModuleRelayStatus(i,5);
     if (moduleState1 == -1 || moduleState1 != value)
@@ -285,12 +286,10 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
 
   if(!CellOnOff(0,0,CELLOFF)) return false;
   if(!CellOnOff(0,1,CELLOFF))return false;
-  // 모든 모듈의 1번 릴레이를 OFF한다.  //ESP_LOGW("MODULE", "Step1 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
   if(!CellOnOff(modbusId,0,CELLOFF))return false;
   if(!CellOnOff(modbusId,1,CELLOFF))return false;
   if(!CellOnOff(modbusId+1,0,CELLOFF))return false;
   if(!CellOnOff(modbusId+1,1,CELLOFF))return false;
-  // 모든 모듈의 2번 릴레이를 OFF한다.  //ESP_LOGW("MODULE", "Step2 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
   vTaskDelay(10);
 
   int moduleState1;
@@ -398,7 +397,6 @@ bool checkVoltageoff(uint8_t modbusID)
 
   if(!CellOnOff(modbusID,0,CELLOFF)) return false;
   // 모든 모듈의 2번 릴레이를 OFF한다.
-  //ESP_LOGW("MODULE", "Step2 All Relay 1 Off Command %d",systemDefaultValue.installed_cells);
   if(!CellOnOff(modbusID+1,1,CELLOFF))return false;
 
   digitalWrite(RELAY_FN_GND, SENSE_MODE);
@@ -596,17 +594,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
   // vTaskDelay(10);
   // eTaskState state =eTaskGetState(lcdHandle );
 
-  // for (i = 1; i <= systemDefaultValue.installed_cells+1; i++)
-  // {
-  //   moduleState1 = readModuleRelayStatus(i);
-  //   // if (moduleState1 == -1 || moduleState1 != 12)
-  //   // {
-  //   //   // 통신에러이며 더이상 진행하지 않는다.
-  //   //   ESP_LOGI("MODBUS","ID %d CELL OFF OR COMM ERROR",i);
-  //   //   return false;
-  //   // }
-  // }
-  // 
 // int readResponseDataForBrodcast(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len,uint16_t timeout)
 // {
 //   //uint16_t timeout; //timeout = 300;
@@ -773,48 +760,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //   uint16_t retryCount=5;
 
 //   ESP_LOGI("modbus","checkAllOff");
-//   for (int modbusId = 1; modbusId <= systemDefaultValue.installed_cells; modbusId++)
-//   {
-//     retryCount=5;
-//     while(retryCount--){
-//       vTaskDelay(100);
-//       makeRelayControllData(buf, modbusId, READ_COIL, 0, 2);     // Read coil data 2 개
-//       isOK = readResponseData(modbusId, READ_COIL, buf, 6, 500); // * 100 즉 0.3초 us buf[3]이 Relay 데이타 이다.
-//       if(isOK)break;
-//     }
-//     if (isOK == 1)
-//     {
-//       if (modbusId < 32)
-//       {
-//         temp32L = 1;
-//         temp32L = temp32L << (modbusId - 1);
-//         *failedBatteryNumberL |= temp32L;
-//       }
-//       else
-//       {
-//         temp32H = 1;
-//         temp32H = temp32H << (modbusId - 1);
-//         *failedBatteryNumberH |= temp32H;
-//       }
-//     }
-//     else
-//     {
-//       if (modbusId < 32)
-//       {
-//         temp32L  = 0;
-//         temp32L = ~(1 << (modbusId - 1));
-//         *failedBatteryNumberL &= temp32L;
-//       }
-//       else
-//       {
-//         temp32H = 0;
-//         temp32H = ~(1 << (modbusId - 1));
-//         *failedBatteryNumberH &= temp32H;
-//       }
-//       ESP_LOGI("OFF RELAY","%d battery not response..", modbusId);
-//     }
-//     totalRelayStatusValue += buf[3];
-//   }
 //   return totalRelayStatusValue;
 // }
 // bool sendSelectBatteryWithNoCheck(uint8_t modbusId)
@@ -911,13 +856,6 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 //   //  하위 바이트는 0XFFFF이어야 한다.
 //   uint32_t checkH = 0;
 //   uint32_t checkL = 0;
-//   for (int i = 0; i < systemDefaultValue.installed_cells; i++)
-//   {
-//     if (i < 32)
-//       checkL |= (1U << i);
-//     else
-//       checkH |= (1U << i);
-//   }
 //   ESP_LOGI(TAG, "Relay ON State :%d %04x %04x %04x %04x", retValue, checkH, checkL, failedBatteryH, failedBatteryL);
 //   if (retValue == 0 && checkH == failedBatteryH && checkL == failedBatteryL)
 //   {
@@ -1025,6 +963,4 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
 // }
 
 
-  //for(i=1;i<=systemDefaultValue.installed_cells;i++)
-  //ESP_LOGW("MODULE", "Step 1 All Relay 1 Off(%d) Command %d",i,systemDefaultValue.installed_cells);
   

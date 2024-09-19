@@ -62,6 +62,7 @@ uint8_t selecectedCellNumber =0;
 _cell_value cellvalue[MAX_INSTALLED_CELLS];
 
 extern SimpleCLI simpleCli;
+uint16_t startBatnumber=1;
 
 BluetoothSerial SerialBT;
 
@@ -310,7 +311,7 @@ bool checkBooting()
   msg = "Check Step 1\n";
   setErrorMessageToModbus(true,msg.c_str());
   setDataToLcd(120,40);//tims and message
-  for (int i = 1; i <= systemDefaultValue.installed_cells + 1; i++){
+  for (int i = startBatnumber; i <= systemDefaultValue.installed_cells + 1; i++){
     moduleState1 = readModuleRelayStatus(i,1);
     msg ="\nMod ";
     msg += i;msg += " Boot State "; msg += moduleState1;
@@ -334,7 +335,7 @@ bool checkBooting()
   delay(20);
   digitalWrite(RELAY_FN_GND, P15_MODE);
   delay(100);
-  for (int i = 1; i <= systemDefaultValue.installed_cells + 1; i++){
+  for (int i = startBatnumber; i <= systemDefaultValue.installed_cells + 1; i++){
     moduleState1 = readModuleRelayStatus(i,1);
     msg ="\nMod ";
     msg += i;msg += " Second test " ; msg += moduleState1;
@@ -358,7 +359,7 @@ bool checkBooting()
   delay(20);
   digitalWrite(RELAY_FN_GND,SENSE_MODE    );
   delay(100);
-  for (int i = 1; i <= systemDefaultValue.installed_cells + 1; i++){
+  for (int i = startBatnumber; i <= systemDefaultValue.installed_cells + 1; i++){
     moduleState1 = readModuleRelayStatus(i,1);
     msg ="\nMod ";
     msg += i;msg += " Third test " ; msg += moduleState1;
@@ -622,7 +623,7 @@ void loop(void)
     if ((systemDefaultValue.runMode != 0) )  // 자동 모드에서만 실행한다
                                           // 또한 매 분 실행한다.
     {
-      for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
+      for (int i = startBatnumber; i <= systemDefaultValue.installed_cells; i++)
       {
         time_t startRead = millis();
         time_t endTime ;

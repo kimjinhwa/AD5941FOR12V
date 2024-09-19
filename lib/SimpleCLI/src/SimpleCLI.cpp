@@ -17,6 +17,8 @@ LittleFileSystem lsFile;
 SimpleCLI simpleCli;
 extern BatDeviceInterface batDevice;
 extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
+extern uint16_t startBatnumber;
+
 static char TAG[] ="CLI" ;
 extern "C" {
 #include "c/cmd.h"       // cmd
@@ -115,6 +117,19 @@ uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumbe
 
 float AD5940_calibration(float *real , float *image);
 
+void startbat_configCallback(cmd *cmdPtr)
+{
+  Command cmd(cmdPtr);
+  Argument arg = cmd.getArgument(0);
+  String argVal = arg.getValue();
+  simpleCli.outputStream->printf("\nNow Start Bat number %d", startBatnumber);
+  if (argVal.length() == 0)
+  {
+    return;
+  }
+  startBatnumber =  argVal.toInt();
+  simpleCli.outputStream->printf("\nChanged Start Bat number %d", startBatnumber );
+}
 void batnumber_configCallback(cmd *cmdPtr)
 {
   Command cmd(cmdPtr);
@@ -801,6 +816,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config = addSingleArgCmd("id", id_configCallback);
   cmd_config = addSingleArgCmd("cal/ibration", calibration_configCallback);
   cmd_config = addSingleArgCmd("bat/number", batnumber_configCallback);
+  cmd_config = addSingleArgCmd("start/bat", startbat_configCallback);
   cmd_config = addCommand("imp/edance", impedance_configCallback);
   cmd_config = addSingleArgCmd("temp/erature", temperature_configCallback);
   cmd_config = addCommand("mod/uleid", moduleid_configCallback);
