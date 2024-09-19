@@ -260,7 +260,7 @@ void ModbusServerRTU::serve(ModbusServerRTU *myServer) {
       }
     }
     // Give scheduler room to breathe
-    delay(1);
+    delay(700);
   }
 }
 

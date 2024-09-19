@@ -61,6 +61,7 @@ typedef struct
     float real_Cal;  // 236+4 = 240
     float image_Cal; // 240 + 4 = 248
     uint8_t logLevel; // 240 + 4 = 248
+    uint16_t startBatnumber;     // 63 + 2 = 65
 } nvsSystemSet;
 extern nvsSystemSet systemDefaultValue;
 

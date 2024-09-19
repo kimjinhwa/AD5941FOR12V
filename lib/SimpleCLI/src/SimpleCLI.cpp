@@ -46,6 +46,15 @@ void getTime(){
   settimeofday(&tmv, NULL);
 }
 
+
+void initEEPROM_configCallback(cmd *cmdPtr){
+  simpleCli.outputStream->printf("\r\ninit EEPROM");
+  simpleCli.outputStream->printf("\r\ninit EEPROM");
+  EEPROM.writeByte(0, 0x00);
+  EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  EEPROM.commit();
+  esp_restart();
+}
 void ls_configCallback(cmd *cmdPtr){
   Command cmd(cmdPtr);
   Argument arg = cmd.getArgument(0);
@@ -128,6 +137,10 @@ void startbat_configCallback(cmd *cmdPtr)
     return;
   }
   startBatnumber =  argVal.toInt();
+  systemDefaultValue.startBatnumber= startBatnumber;
+  EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  EEPROM.commit();
+  EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
   simpleCli.outputStream->printf("\nChanged Start Bat number %d", startBatnumber );
 }
 void batnumber_configCallback(cmd *cmdPtr)
@@ -794,6 +807,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config =  addSingleArgCmd("cat", cat_configCallback);
   cmd_config = addSingleArgCmd("rm", rm_configCallback);
   cmd_config = addSingleArgCmd("format", format_configCallback);
+  cmd_config = addCommand("init/Eeprom", initEEPROM_configCallback);
   cmd_config = addCommand("time", time_configCallback);
   cmd_config.addArgument("y/ear","");
   cmd_config.addArgument("mo/nth","");
@@ -842,7 +856,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config.addFlagArgument("vv"); //voltage
   cmd_config.addPositionalArgument("num");
   cmd_config.addPositionalArgument("value");
-  cmd_config.setDescription("\nFor impdance and voltage compansation value\n  \
+  cmd_config.setDescription("\nFor impdance and voltage/e compansation value\n  \
     Usage: offset [-i (cellnumber) (value)] [-v (cellnumber) (value)]\n    \
                 [-ia][-va]  \
            flag: -ia  0 [value] [ set all offset value set to samevalue to given impedance value]\n   \

@@ -1,5 +1,7 @@
 # TIA Resistance Measurement System.
 ## 시스템설정
+  * initEeprom
+    EEPROM을 초기화 한다. 
   * start/bat <number> 초기 시작하는 배터리 번호를 입력한다.    
      시스템 재부팅시에는 설정값은 사라지면 다시 1부터 시작한다.   
      초기 설치시 디버깅을 위하여 사용한다.

@@ -28,7 +28,7 @@
 #include <esp_task_wdt.h>
 
 
-#define WDT_TIMEOUT 60 
+#define WDT_TIMEOUT 100 
 // 기본 vSPI와 일치한다
 #define VSPI_MISO   MISO  // IO19
 #define VSPI_MOSI   MOSI  // IO 23
@@ -139,11 +139,15 @@ void readnWriteEEProm()
     systemDefaultValue.real_Cal = -33410.0f;
     systemDefaultValue.image_Cal = 35511.0f;
     systemDefaultValue.logLevel = ESP_LOG_INFO;
+    systemDefaultValue.startBatnumber = 1;
     EEPROM.writeByte(0, 0x55);
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
   }
   EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  if(systemDefaultValue.startBatnumber > systemDefaultValue.installed_cells  )
+    systemDefaultValue.startBatnumber = systemDefaultValue.installed_cells;
+  startBatnumber = systemDefaultValue.startBatnumber;
 }
 
 void setRtcNewTime(RtcDateTime rtc){
@@ -611,7 +615,7 @@ void loop(void)
     //if(elaspTime != -1) 
     elaspTime++;
     if( elaspTime%10 ==0 )
-      simpleCli.outputStream->printf("\nTime elasped(1) : %d",elaspTime);
+      simpleCli.outputStream->printf("\nTime elasped : %d",elaspTime);
     previousSecondmills = now;
   }
   if ((now - previous_3Secondmills > Interval_3Second))
@@ -630,7 +634,6 @@ void loop(void)
         if(elaspTime==0) //처음으로 실행하는 것이면 
           elaspTime=3590; //이렇게 해서 처음에는 전압만 읽고
                           //다시 임피던스를 읽는 방식으로 하자.
-        simpleCli.outputStream->printf("\nTIme Controll(2) : %d",elaspTime);
         parameters = simpleCli.outputStream;
         selecectedCellNumber = i-1;
         //modbusRequestModule.addToQueue(millis(), i, READ_INPUT_REGISTER, 0, 3);
