@@ -329,15 +329,6 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   //moduleState1  = isModuleAllSameValue(4);
   moduleState1 = readModuleRelayStatus(modbusId,5);
   moduleState2 = readModuleRelayStatus(modbusId+1,5);
-  // if(modbusId==3)
-  // while(1){
-  //   esp_task_wdt_reset();
-  //   moduleState1 = readModuleRelayStatus(modbusId);
-  //   moduleState2 = readModuleRelayStatus(modbusId+1);
-  //   ESP_LOGW("MODULE", "Step3 Waiting...%d %d %d",
-  //     dispcount++ ,moduleState1 ,moduleState2  );
-  //   delay(1000);
-  // }
   if( moduleState1 != 4 || moduleState2 !=4 ){
     ESP_LOGW("MODULE", "Step3 Error All Off Status1(%d) %d Status2 %d",modbusId,moduleState1,moduleState2    );
     return false; 

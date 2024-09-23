@@ -46,9 +46,14 @@
   - mod 0 0 를 입력하여 현재의 id를 확인한다. 
   - mod <modbusid > <변경할 아이디> 로 아이디를 변경한다.
 
-## 에러 유형 
-  *  checkVoltageoff(): [Voltage] Bat OFF Check Voltage is : 18.994 
 
+## BOARD 고장 및 수리
+  * 릴레이 불량 1건 발생    
+    NC가 떨어져 있는 경우이다. 
+  * EXT 485 통신 불량    
+    제너 다이오드가 나갔다.    
+    원인 : 셀에 꽂아야할 통신선을 EXT에 꽂아서 +15가 공급되었다. 
+  * F1, F2휴즈 나감.  
 ## BOARD DEBUGGING
   * WIFI 안테나 부분을 판다.
   * R1  100K를 200K로 .
@@ -56,10 +61,11 @@
   * ADG656_SEL IO27 및 점퍼를 사용하지 않고 GPIO2_EXT로 확정한다 ( J2 삭제)
   * SENSE_P 과 SENSE_N을 바꿔준다.(회로도에서.. 상관은 없으나 이렇게 해주는게 좋다)
   *  adc_filter.Sinc2NotchEnable = bTRUE; 이것이 활성화 되어 있지 않다.    
+  * 에러 유형 
+    -  checkVoltageoff(): [Voltage] Bat OFF Check Voltage is : 18.994 
      다시 확인을 하자. 
 ## BLUETOOTH COMMAND
-### offset #
- #### offset    [-ia cellno value ] [-va  cellno value ]    [-i  cellno value ] 
+### offset    [-ia cellno value ] [-va  cellno value ]    [-i  cellno value ] 
  * [-ia cellno value ] 임피던스에 대한 옵셋을 맞춘다. 
    * cellno : 셀번호 1번부터시작한다.   
      0 이 주어지면 모든셀에 대하여 적용한다.   
