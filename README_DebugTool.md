@@ -1,6 +1,13 @@
+# 센서모듈을 메인 보드로 설정하기 
+  - modbus를 열고 1,3,4 모니터링을 연다. 
+  - 센서보드는 초기 부팅시 부팅 점퍼를 뺀 후 통신이 완료 되면 점퍼를 삽입한다
+  - runmode를 0으로 설정한다.
+  - 메인보드에 블루투스를 연결한 후 BAT 0 으로 설정한다. 
+  - 메인보드의 P15relay를 00,01,10,11로 변경하여 정상적으로 
+    modpol에서 읽는 지를 확인한다. 
+    00 -> 11, 01 ->10, 10->01, 11->00
+  - 이제 모드버스 ID를 부여하고 종료 한다.
 # 새로운 보드의 테스트 절차 
-  - 블루투스를 열고 mode 3을 입력하여야 한다.
-  - 테스트 순서 
     1. Chip ID를 정상적으로 읽는지를 확인한다. 
     2. CE단자에 SINE파가 잡히는 지를 확인한다.   
        이때 배터리는 연결되어 있어야 한다.
@@ -165,7 +172,8 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
     systemDefaultValue.voltageCompensation[number - 1] = voloffset;
   uint32_t voltage = esp_adc_cal_raw_to_voltage((uint32_t)batVoltageAdcValue , &adc_chars);
  ``` 
-
+# mpower [0][1]
+  - 외부전원을 모듈에 인가하는 15V전원 릴레이 스위치를 끄거나 켠다. 
 # relay -s [Cell no] -off 
   - relay -s [Cell no] -off 
     - off : check if all cell is offed 
