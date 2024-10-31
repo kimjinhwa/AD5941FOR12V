@@ -1,13 +1,13 @@
 # TIA Resistance Measurement System.
-## ½Ã½ºÅÛ¼³Á¤
+## ì‹œìŠ¤í…œì„¤ì •
   * initEeprom
-    EEPROMÀ» ÃÊ±âÈ­ ÇÑ´Ù. 
-  * start/bat <number> ÃÊ±â ½ÃÀÛÇÏ´Â ¹èÅÍ¸® ¹øÈ£¸¦ ÀÔ·ÂÇÑ´Ù.    
-     ½Ã½ºÅÛ ÀçºÎÆÃ½Ã¿¡´Â ¼³Á¤°ªÀº »ç¶óÁö¸é ´Ù½Ã 1ºÎÅÍ ½ÃÀÛÇÑ´Ù.   
-     ÃÊ±â ¼³Ä¡½Ã µð¹ö±ëÀ» À§ÇÏ¿© »ç¿ëÇÑ´Ù.
+    EEPROMì„ ì´ˆê¸°í™” í•œë‹¤. 
+  * start/bat <number> ì´ˆê¸° ì‹œìž‘í•˜ëŠ” ë°°í„°ë¦¬ ë²ˆí˜¸ë¥¼ ìž…ë ¥í•œë‹¤.    
+     ì‹œìŠ¤í…œ ìž¬ë¶€íŒ…ì‹œì—ëŠ” ì„¤ì •ê°’ì€ ì‚¬ë¼ì§€ë©´ ë‹¤ì‹œ 1ë¶€í„° ì‹œìž‘í•œë‹¤.   
+     ì´ˆê¸° ì„¤ì¹˜ì‹œ ë””ë²„ê¹…ì„ ìœ„í•˜ì—¬ ì‚¬ìš©í•œë‹¤.
 
-  * ÃÊ±â Àü¿øÀ» ONÇÒ¶§´Â ¹Ýµå½Ã ¼¾¼­¸ðµâ ¶óÀÎÀ» ºÐ¸®ÇÑ ÈÄ    
-    Åä±Û ½ºÀ§Ä¡¸¦ OFF¸ðµå·Î ³õÀº ÈÄ ÆÄ¿ö¸¦ °ø±ÞÇÑ´Ù.
+  * ì´ˆê¸° ì „ì›ì„ ONí• ë•ŒëŠ” ë°˜ë“œì‹œ ì„¼ì„œëª¨ë“ˆ ë¼ì¸ì„ ë¶„ë¦¬í•œ í›„    
+    í† ê¸€ ìŠ¤ìœ„ì¹˜ë¥¼ OFFëª¨ë“œë¡œ ë†“ì€ í›„ íŒŒì›Œë¥¼ ê³µê¸‰í•œë‹¤.
   * runmode  
     - 0 : Nothing
     - 1 : Read Voltage 
@@ -15,97 +15,97 @@
     - 3 : Read Impedance 
     - 4 : Impedance Cheating Mode. 
   * bat <num>
-    - ¼³Ä¡µÈ ÃàÀüÁö ¼ö¸¦ ¼³Á¤ÇÑ´Ù. 
-    - ÀÚµ¿À¸·Î ½Ã½ºÅÛÀº Àç ºÎÆÃµÈ´Ù.
+    - ì„¤ì¹˜ëœ ì¶•ì „ì§€ ìˆ˜ë¥¼ ì„¤ì •í•œë‹¤. 
+    - ìžë™ìœ¼ë¡œ ì‹œìŠ¤í…œì€ ìž¬ ë¶€íŒ…ëœë‹¤.
   * id <num>
-    - modbus id ¸¦ ¼³Á¤ÇÑ´Ù. 
+    - modbus id ë¥¼ ì„¤ì •í•œë‹¤. 
   * offset [i][ia][v][va][vv] <num> <value>
-     - -ia : ¸ðµç ¼¿¿¡ ´ëÇÏ¿© °øÅëÀû¿ëÇÑ´Ù.
-     - -iv : numÀ» 0À¸·Î ÁÖ¸é ¸ðµç ¼¿¿¡ ´ëÇÏ¿© °øÅëÀû¿ëÇÑ´Ù.
-     - offset 0 0 ÇöÀçÀÇ ¼³Á¤µÈ °ªÀ» º¸¿©ÁØ´Ù.
-       ´ë·«ÀûÀ¸·Î 1 ½ºÅÜ¿¡ 15mv·Î º»´Ù.   
-       offset 0 "-36"  ¿Í °°ÀÌ ÀÔ·ÂÇÑ´Ù
+     - -ia : ëª¨ë“  ì…€ì— ëŒ€í•˜ì—¬ ê³µí†µì ìš©í•œë‹¤.
+     - -iv : numì„ 0ìœ¼ë¡œ ì£¼ë©´ ëª¨ë“  ì…€ì— ëŒ€í•˜ì—¬ ê³µí†µì ìš©í•œë‹¤.
+     - offset 0 0 í˜„ìž¬ì˜ ì„¤ì •ëœ ê°’ì„ ë³´ì—¬ì¤€ë‹¤.
+       ëŒ€ëžµì ìœ¼ë¡œ 1 ìŠ¤í…ì— 15mvë¡œ ë³¸ë‹¤.   
+       offset 0 "-36"  ì™€ ê°™ì´ ìž…ë ¥í•œë‹¤
   * cal : calibration 
-     - ³»ºÎÀÇ °íÁ¤µÈ ÀúÇ×°ªÀ¸·Î ±âÁØ°ªÀ» ÀÐ´Â´Ù.
-     - cal save : °ªÀ» ÃøÁ¤ÇÏ°í EEPROM¿¡ ÀúÀåÇÑ´Ù. ÇÑ¹ø Çß´Ù¸é ±âÁ¸ÀÇ °ªÀ» È°¿ëÇÏ¿© »ç¿ëÇÑ´Ù.
-  * time : ½Ã°£ ¼³Á¤
+     - ë‚´ë¶€ì˜ ê³ ì •ëœ ì €í•­ê°’ìœ¼ë¡œ ê¸°ì¤€ê°’ì„ ì½ëŠ”ë‹¤.
+     - cal save : ê°’ì„ ì¸¡ì •í•˜ê³  EEPROMì— ì €ìž¥í•œë‹¤. í•œë²ˆ í–ˆë‹¤ë©´ ê¸°ì¡´ì˜ ê°’ì„ í™œìš©í•˜ì—¬ ì‚¬ìš©í•œë‹¤.
+  * time : ì‹œê°„ ì„¤ì •
     - time -y 2024 -mo 9 -d 12 -h 09 -m 47 -s 00 
-  * reboot : ½Ã½ºÅÛÀ» Àç ½ÃÀÛÇÑ´Ù.
-  * p15relay : ¸ÞÀÎº¸µå¿¡¼­ ¼¾¼­º¸µå¿¡ °ø±ÞÇÏ´Â ½ÅÈ£ 15VÀÇ Á¦¾î¸¦ ÇÑ´Ù. 
-    - p15relay 00 :  ¼¾¼­ º¸µåÀÇ µÎ ¶óÀÎ ¸ðµÎ P15¸¦ Ãâ·ÂÇÑ´Ù.   
-     ÀÌ°ÍÀº ¼¾¼­¸ðµâÀÇ ºÎÆÃ ¸ðµåÀÌ´Ù. Áï ÀÌ»óÅÂ¿¡¼­ ¶óÀÎÀ» ²ÉÀ¸¸é Á¤»óÀûÀ¸·Î ¼¾¼­ ¸ðµâÀÌ ºÎÆÃµÈ´Ù. 
+  * reboot : ì‹œìŠ¤í…œì„ ìž¬ ì‹œìž‘í•œë‹¤.
+  * p15relay : ë©”ì¸ë³´ë“œì—ì„œ ì„¼ì„œë³´ë“œì— ê³µê¸‰í•˜ëŠ” ì‹ í˜¸ 15Vì˜ ì œì–´ë¥¼ í•œë‹¤. 
+    - p15relay 00 :  ì„¼ì„œ ë³´ë“œì˜ ë‘ ë¼ì¸ ëª¨ë‘ P15ë¥¼ ì¶œë ¥í•œë‹¤.   
+     ì´ê²ƒì€ ì„¼ì„œëª¨ë“ˆì˜ ë¶€íŒ… ëª¨ë“œì´ë‹¤. ì¦‰ ì´ìƒíƒœì—ì„œ ë¼ì¸ì„ ê½ƒìœ¼ë©´ ì •ìƒì ìœ¼ë¡œ ì„¼ì„œ ëª¨ë“ˆì´ ë¶€íŒ…ëœë‹¤. 
   - p15relay 01 : 
   - p15relay 10 : 
   - p15relay 11 : 
-* mod/uleid : ¸ðµâÀÇ ID¸¦ ³ëÆ®ºÏ ¾øÀÌ º¯°æÇÏ°íÀÚ ÇÒ ¶§ »ç¿ëÇÒ ¼ö ÀÖ´Ù. 
-  - ¸ðµâ ÄÉÀÌºíÀ» º»Ã¼¿¡¼­ ºÐ¸®ÇÑ´Ù.
-  - runmode 0 À¸·Î ³õ°í ½Ã½ºÅÛÀ» Àç ºÎÆÃÇÑ´Ù.
-  - p15relay 00 ·Î ÇØ¼­ ¼¾¼­ ºÎÆÃ¶óÀÎ¿¡ Àü¿øÀ» °ø±ÞÇÏ°í³ª    
-    ÄÉÀÌ½º¸¦ ¿­°í Á¡ÆÛ¸¦ »« ÈÄ  ÄÉÀÌºí¿¡ ÇÏ³ªÀÇ ¶óÀÎ¸¸ ¿¬°áÇÑ´Ù. 
+* mod/uleid : ëª¨ë“ˆì˜ IDë¥¼ ë…¸íŠ¸ë¶ ì—†ì´ ë³€ê²½í•˜ê³ ìž í•  ë•Œ ì‚¬ìš©í•  ìˆ˜ ìžˆë‹¤. 
+  - ëª¨ë“ˆ ì¼€ì´ë¸”ì„ ë³¸ì²´ì—ì„œ ë¶„ë¦¬í•œë‹¤.
+  - runmode 0 ìœ¼ë¡œ ë†“ê³  ì‹œìŠ¤í…œì„ ìž¬ ë¶€íŒ…í•œë‹¤.
+  - p15relay 00 ë¡œ í•´ì„œ ì„¼ì„œ ë¶€íŒ…ë¼ì¸ì— ì „ì›ì„ ê³µê¸‰í•˜ê³ ë‚˜    
+    ì¼€ì´ìŠ¤ë¥¼ ì—´ê³  ì í¼ë¥¼ ëº€ í›„  ì¼€ì´ë¸”ì— í•˜ë‚˜ì˜ ë¼ì¸ë§Œ ì—°ê²°í•œë‹¤. 
   
-  - mod 0 0 ¸¦ ÀÔ·ÂÇÏ¿© ÇöÀçÀÇ id¸¦ È®ÀÎÇÑ´Ù. 
-  - mod <modbusid > <º¯°æÇÒ ¾ÆÀÌµð> ·Î ¾ÆÀÌµð¸¦ º¯°æÇÑ´Ù.
+  - mod 0 0 ë¥¼ ìž…ë ¥í•˜ì—¬ í˜„ìž¬ì˜ idë¥¼ í™•ì¸í•œë‹¤. 
+  - mod <modbusid > <ë³€ê²½í•  ì•„ì´ë””> ë¡œ ì•„ì´ë””ë¥¼ ë³€ê²½í•œë‹¤.
 
 
-## BOARD °íÀå ¹× ¼ö¸®
-  * ¸±·¹ÀÌ ºÒ·® 1°Ç ¹ß»ý    
-    NC°¡ ¶³¾îÁ® ÀÖ´Â °æ¿ìÀÌ´Ù. 
-  * EXT 485 Åë½Å ºÒ·®    
-    Á¦³Ê ´ÙÀÌ¿Àµå°¡ ³ª°¬´Ù.    
-    ¿øÀÎ : ¼¿¿¡ ²È¾Æ¾ßÇÒ Åë½Å¼±À» EXT¿¡ ²È¾Æ¼­ +15°¡ °ø±ÞµÇ¾ú´Ù. 
-  * F1, F2ÈÞÁî ³ª°¨.  
+## BOARD ê³ ìž¥ ë° ìˆ˜ë¦¬
+  * ë¦´ë ˆì´ ë¶ˆëŸ‰ 1ê±´ ë°œìƒ    
+    NCê°€ ë–¨ì–´ì ¸ ìžˆëŠ” ê²½ìš°ì´ë‹¤. 
+  * EXT 485 í†µì‹  ë¶ˆëŸ‰    
+    ì œë„ˆ ë‹¤ì´ì˜¤ë“œê°€ ë‚˜ê°”ë‹¤.    
+    ì›ì¸ : ì…€ì— ê½‚ì•„ì•¼í•  í†µì‹ ì„ ì„ EXTì— ê½‚ì•„ì„œ +15ê°€ ê³µê¸‰ë˜ì—ˆë‹¤. 
+  * F1, F2íœ´ì¦ˆ ë‚˜ê°.  
 ## BOARD DEBUGGING
-  * WIFI ¾ÈÅ×³ª ºÎºÐÀ» ÆÇ´Ù.
-  * R1  100K¸¦ 200K·Î .
-  * P15VÃâ·Â¿¡ Toggle Switch¸¦ ´Þ¾Æ ÁØ´Ù.
-  * ADG656_SEL IO27 ¹× Á¡ÆÛ¸¦ »ç¿ëÇÏÁö ¾Ê°í GPIO2_EXT·Î È®Á¤ÇÑ´Ù ( J2 »èÁ¦)
-  * SENSE_P °ú SENSE_NÀ» ¹Ù²ãÁØ´Ù.(È¸·Îµµ¿¡¼­.. »ó°üÀº ¾øÀ¸³ª ÀÌ·¸°Ô ÇØÁÖ´Â°Ô ÁÁ´Ù)
-  *  adc_filter.Sinc2NotchEnable = bTRUE; ÀÌ°ÍÀÌ È°¼ºÈ­ µÇ¾î ÀÖÁö ¾Ê´Ù.    
-  * ¿¡·¯ À¯Çü 
+  * WIFI ì•ˆí…Œë‚˜ ë¶€ë¶„ì„ íŒë‹¤.
+  * R1  100Kë¥¼ 200Kë¡œ .
+  * P15Vì¶œë ¥ì— Toggle Switchë¥¼ ë‹¬ì•„ ì¤€ë‹¤.
+  * ADG656_SEL IO27 ë° ì í¼ë¥¼ ì‚¬ìš©í•˜ì§€ ì•Šê³  GPIO2_EXTë¡œ í™•ì •í•œë‹¤ ( J2 ì‚­ì œ)
+  * SENSE_P ê³¼ SENSE_Nì„ ë°”ê¿”ì¤€ë‹¤.(íšŒë¡œë„ì—ì„œ.. ìƒê´€ì€ ì—†ìœ¼ë‚˜ ì´ë ‡ê²Œ í•´ì£¼ëŠ”ê²Œ ì¢‹ë‹¤)
+  *  adc_filter.Sinc2NotchEnable = bTRUE; ì´ê²ƒì´ í™œì„±í™” ë˜ì–´ ìžˆì§€ ì•Šë‹¤.    
+  * ì—ëŸ¬ ìœ í˜• 
     -  checkVoltageoff(): [Voltage] Bat OFF Check Voltage is : 18.994 
-     ´Ù½Ã È®ÀÎÀ» ÇÏÀÚ. 
+     ë‹¤ì‹œ í™•ì¸ì„ í•˜ìž. 
 ## BLUETOOTH COMMAND
 ### offset    [-ia cellno value ] [-va  cellno value ]    [-i  cellno value ] 
- * [-ia cellno value ] ÀÓÇÇ´ø½º¿¡ ´ëÇÑ ¿É¼ÂÀ» ¸ÂÃá´Ù. 
-   * cellno : ¼¿¹øÈ£ 1¹øºÎÅÍ½ÃÀÛÇÑ´Ù.   
-     0 ÀÌ ÁÖ¾îÁö¸é ¸ðµç¼¿¿¡ ´ëÇÏ¿© Àû¿ëÇÑ´Ù.   
+ * [-ia cellno value ] ìž„í”¼ë˜ìŠ¤ì— ëŒ€í•œ ì˜µì…‹ì„ ë§žì¶˜ë‹¤. 
+   * cellno : ì…€ë²ˆí˜¸ 1ë²ˆë¶€í„°ì‹œìž‘í•œë‹¤.   
+     0 ì´ ì£¼ì–´ì§€ë©´ ëª¨ë“ ì…€ì— ëŒ€í•˜ì—¬ ì ìš©í•œë‹¤.   
    * value    
-         systemDefaultValue.impendanceCompensation[i]ÀÇ 
-         °ª¿¡ ÁÖ¾îÁø °ªÀ» += ÇÑ´Ù.   
+         systemDefaultValue.impendanceCompensation[i]ì˜ 
+         ê°’ì— ì£¼ì–´ì§„ ê°’ì„ += í•œë‹¤.   
          ```
           cellvalue[i].impendance = cellvalue[i].impendance +   systemDefaultValue.impendanceCompensation[i] / 100.f;   
           ```
-      µû¶ó¼­ Value´Â 1/100·Î Àû¿ëÇÏ±â ¶§¹®¿¡ 100À» °öÇÑ 
-      °ªÀ¸·Î ÁØ´Ù.   
- * [-va  cellno value ]  Àü¾Ð¿¡ ´ëÇÑ ¿É¼ÂÀ» ¸ÂÃá´Ù. 
-      * cellno : ¼¿¹øÈ£ 1¹øºÎÅÍ½ÃÀÛÇÑ´Ù.   
-                  0 ÀÌ ÁÖ¾îÁö¸é ¸ðµç¼¿¿¡ ´ëÇÏ¿© Àû¿ëÇÑ´Ù.   
+      ë”°ë¼ì„œ ValueëŠ” 1/100ë¡œ ì ìš©í•˜ê¸° ë•Œë¬¸ì— 100ì„ ê³±í•œ 
+      ê°’ìœ¼ë¡œ ì¤€ë‹¤.   
+ * [-va  cellno value ]  ì „ì••ì— ëŒ€í•œ ì˜µì…‹ì„ ë§žì¶˜ë‹¤. 
+      * cellno : ì…€ë²ˆí˜¸ 1ë²ˆë¶€í„°ì‹œìž‘í•œë‹¤.   
+                  0 ì´ ì£¼ì–´ì§€ë©´ ëª¨ë“ ì…€ì— ëŒ€í•˜ì—¬ ì ìš©í•œë‹¤.   
       * value    
-         systemDefaultValue.voltageCompensation[i]ÀÇ 
-         °ª¿¡ ÁÖ¾îÁø °ªÀ» += ÇÑ´Ù.     
+         systemDefaultValue.voltageCompensation[i]ì˜ 
+         ê°’ì— ì£¼ì–´ì§„ ê°’ì„ += í•œë‹¤.     
         ``` 
          systemDefaultValue.voltageCompensation[i] += value 
         ```
-      µû¶ó¼­ Value´Â 1/100·Î Àû¿ëÇÏ±â ¶§¹®¿¡ 100À» °öÇÑ 
-      °ªÀ¸·Î ÁØ´Ù.   
- * [-i cellno value ] ia¿Í µ¿ÀÏÇÏ³ª +=ÀÌ ¾Æ´Ñ =¸¦ »ç¿ëÇÑ´Ù.
+      ë”°ë¼ì„œ ValueëŠ” 1/100ë¡œ ì ìš©í•˜ê¸° ë•Œë¬¸ì— 100ì„ ê³±í•œ 
+      ê°’ìœ¼ë¡œ ì¤€ë‹¤.   
+ * [-i cellno value ] iaì™€ ë™ì¼í•˜ë‚˜ +=ì´ ì•„ë‹Œ =ë¥¼ ì‚¬ìš©í•œë‹¤.
       ```
       cellvalue[i].impendance = cellvalue[i].impendance + systemDefaultValue.impendanceCompensation[i] / 100.f;
       ```
- * [-v cellno value ] va¿Í µ¿ÀÏÇÏ³ª +=ÀÌ ¾Æ´Ñ =¸¦ »ç¿ëÇÑ´Ù.
+ * [-v cellno value ] vaì™€ ë™ì¼í•˜ë‚˜ +=ì´ ì•„ë‹Œ =ë¥¼ ì‚¬ìš©í•œë‹¤.
       ```
         systemDefaultValue.voltageCompensation[i] = value; // cellvalue[0].voltage - cellvalue[i].voltage;
         cellvalue[number - 1].voltage= cellvalue[number - 1].voltage+ systemDefaultValue.voltageCompensation[number - 1];
       ```
 
- * [-vv cellno value ] ÀÔ·ÂÇÑ °ªÀ¸·Î ¿É¼ÂÀ» ¸ÂÃß¾î ÁÖ´Â ¿É¼ÇÀÌ´Ù.     
- °è»êÀ» ½±ÇÏ±â ÇØ ÁÖ±â À§ÇÑ ¹æ¹ýÀÌ´Ù.   
- Ã¹¹øÂ°´Â ¼¿¹øÈ£¸¦ µÎ¹øÂ°´Â ¿øÇÏ´Â Àü¾Ð°ªÀ» ±â·ÏÇÑ´Ù
+ * [-vv cellno value ] ìž…ë ¥í•œ ê°’ìœ¼ë¡œ ì˜µì…‹ì„ ë§žì¶”ì–´ ì£¼ëŠ” ì˜µì…˜ì´ë‹¤.     
+ ê³„ì‚°ì„ ì‰½í•˜ê¸° í•´ ì£¼ê¸° ìœ„í•œ ë°©ë²•ì´ë‹¤.   
+ ì²«ë²ˆì§¸ëŠ” ì…€ë²ˆí˜¸ë¥¼ ë‘ë²ˆì§¸ëŠ” ì›í•˜ëŠ” ì „ì••ê°’ì„ ê¸°ë¡í•œë‹¤
  ```
     float gapVoltage = fvalue - cellvalue[number-1].voltage ;
     int voloffset = (int)(gapVoltage /0.005);
     systemDefaultValue.voltageCompensation[number - 1] = voloffset;
-    //voltageCompensation°ªÀº ¾Æ·¡¿Í °°ÀÌ adcReading Offset¿¡ »ç¿ëµÈ´Ù.
+    //voltageCompensationê°’ì€ ì•„ëž˜ì™€ ê°™ì´ adcReading Offsetì— ì‚¬ìš©ëœë‹¤.
     systemDefaultValue.voltageCompensation[number - 1] = voloffset;
   uint32_t voltage = esp_adc_cal_raw_to_voltage((uint32_t)batVoltageAdcValue , &adc_chars);
  ``` 
@@ -115,61 +115,61 @@
     - off : check if all cell is offed 
     - Cell no : 0 All Off, 
       number : Set Relay On the number and +1 relay on 
-  - cal/ibration ±âÁØ ÀÓÇÇ´ø½º¸¦ ±¸ÇÑ´Ù. 
-    cal save : °ªÀ» ÀÐ°í ÀúÀåÇÑ´Ù.
-    cal save Ä¶¸®ºê·¹ÀÌ¼Ç µÈ °ªÀ» EEPROM¿¡ ÀúÀåÇÑ´Ù
-  - mode  ÀÚµ¿À¸·Î ÀÓÇÇ´ø½º¸¦ ÀÐÀ» °ÍÀÎÁö ¾Æ´ÑÁö¸¦ °áÁ¤ÇÑ´Ù. 
-          CalibrationÀ» ¼öÇàÇÏ±â À§ÇØ¼­´Â ÀÌ°ÍÀÌ ¼öµ¿À¸·Î ¼³Á¤ µÇ¾î ÀÖ¾î¾ß ÇÑ´Ù.
-    - mode 0 :¼öµ¿
-    - mode 1 : Àü¾Ð¸¸ ÀÚµ¿
-    - mode 3 : Àü¾Ð°ú ÀÓÇÇ´ø½º ÀÚµ¿ 
-  - bat/number [40]: ¼³Ä¡µÇ¾îÀÖ´Â ¹èÅÍ¸®¼ýÀÚ¸¦ ±â·ÏÇÑ´Ù
-  - temp/erature : ÀüÃ¼ÀÇ ¿Âµµ¸¦ ÀÐ´Â ·çÆ¾ÀÌ´Ù.
-  - time : ÇöÀçÀÇ ½Ã°£À» Ç¥½ÃÇÑ´Ù. 
+  - cal/ibration ê¸°ì¤€ ìž„í”¼ë˜ìŠ¤ë¥¼ êµ¬í•œë‹¤. 
+    cal save : ê°’ì„ ì½ê³  ì €ìž¥í•œë‹¤.
+    cal save ìº˜ë¦¬ë¸Œë ˆì´ì…˜ ëœ ê°’ì„ EEPROMì— ì €ìž¥í•œë‹¤
+  - mode  ìžë™ìœ¼ë¡œ ìž„í”¼ë˜ìŠ¤ë¥¼ ì½ì„ ê²ƒì¸ì§€ ì•„ë‹Œì§€ë¥¼ ê²°ì •í•œë‹¤. 
+          Calibrationì„ ìˆ˜í–‰í•˜ê¸° ìœ„í•´ì„œëŠ” ì´ê²ƒì´ ìˆ˜ë™ìœ¼ë¡œ ì„¤ì • ë˜ì–´ ìžˆì–´ì•¼ í•œë‹¤.
+    - mode 0 :ìˆ˜ë™
+    - mode 1 : ì „ì••ë§Œ ìžë™
+    - mode 3 : ì „ì••ê³¼ ìž„í”¼ë˜ìŠ¤ ìžë™ 
+  - bat/number [40]: ì„¤ì¹˜ë˜ì–´ìžˆëŠ” ë°°í„°ë¦¬ìˆ«ìžë¥¼ ê¸°ë¡í•œë‹¤
+  - temp/erature : ì „ì²´ì˜ ì˜¨ë„ë¥¼ ì½ëŠ” ë£¨í‹´ì´ë‹¤.
+  - time : í˜„ìž¬ì˜ ì‹œê°„ì„ í‘œì‹œí•œë‹¤. 
     time -y , -mo , -d , -h , -m , -s 
-  - df ÇöÀç ½Ã½ºÅÛÀÇ ÆÄÀÏ½Ã½ºÅÛ »óÅÂ¸¦ º¸¿©ÁØ´Ù.
-  - id : mode bus id¸¦ º¸¿©ÁØ´Ù. º¯°æ½Ã¿¡´Â µÚ¿¡ ¿øÇÏ´Â :ID¸¦ Àû´Â´Ù.
+  - df í˜„ìž¬ ì‹œìŠ¤í…œì˜ íŒŒì¼ì‹œìŠ¤í…œ ìƒíƒœë¥¼ ë³´ì—¬ì¤€ë‹¤.
+  - id : mode bus idë¥¼ ë³´ì—¬ì¤€ë‹¤. ë³€ê²½ì‹œì—ëŠ” ë’¤ì— ì›í•˜ëŠ” :IDë¥¼ ì ëŠ”ë‹¤.
   - offset -i -v num value 
-    ÀÓÇÇ´ø½º ¿É¼ÂÀ» º¯°æÇÏ°íÀÚ ÇÏ¸é 
-    offset -i 10 100À» Àû¾î ³ÖÀ¸¸é 1/100ÀÌ ¹Ý¿µµÇ¸ç, -°ªÀº "-100" °ú °°ÀÌ Àû´Â´Ù.
+    ìž„í”¼ë˜ìŠ¤ ì˜µì…‹ì„ ë³€ê²½í•˜ê³ ìž í•˜ë©´ 
+    offset -i 10 100ì„ ì ì–´ ë„£ìœ¼ë©´ 1/100ì´ ë°˜ì˜ë˜ë©°, -ê°’ì€ "-100" ê³¼ ê°™ì´ ì ëŠ”ë‹¤.
   
 
 ### Debugging Info.
 - RTC Battery +, - Terminal SWAP
 - USB-C type VCC Jumper to +5V and P5V
-- RSÅë½Å Ä¨À» ÀüÀÌÁß ¹æ½ÄÀ¸·Î »ç¿ëµÇ¾ú±â ¶§¹®¿¡ Ä¨À» ±³Ã¼ ÇÏ¿´´Ù. 
-    - È¸·ÎµµÀÇ ¼öÁ¤ÀÌ ÇÊ¿äÇÏ´Ù.
+- RSí†µì‹  ì¹©ì„ ì „ì´ì¤‘ ë°©ì‹ìœ¼ë¡œ ì‚¬ìš©ë˜ì—ˆê¸° ë•Œë¬¸ì— ì¹©ì„ êµì²´ í•˜ì˜€ë‹¤. 
+    - íšŒë¡œë„ì˜ ìˆ˜ì •ì´ í•„ìš”í•˜ë‹¤.
 
 ### Hardware Design
 
-  - ³»ºÎÀÇ LCD¿Í ¼¿ÀÇ ¿Âµµ¹× ¸±·¹ÀÌ¸¦ À§ÇØ »ç¿ëÇÑ´Ù.   
+  - ë‚´ë¶€ì˜ LCDì™€ ì…€ì˜ ì˜¨ë„ë° ë¦´ë ˆì´ë¥¼ ìœ„í•´ ì‚¬ìš©í•œë‹¤.   
     - Serial1.begin(115200,SERIAL_8N1,26,22);
-  - ¿ÜºÎ 485Åë½Å¿¡ »ç¿ëÇÑ´Ù.   
+  - ì™¸ë¶€ 485í†µì‹ ì— ì‚¬ìš©í•œë‹¤.   
     - Serial2.begin(115200,SERIAL_8N1,18,19);
-  - LCD¿Í ¼¿ÀÇ Åë½ÅÀ» ¼±ÅÃÇÏ°Ô À§Çü 2°³ÀÇ GPIO¸¦ »ç¿ëÇÑ´Ù.
+  - LCDì™€ ì…€ì˜ í†µì‹ ì„ ì„ íƒí•˜ê²Œ ìœ„í˜• 2ê°œì˜ GPIOë¥¼ ì‚¬ìš©í•œë‹¤.
     - IO 23 UAD1 
     - IO 2  UAD2 
-  - **¹®Á¦°¡ ¹ß»ýÇÔ.**  ¿Âµµ°¡ ÀÚ²Ù ¿Ã¶ó°£´Ù. 
+  - **ë¬¸ì œê°€ ë°œìƒí•¨.**  ì˜¨ë„ê°€ ìžê¾¸ ì˜¬ë¼ê°„ë‹¤. 
 
-### LCD ¸ðµå¹ö½º ÇÁ·Î±×·¥ ½ÃÀÛ.
-    1. PC¿ÍÀÇ ¿¡¹Ä·¹ÀÌ¼ÇÀ¸·Î ½ÃÀÛÇÑ´Ù. 
-    2. PCÂÊ ÇÁ·Î±×·¥Àº ModscanÀ» »ç¿ëÇÏ¿© ÇÁ·Î±×·¥ÇÑ´Ù. 
-    3. Address´Â ³ªÁß¿¡ »ç¿ëµÇ´Â External RS485¿Í °°Àº ¹øÁö¸¦ »ç¿ëÇÑ´Ù.
-    4. ¼¿°úÀÇ Åë½ÅÀÌ Ç×»ó ¿ì¼±½Ã µÇ¹Ç·Î LCD¿¡¼­´Â  ¸ÅÃÊ ¸¶´Ù Æú¸µÀ» ÇÏ¿© ¿äÃ»ÀÌ ÀÖ´ÂÁö¸¦ È®ÀÎÇÑ´Ù. 
-    5. Device´Â ¼¿°úÀÇ Åë½ÅÀÌ ¿Ï·á µÇ¸é LCD¼ö½Å¸ðµå·Î µé¾î°£´Ù.(LCD¿¡°Ô´Â Agent ÀÌ±â ¶§¹®ÀÌ´Ù.)
+### LCD ëª¨ë“œë²„ìŠ¤ í”„ë¡œê·¸ëž¨ ì‹œìž‘.
+    1. PCì™€ì˜ ì—ë®¬ë ˆì´ì…˜ìœ¼ë¡œ ì‹œìž‘í•œë‹¤. 
+    2. PCìª½ í”„ë¡œê·¸ëž¨ì€ Modscanì„ ì‚¬ìš©í•˜ì—¬ í”„ë¡œê·¸ëž¨í•œë‹¤. 
+    3. AddressëŠ” ë‚˜ì¤‘ì— ì‚¬ìš©ë˜ëŠ” External RS485ì™€ ê°™ì€ ë²ˆì§€ë¥¼ ì‚¬ìš©í•œë‹¤.
+    4. ì…€ê³¼ì˜ í†µì‹ ì´ í•­ìƒ ìš°ì„ ì‹œ ë˜ë¯€ë¡œ LCDì—ì„œëŠ”  ë§¤ì´ˆ ë§ˆë‹¤ í´ë§ì„ í•˜ì—¬ ìš”ì²­ì´ ìžˆëŠ”ì§€ë¥¼ í™•ì¸í•œë‹¤. 
+    5. DeviceëŠ” ì…€ê³¼ì˜ í†µì‹ ì´ ì™„ë£Œ ë˜ë©´ LCDìˆ˜ì‹ ëª¨ë“œë¡œ ë“¤ì–´ê°„ë‹¤.(LCDì—ê²ŒëŠ” Agent ì´ê¸° ë•Œë¬¸ì´ë‹¤.)
 
 ### MODBUS FC04
-1. FC04Æã¼ÇÀÇ Ãß°¡ ¹× ¼öÁ¤.    
-  - ÇÑ¹ø¿¡ ¸ðµçµ¥ÀÌÅ¸¸¦ Àü¼ÛÇÑ´Ù. ÃÖ´ë 256°³ÀÇ µ¥ÀÌÅ¸   
+1. FC04íŽ‘ì…˜ì˜ ì¶”ê°€ ë° ìˆ˜ì •.    
+  - í•œë²ˆì— ëª¨ë“ ë°ì´íƒ€ë¥¼ ì „ì†¡í•œë‹¤. ìµœëŒ€ 256ê°œì˜ ë°ì´íƒ€   
   - 0x00~0xFF 
     - 0~39 : Cell Voltage
     - 40~79 : temperature + 40
     - 80~119 : impedance 
     - 120~255 : Etc 
 
-1. FC03Æã¼ÇÀÇ Ãß°¡ ¹× ¼öÁ¤.    
-  - Àü¾Ð°ú ³»ºÎÀúÇ×ÀÇ º¸Á¤°ª·çÆ¾À» »ç¿ëÇÑ´Ù.
-1. FC06À» »ç¿ëÇÏ¿© º¸Á¤°ªÀ» ¸Þ¸ð¸®¿¡ ÀúÀåÇÑ´Ù.
+1. FC03íŽ‘ì…˜ì˜ ì¶”ê°€ ë° ìˆ˜ì •.    
+  - ì „ì••ê³¼ ë‚´ë¶€ì €í•­ì˜ ë³´ì •ê°’ë£¨í‹´ì„ ì‚¬ìš©í•œë‹¤.
+1. FC06ì„ ì‚¬ìš©í•˜ì—¬ ë³´ì •ê°’ì„ ë©”ëª¨ë¦¬ì— ì €ìž¥í•œë‹¤.
 
 
 ### Modbus Address function 3 Holding Register
@@ -188,11 +188,11 @@
     - 40~79: temperature + 40
     - 80~119: impedance * 100 
 #### Fcode 04
-    - 0~39:  Àü¾Ðº¸Á¤°ª
-      Àü¾Ð º¸Á¤Àº ¿É¼Â°ªÀ¸·Î ÁÖ¸ç 0 ¹øÁö¿¡¸¸ ÁØ´Ù. 
-      1¿É¼Â´ç ¾à 9mv¿¡ ÇØ´çÇÑ´Ù.
+    - 0~39:  ì „ì••ë³´ì •ê°’
+      ì „ì•• ë³´ì •ì€ ì˜µì…‹ê°’ìœ¼ë¡œ ì£¼ë©° 0 ë²ˆì§€ì—ë§Œ ì¤€ë‹¤. 
+      1ì˜µì…‹ë‹¹ ì•½ 9mvì— í•´ë‹¹í•œë‹¤.
     - 40~79: not use 
-    - 80~119: ÀÓÇÇ´ø½ºº¸Á¤°ª 
+    - 80~119: ìž„í”¼ë˜ìŠ¤ë³´ì •ê°’ 
 
     - 120: year
     - 121: Month 

@@ -147,7 +147,8 @@ void readnWriteEEProm()
   EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
   if(systemDefaultValue.startBatnumber > systemDefaultValue.installed_cells  )
     systemDefaultValue.startBatnumber = systemDefaultValue.installed_cells;
-  startBatnumber = systemDefaultValue.startBatnumber;
+  if(systemDefaultValue.startBatnumber == 0) 
+  startBatnumber = 1;
 }
 
 void setRtcNewTime(RtcDateTime rtc){
@@ -316,7 +317,7 @@ bool checkBooting()
   setErrorMessageToModbus(true,msg.c_str());
   setDataToLcd(120,40);//tims and message
   for (int i = startBatnumber; i <= systemDefaultValue.installed_cells + 1; i++){
-    moduleState1 = readModuleRelayStatus(i,1);
+    moduleState1 = readModuleRelayStatus(i,2);
     msg ="\nMod ";
     msg += i;msg += " Boot State "; msg += moduleState1;
 
@@ -340,7 +341,7 @@ bool checkBooting()
   digitalWrite(RELAY_FN_GND, P15_MODE);
   delay(100);
   for (int i = startBatnumber; i <= systemDefaultValue.installed_cells + 1; i++){
-    moduleState1 = readModuleRelayStatus(i,1);
+    moduleState1 = readModuleRelayStatus(i,2);
     msg ="\nMod ";
     msg += i;msg += " Second test " ; msg += moduleState1;
 
@@ -364,7 +365,7 @@ bool checkBooting()
   digitalWrite(RELAY_FN_GND,SENSE_MODE    );
   delay(100);
   for (int i = startBatnumber; i <= systemDefaultValue.installed_cells + 1; i++){
-    moduleState1 = readModuleRelayStatus(i,1);
+    moduleState1 = readModuleRelayStatus(i,2);
     msg ="\nMod ";
     msg += i;msg += " Third test " ; msg += moduleState1;
 
@@ -456,6 +457,41 @@ bool bootingReasonCheck()
   if( resetReson != 0 ) return true;
   else return false;
 }
+// void testSerialExternal(){
+//   extendSerial.selectCellModule(true);
+//   while(1){
+//     digitalWrite(EXT_485EN_1, true);
+//     delay(10);
+//     Serial.println("Test External Serial 485 Module");
+//     Serial.flush();
+//     Serial1.println("Test External Serial 485 Module");
+//     Serial1.flush();
+//     digitalWrite(EXT_485EN_1, false);
+//     delay(10);
+//     while (!Serial1.available()) { }
+//     if(Serial1.available()) Serial.printf("read from Serial1 %d",Serial1.read());
+//   }
+//   vTaskDelay(10);
+// }
+// void testSerialCellModule(){
+//   extendSerial.selectCellModule(true);
+//   while(1){
+//     digitalWrite(CELL485_DE, true);
+//     delay(10);
+//     Serial.println("Test Serial 485 Module");
+//     Serial.flush();
+//     Serial2.println("Test Serial 485 Module");
+//     Serial2.flush();
+//     digitalWrite(CELL485_DE, false);
+//     delay(10);
+//     while (!Serial2.available())
+//     {
+//     }
+//     Serial.printf("read from Serial2 %d",Serial2.read());
+    
+//   }
+//   vTaskDelay(10);
+// }
 void setup()
 {
 
@@ -554,6 +590,8 @@ void setup()
   }
   esp_log_level_set("*", level);
   for(int i=0;i<40;i++)cellvalue[i].impendance = 0.0;
+  //testSerialCellModule();
+  //testSerialExternal();
 };
 static unsigned long previousSecondmills = 0;
 static int everySecondInterval = 1000;

@@ -238,7 +238,7 @@ int readModuleRelayStatus(uint8_t modbusId,uint16_t retryCount)
       handleData(response, token);
       break;
     }
-    ESP_LOGE("MODULE", "Retry... %d", retry);
+    ESP_LOGE("MODULE", "Module ID is %d, Retry Count... %d", modbusId, retry);
     delay(400);
   }
   if (response.getError() != 0)
@@ -401,7 +401,7 @@ bool checkVoltageoff(uint8_t modbusID)
 uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode)
 {
   uint16_t retValue;
-  retValue = sendGetModbusModuleData(millis(), modbusId, READ_INPUT_REGISTER, 0, 3,1);
+  retValue = sendGetModbusModuleData(millis(), modbusId, READ_INPUT_REGISTER, 0, 3,5);
 
   if (retValue != 0)
   {
@@ -508,13 +508,13 @@ uint32_t sendGetModbusModuleData(uint32_t token,uint8_t modbusId, uint8_t fCode,
         rc = modBusRtuCellModule.syncRequest(token, modbusId, fCode, startAddress, data);
         if (rc.getError() == 0) // 에러가 없으면.
         {
-          //ESP_LOGI("modbus", "No error Modbus");
+          ESP_LOGI("modbus", "No error Modbus id %d retry Count is %d",modbusId, retry);
           handleData(rc, token);
           retValue=data_ready;
           data_ready=true;
           break;
         }
-        ESP_LOGI("modbus", "Retry ...%d",retry);
+        ESP_LOGI("modbus", "modbusid is %d Retry ...%d",modbusId, retry);
         delay(500);
       }
       if (rc.getError() != 0)
