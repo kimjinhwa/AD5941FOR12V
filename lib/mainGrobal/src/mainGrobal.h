@@ -29,8 +29,8 @@
 #define RELAY_FP_IO             0  // + 릴레이 
 #define RELAY_FN_GND             25 // - 릴레이 
 
-#define P15_MODE   1  // F+ 즉 셋서 리딩모드
-#define SENSE_MODE    0  // P15V출력모드
+#define P15OUTPUT_MODE   1  // F+ 즉 셋서 리딩모드
+#define SENSING_MODE    0  // P15V출력모드
 
 #define ESP_INTR_FLAG_DEFAULT 0
 #define ESP_INTR_FLAG_DEFAULT 0

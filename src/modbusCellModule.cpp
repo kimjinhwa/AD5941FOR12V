@@ -245,11 +245,13 @@ int readModuleRelayStatus(uint8_t modbusId,uint16_t retryCount)
   {
     ESP_LOGE("MODULE", "MODBUS Error");
     extendSerial.selectLcd();
+    delay(10);
     return -1;
   }
   // 데이타는 여기에 수신이 된다.
   // modbusCellrelay.bitData
   extendSerial.selectLcd();
+  delay(10);
   return modbusCellrelay.bitData;
 };
 /*isModuleAllSameValue(int value) */
@@ -279,9 +281,9 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   int i;
   uint16_t retValue;
   // P15V를 공급한다. 
-  digitalWrite(RELAY_FN_GND, SENSE_MODE);
+  digitalWrite(RELAY_FN_GND, SENSING_MODE);
   delay(10);
-  digitalWrite(RELAY_FP_IO, SENSE_MODE);
+  digitalWrite(RELAY_FP_IO, SENSING_MODE);
   delay(10);
 
   if(!CellOnOff(0,0,CELLOFF)) return false;
@@ -309,9 +311,9 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   2번 릴레이는 배터리의 전압(액 9V이상으로 인해 ) 값 2을 갖는다. 
   */
   // 주어진 modbusid +1 의 2번 릴레이(+)를 ON한다.
-  digitalWrite(RELAY_FP_IO, P15_MODE);
+  digitalWrite(RELAY_FP_IO, P15OUTPUT_MODE);
   delay(20);
-  digitalWrite(RELAY_FN_GND, SENSE_MODE);
+  digitalWrite(RELAY_FN_GND, SENSING_MODE);
   delay(50);
 
   //moduleState1  = isModuleAllSameValue(8);
@@ -322,9 +324,9 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
     ESP_LOGW("MODULE", "Step2 Error %d Module State1 %d  %d",modbusId, moduleState1,moduleState2      );
     return false; 
   }
-  digitalWrite(RELAY_FP_IO, SENSE_MODE);
+  digitalWrite(RELAY_FP_IO, SENSING_MODE);
   delay(20);
-  digitalWrite(RELAY_FN_GND, P15_MODE);
+  digitalWrite(RELAY_FN_GND, P15OUTPUT_MODE);
   delay(50);
   //moduleState1  = isModuleAllSameValue(4);
   moduleState1 = readModuleRelayStatus(modbusId,5);
@@ -335,9 +337,9 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
   }
   //여기까지 문제가 없다면 모든셀의 릴레이는 정상적으로 OFF상태에 있다고 확인된다>
   // 	7. 다시 RL1과 RL2를 ON상태로 하여 F+ 와 F-에 연결한다. 
-  digitalWrite(RELAY_FN_GND, SENSE_MODE);
+  digitalWrite(RELAY_FN_GND, SENSING_MODE);
   delay(20);
-  digitalWrite(RELAY_FP_IO, SENSE_MODE);
+  digitalWrite(RELAY_FP_IO, SENSING_MODE);
   delay(50);
   //	8. 모듈1의 릴레이 1번을 ON하여 배터리의 - 단자에 연결한다.
   if(!CellOnOff(modbusId,0,CELLON))return false;
@@ -365,9 +367,9 @@ bool SelectBatteryMinusPlus(uint8_t modbusId)
 
   //외부 배터리를 연결한다. 
   // ESP_LOGI("MODULE", "Step6 ");
-  // digitalWrite(RELAY_FP_IO, SENSE_MODE   );  // + 라인
+  // digitalWrite(RELAY_FP_IO, SENSING_MODE   );  // + 라인
   // delay(1000);
-  // digitalWrite(RELAY_FN_GND, SENSE_MODE   ); // - 라인
+  // digitalWrite(RELAY_FN_GND, SENSING_MODE   ); // - 라인
   // delay(1000);
 
   return true;
@@ -390,8 +392,8 @@ bool checkVoltageoff(uint8_t modbusID)
   // 모든 모듈의 2번 릴레이를 OFF한다.
   if(!CellOnOff(modbusID+1,1,CELLOFF))return false;
 
-  digitalWrite(RELAY_FN_GND, SENSE_MODE);
-  digitalWrite(RELAY_FP_IO, SENSE_MODE   );
+  digitalWrite(RELAY_FN_GND, SENSING_MODE);
+  digitalWrite(RELAY_FP_IO, SENSING_MODE   );
   delay(50);
   float batVoltage = 0.0;
   batVoltage = batDevice.readBatAdcValueExt(10);

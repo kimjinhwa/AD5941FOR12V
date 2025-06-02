@@ -539,28 +539,28 @@ void p15relay_configCallback(cmd *cmdPtr){
   argVal.trim();
   simpleCli.outputStream->printf("\r\nargVal = %s ",argVal.c_str());
   if(argVal.equals("00")){
-    digitalWrite(RELAY_FP_IO, P15_MODE);
-    digitalWrite(RELAY_FN_GND, P15_MODE);
-    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, P15_MODE");
-    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, P15_MODE");
+    digitalWrite(RELAY_FP_IO, P15OUTPUT_MODE);
+    digitalWrite(RELAY_FN_GND, P15OUTPUT_MODE);
+    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, P15OUTPUT_MODE");
+    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, P15OUTPUT_MODE");
   }
   if(argVal.equals("01")){
-    digitalWrite(RELAY_FP_IO, P15_MODE);
-    digitalWrite(RELAY_FN_GND, SENSE_MODE);
-    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, P15_MODE");
-    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, SENSE_MODE");
+    digitalWrite(RELAY_FP_IO, P15OUTPUT_MODE);
+    digitalWrite(RELAY_FN_GND, SENSING_MODE);
+    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, P15OUTPUT_MODE");
+    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, SENSING_MODE");
   }
   if(argVal.equals("10")){
-    digitalWrite(RELAY_FP_IO, SENSE_MODE);
-    digitalWrite(RELAY_FN_GND, P15_MODE);
-    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, SENSE_MODE");
-    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, P15_MODE");
+    digitalWrite(RELAY_FP_IO, SENSING_MODE);
+    digitalWrite(RELAY_FN_GND, P15OUTPUT_MODE);
+    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, SENSING_MODE");
+    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, P15OUTPUT_MODE");
   }
   if(argVal.equals("11")){
-    digitalWrite(RELAY_FP_IO, SENSE_MODE);
-    digitalWrite(RELAY_FN_GND, SENSE_MODE);
-    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, SENSE_MODE");
-    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, SENSE_MODE");
+    digitalWrite(RELAY_FP_IO, SENSING_MODE);
+    digitalWrite(RELAY_FN_GND, SENSING_MODE);
+    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, SENSING_MODE");
+    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, SENSING_MODE");
   }
   else {
     simpleCli.outputStream->printf("\r\nPower Relay value is only 00,01,10,11 ");

@@ -27,7 +27,8 @@
 // #include <esp_task.h>
 #include <esp_task_wdt.h>
 
-
+#define MAIN_POWEROFF HIGH
+#define MAIN_POWERON LOW 
 #define WDT_TIMEOUT 100 
 // 기본 vSPI와 일치한다
 #define VSPI_MISO   MISO  // IO19
@@ -95,12 +96,15 @@ void pinsetup()
     pinMode(CELL485_DE, OUTPUT);
 
 
-    digitalWrite(EXT_P15_RELAY,LOW);// Moduble Power OFF
+    digitalWrite(EXT_P15_RELAY,MAIN_POWEROFF);// Moduble Power OFF
+    delay(500);
     digitalWrite(CS_5940, HIGH);
-    digitalWrite(RELAY_FP_IO, P15_MODE);  //이것이 IO0에 연결되어 있으면 서부모듈의 릴레이 2에 해당한다
-    digitalWrite(RELAY_FN_GND, SENSE_MODE   );
+    digitalWrite(RELAY_FP_IO, P15OUTPUT_MODE);  //이것이 IO0에 연결되어 있으면 서부모듈의 릴레이 2에 해당한다
+    digitalWrite(RELAY_FN_GND, SENSING_MODE   );//둘다 동시에 ON이 되는 것을 막는다.
     digitalWrite(AD5940_ISR, HIGH);
     digitalWrite(CELL485_DE, LOW);
+    digitalWrite(EXT_P15_RELAY,MAIN_POWERON);// Moduble Power OFF
+    delay(500);
 };
 
 //HardwareSerial Serial1;
@@ -317,12 +321,15 @@ bool checkBooting()
   setErrorMessageToModbus(true,msg.c_str());
   setDataToLcd(120,40);//tims and message
   for (int i = startBatnumber; i <= systemDefaultValue.installed_cells + 1; i++){
-    moduleState1 = readModuleRelayStatus(i,2);
+    if( startBatnumber == 1 )
+      moduleState1 = readModuleRelayStatus(i,5);
+    else 
+      moduleState1 = readModuleRelayStatus(i,10);
     msg ="\nMod ";
     msg += i;msg += " Boot State "; msg += moduleState1;
 
-    batVoltage = batDevice.readBatAdcValueExt(10);
-    msg +=" Vol:";msg +=batVoltage ;
+    //batVoltage = batDevice.readBatAdcValueExt(10);
+    //msg +=" Vol:";msg +=batVoltage ;
 
     simpleCli.outputStream->printf(msg.c_str());
     if (moduleState1 != 8){
@@ -336,12 +343,16 @@ bool checkBooting()
       setErrorMessageToModbus(false,"");
     }
   }
-  digitalWrite(RELAY_FP_IO,SENSE_MODE    );  //이것이 IO0에 연결되어 있으면 서부모듈의 릴레이 2에 해당한다
-  delay(20);
-  digitalWrite(RELAY_FN_GND, P15_MODE);
+  digitalWrite(RELAY_FP_IO,SENSING_MODE    );  
+  //이것은  IO0에 연결되어 있으며 서부모듈의 릴레이 2에 해당한다
+  // 즉 1를 출력하면 릴레이는 메인보드의 Relay는 ON이 되고, 
+  // 이에 따라 SENSE+와 F+에는 신호가 전달되며,
+  // 서브모듈의 IO0는 High를 출력받아 부팅을 할 수 있는 상태가 된다. 
+  delay(100);
+  digitalWrite(RELAY_FN_GND, P15OUTPUT_MODE);
   delay(100);
   for (int i = startBatnumber; i <= systemDefaultValue.installed_cells + 1; i++){
-    moduleState1 = readModuleRelayStatus(i,2);
+    moduleState1 = readModuleRelayStatus(i,10);
     msg ="\nMod ";
     msg += i;msg += " Second test " ; msg += moduleState1;
 
@@ -360,12 +371,12 @@ bool checkBooting()
   setErrorMessageToModbus(true,msg.c_str());
   setDataToLcd(120,40);//tims and message
 
-  digitalWrite(RELAY_FP_IO,SENSE_MODE    );  //이것이 IO0에 연결되어 있으면 서부모듈의 릴레이 2에 해당한다
+  digitalWrite(RELAY_FP_IO,SENSING_MODE    );  
   delay(20);
-  digitalWrite(RELAY_FN_GND,SENSE_MODE    );
+  digitalWrite(RELAY_FN_GND,SENSING_MODE    );
   delay(100);
   for (int i = startBatnumber; i <= systemDefaultValue.installed_cells + 1; i++){
-    moduleState1 = readModuleRelayStatus(i,2);
+    moduleState1 = readModuleRelayStatus(i,10);
     msg ="\nMod ";
     msg += i;msg += " Third test " ; msg += moduleState1;
 
@@ -383,9 +394,9 @@ bool checkBooting()
 
   setErrorMessageToModbus(false,"");
   setDataToLcd(120,40);//tims and message
-  digitalWrite(RELAY_FP_IO, P15_MODE);  //이것이 IO0에 연결되어 있으면 서부모듈의 릴레이 2에 해당한다
+  digitalWrite(RELAY_FP_IO, P15OUTPUT_MODE);  //이것이 IO0에 연결되어 있으면 서부모듈의 릴레이 2에 해당한다
   delay(20);
-  digitalWrite(RELAY_FN_GND, SENSE_MODE   );
+  digitalWrite(RELAY_FN_GND, SENSING_MODE   );
   delay(100);
   return true;
 }
@@ -468,6 +479,7 @@ bool bootingReasonCheck()
 //     Serial1.flush();
 //     digitalWrite(EXT_485EN_1, false);
 //     delay(10);
+//     // 읽을수 있는지를 테스트한다
 //     while (!Serial1.available()) { }
 //     if(Serial1.available()) Serial.printf("read from Serial1 %d",Serial1.read());
 //   }
@@ -626,12 +638,8 @@ void loop(void)
   parameters = simpleCli.outputStream;
   while (!isModuleBootingOK)
   {
-    Serial.println("Power 15V OFF");
-    digitalWrite(EXT_P15_RELAY, HIGH); // Power ON Normal Close
-    delay(1000);
-    Serial.println("Power 15V ON");
-    digitalWrite(EXT_P15_RELAY, LOW); // Power ON Normal Close
-    delay(1000);
+    if (systemDefaultValue.installed_cells == 0)
+      break;
     isModuleBootingOK = checkBooting();
     if (isModuleBootingOK == false)
     {
@@ -641,8 +649,19 @@ void loop(void)
         // simpleCli.outputStream->printf("\nAGPIO_Pin1 Led Toggle");
         delay(200);
       }
+      digitalWrite(RELAY_FP_IO, P15OUTPUT_MODE);
+      delay(100);
+      digitalWrite(RELAY_FN_GND, SENSING_MODE);
+      delay(100);
+
+      Serial.println("Power 15V OFF");
+      digitalWrite(EXT_P15_RELAY, MAIN_POWEROFF); // Power ON Normal Close
+      delay(1000);
+      Serial.println("Power 15V ON");
+      digitalWrite(EXT_P15_RELAY, MAIN_POWERON); // Power ON Normal Close
+      delay(3000);
+      esp_task_wdt_reset();
     }
-    esp_task_wdt_reset();
   }
   now = millis(); 
 
