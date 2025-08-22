@@ -3,8 +3,6 @@
 #include <WiFi.h>
 #include <BluetoothSerial.h>
 #include "filesystem.h"
-#include <RtcDS1302.h>
-
 
 extern BluetoothSerial SerialBT;
 //extern LittleFileSystem lsFile;

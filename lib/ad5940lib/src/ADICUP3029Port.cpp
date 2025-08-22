@@ -16,7 +16,7 @@ Analog Devices Software License Agreement.
 #include <Arduino.h>
 #include <SPI.h>
 #include <AD5940.h>
-#include "mainGrobal.h"
+#include "maingrobal.h"
 #include "driver/gpio.h"
 
 
@@ -104,12 +104,12 @@ void AD5940_CsSet(void)
 
 void AD5940_RstSet(void)
 {
-   digitalWrite(RESET_5940,1);
+   digitalWrite(RST_5941,1);
 }
 
 void AD5940_RstClr(void)
 {
-   digitalWrite(RESET_5940,0);
+   digitalWrite(RST_5941,0);
 }
 void AD5940_Delay10us(uint32_t time)
 {

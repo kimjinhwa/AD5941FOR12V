@@ -5,13 +5,12 @@
  */
 
 #include "SimpleCLI.h"
-#include <RtcDS1302.h>
-#include "mainGrobal.h"
+#include "maingrobal.h"
 #include "batDeviceInterface.h"
 #include "ModbusTypeDefs.h"
 #include "EEPROM.h"
 #include "ModbusServerRTU.h"
-#include "../../../src/modbusCellModule.h"
+#include "mainClass.hpp"
 
 LittleFileSystem lsFile;
 SimpleCLI simpleCli;
@@ -28,22 +27,8 @@ extern "C" {
 //int makeRelayControllData(uint8_t *buf,uint8_t modbusId,uint8_t funcCode, uint16_t address, uint16_t len);
 void AD5940_Main(void *parameters);
 int readResponseData(uint8_t modbusId,uint8_t funcCode, uint8_t *buf,uint8_t len,uint16_t timeout);
-void setRtcNewTime(RtcDateTime rtc);
 void readnWriteEEProm();
-RtcDateTime getDs1302GetRtcTime();
-//bool SelectBatteryMinusPlus(uint8_t modbusId);
 void getTime(){
-
-  RtcDateTime now;
-  struct timeval tmv;
-  gettimeofday(&tmv,NULL);
-  //struct tm *timeinfo = gmtime(&tmv.tv_sec);
-  //now =  RtcDateTime (tmv.tv_sec); //
-  now =  getDs1302GetRtcTime();
-  simpleCli.outputStream->printf("\nDs1302 Now Time is %d/%d/%d %d:%d:%d ",now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
-
-  //시스템의 시간도 같이 맞추어 준다.
-  settimeofday(&tmv, NULL);
 }
 
 
@@ -81,6 +66,13 @@ void df_configCallback(cmd *cmdPtr)
 {
   Command cmd(cmdPtr);
   lsFile.df();
+}
+void AD5940_ShutDown();
+void shutdown_configCallback(cmd *cmdPtr)
+{
+  Command cmd(cmdPtr);
+  simpleCli.outputStream->println( "\r\nNow System Shutdown...\r\n");
+  AD5940_ShutDown();
 }
 void reboot_configCallback(cmd *cmdPtr)
 {
@@ -123,7 +115,7 @@ void cat_configCallback(cmd *cmdPtr)
 
 
 uint16_t checkAlloff(uint32_t *failedBatteryNumberH,uint32_t *failedBatteryNumberL);
-
+float AD5940_calibration_read(float real , float image);
 float AD5940_calibration(float *real , float *image);
 
 void startbat_configCallback(cmd *cmdPtr)
@@ -413,7 +405,6 @@ void offset_configCallback(cmd *cmdPtr)
   // String strValue ;
   //   strValue = arg.getValue();
   //   simpleCli.outputStream->printf("\nTime will Set to %d/%d/%d %d:%d:%d ",strValue.toInt(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
-  //   now = RtcDateTime(strValue.toInt(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
   //   setRtcNewTime(now);
   //   now = getDs1302GetRtcTime();
   //   simpleCli.outputStream->printf("\nNow New time is set to %d/%d/%d %d:%d:%d ",now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
@@ -424,58 +415,10 @@ void offset_configCallback(cmd *cmdPtr)
 }
 
 uint16_t sendGetChangeModuleId(uint8_t modbusId, uint8_t ChangeId,uint8_t fCode);
-uint16_t sendGetModuleId(uint8_t modbusId, uint8_t fCode);
 void moduleid_configCallback(cmd *cmdPtr)
 {
-  uint16_t moduleId;
-  uint16_t changeId;
-  Command cmd(cmdPtr);
-  Argument arg = cmd.getArgument(0);
-  String argVal = arg.getValue();
-
-  simpleCli.outputStream->printf("\r\narg lenth %d", argVal.length());
-  if (argVal.length() > 0)
-  {
-    moduleId = cmd.getArgument("beforeId").getValue().toInt();
-    changeId = cmd.getArgument("changeId").getValue().toInt();
-    if (moduleId != 0)
-    {
-      simpleCli.outputStream->printf("\n\rid %d to change %d", moduleId, changeId);
-      // moduleId=argVal.toInt();
-      moduleId = sendGetChangeModuleId(moduleId, changeId, 06);
-      simpleCli.outputStream->printf("\r\nModule Id Changed to: %d", moduleId);
-      return;
-    }
-    else
-    {
-      for (int i = 1; i < 255; i++)
-      {
-        moduleId = sendGetModuleId(i, 04);
-        simpleCli.outputStream->printf("\r\nFind Module Id is  %d", moduleId);
-        if (moduleId != 0)
-          break;
-      }
-      return;
-    }
-  }
 }
 void temperature_configCallback(cmd *cmdPtr){
-  uint16_t  batTemperature;
-  Command cmd(cmdPtr);
-  Argument arg = cmd.getArgument(0);
-  String argVal = arg.getValue();
-  simpleCli.outputStream->printf("\r\n%s",argVal.c_str());
-  if(argVal.length() > 0 ){
-
-    batTemperature = sendGetModbusModuleData(millis(), argVal.toInt(), READ_INPUT_REGISTER,0,3,5);
-    simpleCli.outputStream->printf("\r\n[%d]Bat Temperature : %3.2f",argVal.toInt(),batTemperature/100.0f);
-    return;
-  }
-  for (int i = 1; i <= systemDefaultValue.installed_cells; i++)
-  {
-    batTemperature = sendGetModbusModuleData(millis(), i, READ_INPUT_REGISTER,0,3,5);
-    simpleCli.outputStream->printf("\r\n[%d]Bat Temperature : %3.2f",i,batTemperature/100.0f);
-  }
 }
 void impedance_configCallback(cmd *cmdPtr){
   AD5940_Main(simpleCli.outputStream);
@@ -489,8 +432,13 @@ void calibration_configCallback(cmd *cmdPtr){
   uint8_t relayPos;
   float real , image;
   EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
-  simpleCli.outputStream->printf("\nEEPROM Real Image IMP:%6.2f\t %6.2f\t ",
-      systemDefaultValue.real_Cal,systemDefaultValue.image_Cal);
+
+  if(argVal.equals("read")  ){
+    float imp = AD5940_calibration_read(systemDefaultValue.real_Cal,systemDefaultValue.image_Cal);
+    simpleCli.outputStream->printf("\nEEPROM Real:%6.2f Image:%6.2f IMP: %6.2f ",
+      systemDefaultValue.real_Cal,systemDefaultValue.image_Cal,imp);
+    return;
+  }
 
   if(systemDefaultValue.runMode != 0 ){
     simpleCli.outputStream->printf("\r\nMust run at manual mode");
@@ -498,7 +446,7 @@ void calibration_configCallback(cmd *cmdPtr){
   }
   simpleCli.outputStream->printf("\nNow Start calibrating...Wait...");
   float ImpMagnitude = AD5940_calibration(&real , &image);
-  simpleCli.outputStream->printf("\nRcalVolt Real Image IMP:%6.2f\t %6.2f\t %6.2f (%dmills)",
+  simpleCli.outputStream->printf("\nRcalVolt Real:%6.2f Image:%6.2f IMP:%6.2f ",
     real,image,ImpMagnitude);
   if(argVal.equals("save")  ){
     systemDefaultValue.image_Cal = image;
@@ -529,43 +477,6 @@ void id_configCallback(cmd *cmdPtr){
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     simpleCli.outputStream->printf("\r\nmodbus is Changed to %d",systemDefaultValue.modbusId);
   }
-}
-void p15relay_configCallback(cmd *cmdPtr){
-  Command cmd(cmdPtr);
-  Argument arg = cmd.getArgument(0);
-  String argVal = arg.getValue();
-  if (argVal.length() == 0) return; 
-  // int8_t mode = argVal.toInt(); 
-  argVal.trim();
-  simpleCli.outputStream->printf("\r\nargVal = %s ",argVal.c_str());
-  if(argVal.equals("00")){
-    digitalWrite(RELAY_FP_IO, P15OUTPUT_MODE);
-    digitalWrite(RELAY_FN_GND, P15OUTPUT_MODE);
-    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, P15OUTPUT_MODE");
-    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, P15OUTPUT_MODE");
-  }
-  if(argVal.equals("01")){
-    digitalWrite(RELAY_FP_IO, P15OUTPUT_MODE);
-    digitalWrite(RELAY_FN_GND, SENSING_MODE);
-    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, P15OUTPUT_MODE");
-    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, SENSING_MODE");
-  }
-  if(argVal.equals("10")){
-    digitalWrite(RELAY_FP_IO, SENSING_MODE);
-    digitalWrite(RELAY_FN_GND, P15OUTPUT_MODE);
-    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, SENSING_MODE");
-    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, P15OUTPUT_MODE");
-  }
-  if(argVal.equals("11")){
-    digitalWrite(RELAY_FP_IO, SENSING_MODE);
-    digitalWrite(RELAY_FN_GND, SENSING_MODE);
-    simpleCli.outputStream->printf("\r\nRELAY_FP_IO, SENSING_MODE");
-    simpleCli.outputStream->printf("\r\nRELAY_FN_GND, SENSING_MODE");
-  }
-  else {
-    simpleCli.outputStream->printf("\r\nPower Relay value is only 00,01,10,11 ");
-  }
-
 }
 void loglevel_configCallback(cmd *cmdPtr)
 {
@@ -607,8 +518,25 @@ void loglevel_configCallback(cmd *cmdPtr)
   EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
   simpleCli.outputStream->printf("\r\nLoglevel Changed %d", systemDefaultValue.logLevel);
   esp_log_level_set("*",level);
-}
+};
 
+void relay_configCallback(cmd *cmdPtr){
+  Command cmd(cmdPtr);
+  Argument arg = cmd.getArgument(0);
+  String argVal = arg.getValue();
+  if(argVal.length() == 0)
+  {
+    simpleCli.outputStream->printf("\r\nPlease Input BAt Number");
+    return;
+  }
+  if(argVal.equals("0"))
+  {
+    simpleCli.outputStream->printf("\r\nLED ON");
+  }
+  int8_t portNumber = argVal.toInt();
+  selectCell.select(portNumber);
+  simpleCli.outputStream->printf("\r\nSelect Cell %d",portNumber);
+}
 void mode_configCallback(cmd *cmdPtr){
   Command cmd(cmdPtr);
   Argument arg = cmd.getArgument(0);
@@ -631,150 +559,6 @@ void mode_configCallback(cmd *cmdPtr){
   }
 }
 
-bool SelectBatteryMinusPlus(uint8_t modbusId);
-void relay_configCallback(cmd *cmdPtr){
-  Command cmd(cmdPtr);
-  Argument arg ;
-  String strValue ;
-  uint8_t relayPos;
-  uint8_t buf[64];
-  arg = cmd.getArgument("sel");
-
-  // if (arg.isSet())
-  // {
-  //     strValue = arg.getValue();
-  //     relayPos = strValue.toInt();
-  //     uint16_t readCount;
-  //     if (relayPos == 0)
-  //     {
-  //         makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
-  //         delay(100);
-  //         makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
-  //         delay(100);
-  //         simpleCli.outputStream->printf("\nAll relay offed..");
-  //     }
-  //     else if (relayPos >= 1 || relayPos <= 20)
-  //     {
-  //         simpleCli.outputStream->printf("\nRelay %d Selecet", relayPos);
-  //         SelectBatteryMinusPlus(relayPos);
-
-  //         time_t startRead = millis();
-  //         float batVoltage = 0.0;
-  //         batVoltage = batDevice.readBatAdcValue(relayPos ,600);
-  //         cellvalue[relayPos - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
-  //         time_t endRead = millis();                    // take 300ms
-  //         simpleCli.outputStream->printf("Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
-  //     }
-  //     else
-  //     {
-  //         makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
-  //         delay(100);
-  //         makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
-  //         delay(100);
-  //         simpleCli.outputStream->printf("\nAll relay offed..");
-  //     }
-  // }
-  // arg = cmd.getArgument("off");
-  // if(arg.isSet()){
-  //   uint32_t failedBatteryH,failedBatteryL;
-  //   uint16_t retValue;
-  //     simpleCli.outputStream->printf("retValue :0x%02x 0x%04x%04x\n",retValue,failedBatteryH,failedBatteryL);
-  // }
-  // arg = cmd.getArgument("test");
-  // if (arg.isSet())
-  // {
-  //     strValue = arg.getValue();
-  //     relayPos = strValue.toInt();
-  //     uint16_t readCount;
-      
-  //     if (relayPos == 0)
-  //     {
-  //         makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
-  //         delay(100);
-  //         makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
-  //         delay(100);
-  //         simpleCli.outputStream->printf("\nAll relay offed..");
-  //     }
-  //     else if (relayPos >= 1 || relayPos <= 20)
-  //     {
-  //         simpleCli.outputStream->printf("\nRelay %d Selecet", relayPos);
-  //         SelectBatteryMinusPlus(relayPos);
-  //         time_t startRead = millis();
-  //         float batVoltage = 0.0;
-  //         batVoltage = batDevice.readBatAdcValue(relayPos ,600);
-  //         cellvalue[relayPos - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
-  //         time_t endRead = millis();                    // take 300ms
-  //         simpleCli.outputStream->printf("Bat Voltage is : %3.3f (%ldmilisecond)", batVoltage, endRead - startRead);
-  //     }
-  //     else
-  //     {
-  //         makeRelayControllData(buf, 0xFF, 5, 0, 0x00); // 0xff BROADCAST
-  //         delay(100);
-  //         makeRelayControllData(buf, 0xFF, 5, 1, 0x00); // 0xff BROADCAST
-  //         delay(100);
-  //         simpleCli.outputStream->printf("\nAll relay offed..");
-  //     }
-  // }
-}
-void time_configCallback(cmd *cmdPtr){
-  RtcDateTime now;
-  Command cmd(cmdPtr);
-  Argument arg ;
-  String strValue ;
-  // gettimeofday(&tmv,NULL);
-  // struct tm *timeinfo = gmtime(&tmv.tv_sec);
-  // now =  RtcDateTime (tmv.tv_sec); //
-  //struct timeval tmv;
-  now = getDs1302GetRtcTime();
-  simpleCli.outputStream->printf("\nnow is to %d/%d/%d %d:%d:%d ",now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
-  //tmv.tv_usec = now.TotalSeconds();
-
-  arg = cmd.getArgument("year");
-  if(arg.isSet()){
-    strValue = arg.getValue();
-    simpleCli.outputStream->printf("\nTime will Set to %d/%d/%d %d:%d:%d ",strValue.toInt(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
-    now = RtcDateTime(strValue.toInt(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
-    setRtcNewTime(now);
-    now = getDs1302GetRtcTime();
-    simpleCli.outputStream->printf("\nNow New time is set to %d/%d/%d %d:%d:%d ",now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
-    return ;
-  }
-  arg = cmd.getArgument("Month");
-  if(arg.isSet()){
-    strValue = arg.getValue();
-    now = RtcDateTime(now.Year(),strValue.toInt(),now.Day(),now.Hour(),now.Minute(),now.Second());
-    setRtcNewTime(now);
-    return ;
-  }
-  arg = cmd.getArgument("day");
-  if(arg.isSet()){
-    strValue = arg.getValue();
-    now = RtcDateTime(now.Year(),now.Month(),strValue.toInt(),now.Hour(),now.Minute(),now.Second());
-    setRtcNewTime(now);
-    return ;
-  }
-  arg = cmd.getArgument("hour");
-  if(arg.isSet()){
-    strValue = arg.getValue();
-    now = RtcDateTime(now.Year(),now.Month(),now.Day(),strValue.toInt(),now.Minute(),now.Second());
-    setRtcNewTime(now);
-    return ;
-  }
-  arg = cmd.getArgument("minute");
-  if(arg.isSet()){
-    strValue = arg.getValue();
-    now = RtcDateTime(now.Year(),now.Month(),now.Day(),now.Hour(),strValue.toInt(),now.Second());
-    setRtcNewTime(now);
-    return ;
-  }
-  arg = cmd.getArgument("second");
-  if(arg.isSet()){
-    strValue = arg.getValue();
-    return ;
-  }
-  getTime();
-  String argVal = arg.getValue();
-}
 void errorCallback(cmd_error *errorPtr)
 {
   CommandError e(errorPtr);
@@ -808,25 +592,14 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config = addSingleArgCmd("rm", rm_configCallback);
   cmd_config = addSingleArgCmd("format", format_configCallback);
   cmd_config = addCommand("init/Eeprom", initEEPROM_configCallback);
-  cmd_config = addCommand("time", time_configCallback);
-  cmd_config.addArgument("y/ear","");
-  cmd_config.addArgument("mo/nth","");
-  cmd_config.addArgument("d/ay","");
-  cmd_config.addArgument("h/our","");
-  cmd_config.addArgument("m/inute","");
-  cmd_config.addArgument("s/econd","");
-  cmd_config.setDescription(" Get Time or set \r\n time -y 2024 or time -M 11,..., Month is M , minute is m ");
   cmd_config = addCommand("df", df_configCallback);
   cmd_config = addSingleArgCmd("reboot", reboot_configCallback);
+  cmd_config = addCommand("shutdown", shutdown_configCallback);
 
-  cmd_config = addCommand("r/elay", relay_configCallback);
-  cmd_config.addArgument("s/el","");
-  cmd_config.addArgument("t/est","");
-  cmd_config.addFlagArg("off");
+  cmd_config = addSingleArgCmd("r/elay", relay_configCallback);
   cmd_config.setDescription("relay on off controll \r\n relay -s/el [1] [-off]");
   cmd_config = addSingleArgCmd("runmode", mode_configCallback);
   cmd_config = addSingleArgCmd("loglevel", loglevel_configCallback);
-  cmd_config = addSingleArgCmd("p15relay", p15relay_configCallback);
   cmd_config = addSingleArgCmd("id", id_configCallback);
   cmd_config = addSingleArgCmd("cal/ibration", calibration_configCallback);
   cmd_config = addSingleArgCmd("bat/number", batnumber_configCallback);

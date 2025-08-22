@@ -1,13 +1,9 @@
 #include <Arduino.h>
 #include <EEPROM.h>
 #include "modbusRtu.h"
-#include "mainGrobal.h"
-#include <RtcDS1302.h>
-#include "modbusCellModule.h"
+#include "maingrobal.h"
 #include <ModbusClientRTU.h>
 
-void setRtcNewTime(RtcDateTime rtc);
-ModbusMessage  syncRequestCellModule(uint32_t token,uint8_t modbusId, uint8_t fCode,uint16_t startAddress, uint16_t len);
 
 char strErrorMessage[40];
 void setErrorMessageToModbus(bool setError,const char* msg)
@@ -30,8 +26,6 @@ void setErrorMessageToModbus(bool setError,const char* msg)
 void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   struct timeval tmv;
   gettimeofday(&tmv, NULL);
-  RtcDateTime now;
-  now = RtcDateTime(tmv.tv_sec);
   if(fCode== 4){
     for(int i=0;i<40;i++){
       sendValue[i] = (uint16_t)(cellvalue[i].voltage *100);
@@ -61,14 +55,12 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
       sendValue[i] = (uint16_t)(systemDefaultValue.impendanceCompensation[i-80]);
     }
   }
-  sendValue[120]=now.Year();
-  sendValue[121]=now.Month();
-  sendValue[122]=now.Day();
-  sendValue[123]=now.Hour();
-  sendValue[124]=now.Minute();
-  sendValue[125]=now.Second();
-  // ESP_LOGE("TIME","%d-%d-%d %d:%d:%d", 
-  //   now.Year(),now.Month(),now.Day(),now.Hour(),now.Minute(),now.Second());
+  sendValue[120]=0;
+  sendValue[121]=0;
+  sendValue[122]=0;
+  sendValue[123]=0;
+  sendValue[124]=0;
+  sendValue[125]=0;
   sendValue[126]= systemDefaultValue.modbusId ;
   sendValue[127]= systemDefaultValue.installed_cells;
   sendValue[128]= systemDefaultValue.AlarmTemperature;
@@ -88,6 +80,7 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   // ESP_LOGI("TEST","\n-------> send Message Value %s %d %d %d",
   //   dest,sendValue[140],strErrorMessage[0],strErrorMessage[1] );
 }
+char modbusCellData[100];
 
 ModbusMessage FC03(ModbusMessage request) 
 {
@@ -100,8 +93,6 @@ ModbusMessage FC03(ModbusMessage request)
 
   struct timeval tmv;
   gettimeofday(&tmv, NULL);
-  RtcDateTime now;
-  now = RtcDateTime(tmv.tv_sec);
   memset(sendValue,0x00,256);
   setSendbuffer(03,sendValue);
   // get request values
@@ -131,9 +122,6 @@ ModbusMessage FC03(ModbusMessage request)
     words = words > 16 ? 16 :words;
     uint32_t token=millis();
     uint32_t restoken=millis();
-    ModbusMessage rc =  syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), 0,  3);
-    ESP_LOGI("REQ","server id (%d) func %d ",request.getServerID(),request.getFunctionCode());
-    ESP_LOGI("REQ","server id (%d) func %d error %d",rc.getServerID(),rc.getFunctionCode(),rc.getError());
 
     for (int i = 0; i < words; i++)
     {
@@ -218,9 +206,6 @@ ModbusMessage FC04(ModbusMessage request) {
     }
   }
   else if(address >= 0x1101 && address <= 0x2501  ){  // Cell제어 
-      // response.add(modbusCellData.temperature);
-      // response.add(modbusCellData.modbusid);
-      // response.add(modbusCellData.baudrate);
     uint8_t moduleAddress = address >> 8;//-30000;
     moduleAddress  -= 16;
     //moduleAddress = (int16_t)(moduleAddress / 3) +1;
@@ -230,10 +215,7 @@ ModbusMessage FC04(ModbusMessage request) {
     uint32_t token=millis();
     uint32_t restoken=millis();
     //TODO: 
-    ModbusMessage rc =  syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), 0,  3);
     //   1, request.getFunctionCode(), 0,  3);
-    ESP_LOGI("REQ","server id (%d) func %d ",request.getServerID(),request.getFunctionCode());
-    ESP_LOGI("REQ","server id (%d) func %d error %d",rc.getServerID(),rc.getFunctionCode(),rc.getError());
 
     for (i = 0; i < words; i++)
     {
@@ -249,36 +231,36 @@ ModbusMessage FC01(ModbusMessage request)
 {
   uint16_t address;       // requested register address
   ModbusMessage response; // response message to be sent back
-  uint16_t quantity;
-  // get request quantitys
-  request.get(2, address);
-  request.get(4, quantity);
-  uint16_t writeAddress = (0xFFFF & address);
+  // uint16_t quantity;
+  // // get request quantitys
+  // request.get(2, address);
+  // request.get(4, quantity);
+  // uint16_t writeAddress = (0xFFFF & address);
 
-  response.add(request.getServerID(), request.getFunctionCode());
-  ESP_LOGI("MODBUS", "\nFunction code %d address(%d) writeAddress(%d) quantity(%d) ",
-    response.getFunctionCode(), address, writeAddress, quantity);
+  // response.add(request.getServerID(), request.getFunctionCode());
+  // ESP_LOGI("MODBUS", "\nFunction code %d address(%d) writeAddress(%d) quantity(%d) ",
+  //   response.getFunctionCode(), address, writeAddress, quantity);
 
-  if (writeAddress >= 0x1101 && writeAddress <= 0x2501)
-  { // Cell제어
-    uint8_t moduleAddress = address >> 8;
-    moduleAddress -= 16;
-    writeAddress &= 0x00FF;
-    writeAddress = writeAddress - 1;
-    uint32_t token = millis();
-    ModbusMessage rc = syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), writeAddress, quantity);
+  // if (writeAddress >= 0x1101 && writeAddress <= 0x2501)
+  // { // Cell제어
+  //   uint8_t moduleAddress = address >> 8;
+  //   moduleAddress -= 16;
+  //   writeAddress &= 0x00FF;
+  //   writeAddress = writeAddress - 1;
+  //   uint32_t token = millis();
+  //   ModbusMessage rc = syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), writeAddress, quantity);
 
-    std::vector<uint8_t> MM_data(rc.data(), rc.data() + rc.size());
-    for (uint8_t byte : MM_data)
-    {
-      ESP_LOGI("MODSERVER", "%d", byte);
-    }
-    uint8_t relay =static_cast<uint8_t >(MM_data[3]);
-    response.add((uint8_t)1);
-    response.add(relay);
-    ESP_LOGI("REQ", "server id (%d) func %d ", request.getServerID(), request.getFunctionCode());
-    ESP_LOGI("REQ", "server id (%d) func %d error %d", rc.getServerID(), rc.getFunctionCode(), rc.getError());
-  }
+  //   std::vector<uint8_t> MM_data(rc.data(), rc.data() + rc.size());
+  //   for (uint8_t byte : MM_data)
+  //   {
+  //     ESP_LOGI("MODSERVER", "%d", byte);
+  //   }
+  //   uint8_t relay =static_cast<uint8_t >(MM_data[3]);
+  //   response.add((uint8_t)1);
+  //   response.add(relay);
+  //   ESP_LOGI("REQ", "server id (%d) func %d ", request.getServerID(), request.getFunctionCode());
+  //   ESP_LOGI("REQ", "server id (%d) func %d error %d", rc.getServerID(), rc.getFunctionCode(), rc.getError());
+  // }
   return response;
 };
 ModbusMessage FC05(ModbusMessage request)
@@ -293,8 +275,6 @@ ModbusMessage FC05(ModbusMessage request)
 
   struct timeval tmv;
   gettimeofday(&tmv, NULL);
-  RtcDateTime now;
-  now = RtcDateTime(tmv.tv_sec);
 
   response.add(request.getServerID(), request.getFunctionCode(), writeAddress);
   response.add(value);
@@ -308,9 +288,7 @@ ModbusMessage FC05(ModbusMessage request)
     writeAddress &= 0x00FF;
     writeAddress = writeAddress -1;
     uint32_t token=millis();
-    ModbusMessage rc =  syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), writeAddress,  value);
-    ESP_LOGI("REQ","server id (%d) func %d ",request.getServerID(),request.getFunctionCode());
-    ESP_LOGI("REQ","server id (%d) func %d error %d",rc.getServerID(),rc.getFunctionCode(),rc.getError());
+    //ModbusMessage rc =  syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), writeAddress,  value);
   }
   return response;
 };
@@ -326,8 +304,6 @@ ModbusMessage FC06(ModbusMessage request)
 
   struct timeval tmv;
   gettimeofday(&tmv, NULL);
-  RtcDateTime now;
-  now = RtcDateTime(tmv.tv_sec);
 
   // if (writeAddress > 255)
   // {
@@ -362,32 +338,22 @@ ModbusMessage FC06(ModbusMessage request)
     switch (writeAddress)
     {
     case 120:
-      now = RtcDateTime(value, now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second());
       break;
     case 121:
-      now = RtcDateTime(now.Year(), value, now.Day(), now.Hour(), now.Minute(), now.Second());
       break;
     case 122:
-      now = RtcDateTime(now.Year(), now.Month(), value, now.Hour(), now.Minute(), now.Second());
       break;
     case 123:
-      now = RtcDateTime(now.Year(), now.Month(), now.Day(), value, now.Minute(), now.Second());
       break;
     case 124:
-      now = RtcDateTime(now.Year(), now.Month(), now.Day(), now.Hour(), value, now.Second());
       break;
     case 125:
-      now = RtcDateTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), value);
       break;
 
     default:
       break;
     }
 
-    tmv.tv_sec = now.TotalSeconds();
-    tmv.tv_usec = 0;
-    settimeofday(&tmv, NULL);
-    setRtcNewTime(now);
   }
   if (writeAddress >= 126 && writeAddress < 132)
   {
@@ -427,9 +393,7 @@ ModbusMessage FC06(ModbusMessage request)
     writeAddress &= 0x00FF;
     writeAddress = writeAddress -1;
     uint32_t token=millis();
-    ModbusMessage rc =  syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), writeAddress,  value);
-    ESP_LOGI("REQ","server id (%d) func %d ",request.getServerID(),request.getFunctionCode());
-    ESP_LOGI("REQ","server id (%d) func %d error %d",rc.getServerID(),rc.getFunctionCode(),rc.getError());
+    //ModbusMessage rc =  syncRequestCellModule(token, moduleAddress, request.getFunctionCode(), writeAddress,  value);
   }
   return response;
 };

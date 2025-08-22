@@ -1,13 +1,13 @@
 #include "batDeviceInterface.h"
-#include "mainGrobal.h"
+#include "maingrobal.h"
+#include <driver/adc.h>
+#include <esp_adc_cal.h>
+#include <esp_log.h>
 
 BatDeviceInterface::BatDeviceInterface(){
         batVoltageAdcValue = 0.0;
         adc1_config_width(ADC_WIDTH_BIT_12);
-        adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
-        //adc_chars =(esp_adc_cal_characteristics_t *)calloc(1, sizeof(esp_adc_cal_characteristics_t));
-        // ADC 설정 초기화 (예: ADC1, 12비트 해상도, 11dB 감쇠, 1100mV Vref)
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+        //esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
 
 
 };
@@ -25,16 +25,21 @@ float BatDeviceInterface::readBatAdcValue(uint16_t cellNumbver, float filter)
 
 float BatDeviceInterface::readBatAdcValueExt(float filter)
 {
+  uint32_t rValue = 0;
   batVoltageAdcValue =0;
-  adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
 
+  // esp_adc_cal_characteristics_t adc_chars;
+  // esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
     for (int i = 0; i < filter; i++)
     {
-      batVoltageAdcValue +=  adc1_get_raw(ADC1_CHANNEL_0);
+      //batVoltageAdcValue +=  adc1_get_raw(ADC1_CHANNEL_0);
+      rValue  = analogRead(ADC1_CHANNEL_0);
+      batVoltageAdcValue  += esp_adc_cal_raw_to_voltage((uint32_t)batVoltageAdcValue , &adc_chars);;
+      vTaskDelay(1);
     }
     batVoltageAdcValue = batVoltageAdcValue/filter ;
-  batVoltageAdcValue += systemDefaultValue.voltageCompensation[_cellNumbver-1];
-  uint32_t voltage = esp_adc_cal_raw_to_voltage((uint32_t)batVoltageAdcValue , &adc_chars);
+    batVoltageAdcValue += systemDefaultValue.voltageCompensation[_cellNumbver-1];
+  uint32_t voltage = batVoltageAdcValue; 
   
   batVoltageAdcValue = voltage*100.0/33.0*2.0  ;
   batVoltageAdcValue  /= 1000.0;
@@ -43,37 +48,25 @@ float BatDeviceInterface::readBatAdcValueExt(float filter)
 }
 float BatDeviceInterface::readBatAdcValue(float filter)
 {
+  uint32_t rValue = 0;
   batVoltageAdcValue =0;
-  adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
 
   //if (batVoltageAdcValue == 0.0) // 처음 읽는 것이라면 
   {
     for (int i = 0; i < filter; i++)
     {
-      batVoltageAdcValue +=  adc1_get_raw(ADC1_CHANNEL_0);
-      //vTaskDelay(1);
+      rValue = analogRead(ADC1_CHANNEL_0);
+      batVoltageAdcValue +=  esp_adc_cal_raw_to_voltage((uint32_t)rValue , &adc_chars);
+      vTaskDelay(1);
     }
     batVoltageAdcValue = batVoltageAdcValue/filter ;
   }
   batVoltageAdcValue += systemDefaultValue.voltageCompensation[_cellNumbver-1];
-  uint32_t voltage = esp_adc_cal_raw_to_voltage((uint32_t)batVoltageAdcValue , &adc_chars);
+  uint32_t voltage = batVoltageAdcValue;
   
-  //batVoltageAdcValue = voltage*((5.1+0.05567+1)/1);
   batVoltageAdcValue = voltage*100.0/33.0*2.0  ;
   batVoltageAdcValue  /= 1000.0;
   if(batVoltageAdcValue < 1.3 ) batVoltageAdcValue = 0; // 1 offset = 0.00151V
-// 이후, adc_chars를 esp_adc_cal_raw_to_voltage() 함수와 함께 사용
-//   else  //이미 읽고 있다면.. 
-//   {
-//     uint16_t val =0;
-//     for (int i = 0; i < filter / 2; i++)  // 처음 읽는 것의 반 만 읽자.
-//     {
-//       val = adc1_get_raw(ADC1_CHANNEL_0);
-//       batVoltageAdcValue = (batVoltageAdcValue * (1.0 - 1.0 / filter) + val * 1.0 / filter);
-//       vTaskDelay(1);
-//     }
-  //};
-  //float retValue = 
   return batVoltageAdcValue ;
 }
 float BatDeviceInterface::getBatVoltage(float batVoltageAdcValue)

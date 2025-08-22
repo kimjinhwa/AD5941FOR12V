@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include "mainGrobal.h"
+#include "maingrobal.h"
 
 #ifdef WEBOTA
 #include <WebServer.h>
