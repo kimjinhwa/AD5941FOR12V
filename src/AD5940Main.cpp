@@ -202,8 +202,8 @@ void AD5940BATStructInit(void)
   pBATCfg->SeqStartAddr = 0;
   pBATCfg->MaxSeqLen = 512;
   pBATCfg->RcalVal = 56.0;  							/* Value of RCAL on EVAL-AD5941BATZ board is 50mOhm */
-  pBATCfg->ACVoltPP = 800.0f;							/* Pk-pk amplitude is 300mV */
-  pBATCfg->DCVolt = 1100.0f;							/* Offset voltage of 1.2V*/
+  pBATCfg->ACVoltPP = 300.0f;							/* Pk-pk amplitude is 300mV */
+  pBATCfg->DCVolt = 600.0f;							/* Offset voltage of 1.2V*/
   pBATCfg->DftNum = DFTNUM_8192;
   
   pBATCfg->FifoThresh = 2;      					/* 2 results in FIFO, real and imaginary part. */
@@ -312,7 +312,12 @@ void AD5940_Main(void *parameters)
   AppBATCfg.RcalVolt.Image = systemDefaultValue.image_Cal; 
 
   uint16_t loopCount ;
-  AppBATCtrl(BATCTRL_MRCAL, 0);     /* Measur RCAL each point in sweep */
+  for(loopCount = 0; loopCount < MAX_LOOP_COUNT; loopCount++)
+  {
+    ESP_LOGW(TAG, "Reading Impedance(%d)",loopCount);
+    AppBATCtrl(BATCTRL_MRCAL, 0);     /* Measur RCAL each point in sweep */
+    delay(100);
+  }
   AppBATCtrl(BATCTRL_START, 0);
   AD5940_ClrMCUIntFlag(); /* Clear this flag */
   time_t startTime = millis();
@@ -335,15 +340,12 @@ void AD5940_Main(void *parameters)
       AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
       AD5940_ClrMCUIntFlag(); /* Clear this flag */
       temp = APPBUFF_SIZE;
-      //AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);
       AppBATISR(AppBuff, &temp); /* Deal with it and provide a buffer to store data we got */
-      //AD5940_Delay10us(10000);
       delay(1000);
       //addResult(AppBuff, loopCount);
       BATShowResult(AppBuff, temp); /* Print measurement results over UART */
       printf("--------------------------------\n");
       AD5940_SEQMmrTrig(SEQID_0);   /* 정상 동작 확인 완료 Trigger next measurement ussing MMR write*/
-      //ESP_LOGI(TAG, "Ended Impedance elasped %d",millis()-startTime);
     }
     delay(1);
   }

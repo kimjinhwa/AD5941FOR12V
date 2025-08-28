@@ -34,7 +34,7 @@ AppBATCfg_Type AppBATCfg =
   .NumOfData = -1,
 
   .PwrMod = AFEPWR_LP,
-  .ACVoltPP = 800.0,
+  .ACVoltPP = 300.0,
   .DCVolt = 1100.0f,
   .SinFreq = 50000.0, /* 50kHz */
   .RcalVal = 50.0, /* 50mOhm */

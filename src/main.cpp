@@ -322,13 +322,13 @@ void loop(void)
   {
     //if(elaspTime != -1) 
     elaspTime++;
-    if( elaspTime%10 ==0 ) simpleCli.outputStream->printf("\nTime elasped : %d",elaspTime);
-    uint8_t portNumber = elaspTime%2;
-    simpleCli.outputStream->printf("\nPort1 : %d, Port2 : %d, Port3 : %d portNumber : %d",
-      digitalRead(PORT1),digitalRead(PORT2),digitalRead(PORT3),portNumber);
-    esp_task_wdt_reset();
-    selectCell.select(1);
-    delay(100);
+    // if( elaspTime%10 ==0 ) simpleCli.outputStream->printf("\nTime elasped : %d",elaspTime);
+    // uint8_t portNumber = elaspTime%2;
+    // simpleCli.outputStream->printf("\nPort1 : %d, Port2 : %d, Port3 : %d portNumber : %d",
+    //   digitalRead(PORT1),digitalRead(PORT2),digitalRead(PORT3),portNumber);
+    // esp_task_wdt_reset();
+    // selectCell.select(1);
+    // delay(100);
     previousSecondmills = now;
   }
   if ((now - previous_3Secondmills > Interval_3Second))
