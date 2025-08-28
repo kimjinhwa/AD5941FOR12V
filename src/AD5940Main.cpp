@@ -316,15 +316,17 @@ void AD5940_Main(void *parameters)
   {
     ESP_LOGW(TAG, "Reading Impedance(%d)",loopCount);
     AppBATCtrl(BATCTRL_MRCAL, 0);     /* Measur RCAL each point in sweep */
-    delay(100);
+    ESP_LOGI(TAG, "Real : %f, Image : %f, Mag : %f",
+      AppBATCfg.RcalVolt.Real,
+      AppBATCfg.RcalVolt.Image,
+      AD5940_ComplexMag(&AppBATCfg.RcalVolt));
+    delay(1000);
   }
-  AppBATCtrl(BATCTRL_START, 0);
   AD5940_ClrMCUIntFlag(); /* Clear this flag */
   time_t startTime = millis();
-  // ESP_LOGI(TAG, "Waiting for MC UInt Flag ...");
-  // ESP_LOGI(TAG, "MC UInt Flag ...Elasped %d",millis()-startTime);
   startTime = millis();
 	AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE); // 이것이 동작 하는 것은 확인했다.
+  AppBATCtrl(BATCTRL_START, 0);
   while(1)
   {
     /* Check if interrupt flag which will be set when interrupt occurred. */
