@@ -55,6 +55,32 @@ BluetoothSerial SerialBT;
 
 BatDeviceInterface batDevice;
 
+static unsigned long previousSecondmills = 0;
+static int everySecondInterval = 1000;
+
+static int Interval_3Second = 3000;
+static unsigned long previous_3Secondmills = 0;
+
+static int Interval_5Second = 5000;
+static unsigned long previous_5Secondmills = 0;
+
+static int Interval_30Second = 30000;
+static unsigned long previous_30Secondmills = 0;
+
+static int Interval_60Second = 60000;
+static unsigned long previous_60Secondmills = 0;
+
+static unsigned long now;
+//각각의 시간은 병렬로 수행된다.
+
+//uint8_t globalModbusId =1;
+uint8_t impedanceCellPosition=1;
+static timeval tmv;
+int16_t logForHour=0;
+uint32_t loopCount=0;
+static bool isModuleBootingOK=false;
+static long elaspTime=-1;
+SelectCell selectCell;
 
 void AD5940_ShutDown();
 
@@ -98,7 +124,6 @@ void pinsetup()
 
 //HardwareSerial Serial1;
 void AD5940_Main(void *parameters);
-void AD5940_Main_init();
 
 void readnWriteEEProm()
 {
@@ -269,9 +294,6 @@ void setup()
   SPI.begin(SCK, MISO, MOSI, CS_5940);
   pinMode(SS, OUTPUT); // VSPI SS -> 아니다..이것은 리셋용이다.
 
-  AD5940_MCUResourceInit(0);
-  AD5940_Main_init();
-  vTaskDelay(100);
   ESP_LOGI(TAG, "System Started at %s mode", systemDefaultValue.runMode == 0 ? "Manual" : "Auto");
   ESP_LOGI(TAG, "\nEEPROM installed Bat number %d", systemDefaultValue.installed_cells);
   esp_task_wdt_init(WDT_TIMEOUT, true);
@@ -282,37 +304,10 @@ void setup()
 
   Serial.println("BlueTooth Task create....");
   xTaskCreate(blueToothTask, "blueToothTask", 5000, NULL, 1, h_pxblueToothTask);
-  ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
-  AD5940_ShutDown();
+  xTaskCreate(AD5940_Main, "AD5940_Main", 5000, NULL, 1, NULL);
   simpleCli.outputStream = &Serial;
   memset(cellvalue,0,sizeof(cellvalue));
 };
-static unsigned long previousSecondmills = 0;
-static int everySecondInterval = 1000;
-
-static int Interval_3Second = 3000;
-static unsigned long previous_3Secondmills = 0;
-
-static int Interval_5Second = 5000;
-static unsigned long previous_5Secondmills = 0;
-
-static int Interval_30Second = 30000;
-static unsigned long previous_30Secondmills = 0;
-
-static int Interval_60Second = 60000;
-static unsigned long previous_60Secondmills = 0;
-
-static unsigned long now;
-//각각의 시간은 병렬로 수행된다.
-
-//uint8_t globalModbusId =1;
-uint8_t impedanceCellPosition=1;
-static timeval tmv;
-int16_t logForHour=0;
-uint32_t loopCount=0;
-static bool isModuleBootingOK=false;
-static long elaspTime=-1;
-SelectCell selectCell;
 void loop(void)
 {
   bool bRet;
@@ -332,12 +327,8 @@ void loop(void)
     simpleCli.outputStream->printf("\nPort1 : %d, Port2 : %d, Port3 : %d portNumber : %d",
       digitalRead(PORT1),digitalRead(PORT2),digitalRead(PORT3),portNumber);
     esp_task_wdt_reset();
-    if ((systemDefaultValue.runMode != 0 && portNumber != 0) )  // 자동 모드에서만 실행한다
-    {
-      selectCell.select(portNumber);
-      delay(100);
-      AD5940_Main(parameters); 
-    }
+    selectCell.select(1);
+    delay(100);
     previousSecondmills = now;
   }
   if ((now - previous_3Secondmills > Interval_3Second))
