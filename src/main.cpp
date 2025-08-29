@@ -92,7 +92,7 @@ void pinsetup()
     pinMode(AD5940_ISR, INPUT);
 
     pinMode(EXT_485EN_1, OUTPUT);
-    digitalWrite(EXT_485EN_1, HIGH);
+    digitalWrite(EXT_485EN_1, LOW);
     pinMode(RST_5941, OUTPUT);
     digitalWrite(RST_5941, HIGH);
     pinMode(PORT1, OUTPUT);
@@ -172,7 +172,7 @@ void setModbusAgent(){
   //address는 항상 1이다.
   uint8_t address_485 = systemDefaultValue.modbusId; 
   RTUutils::prepareHardwareSerial(Serial1);
-  Serial1.begin(BAUDRATE, SERIAL_8N1, SERIAL_RX1, SERIAL_TX1);
+  Serial1.begin(BAUDRATESERIAL1, SERIAL_8N1, SERIAL_RX1, SERIAL_TX1);
   //external485.useStopControll =0;
   external485.begin(Serial1,BAUDRATE,1,2000);
   external485.registerWorker(address_485,READ_COIL,&FC01);

@@ -13,4 +13,6 @@ C:\Users\ServerManager\OneDrive\바탕 화면\1.PARACTICE\2.범용12V_BMS_재설
 - r 1 를 실행하여 Bat연결한다.
 - cal를 수행한다.
 - 정상적으로 수행이 되는 것을 확인하면, 다시한번 cal save를 입력한다.
+### Power Consumtion
+- 500mA
 

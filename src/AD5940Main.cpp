@@ -203,7 +203,7 @@ void AD5940BATStructInit(void)
   pBATCfg->MaxSeqLen = 512;
   pBATCfg->RcalVal = 56.0;  							/* Value of RCAL on EVAL-AD5941BATZ board is 50mOhm */
   pBATCfg->ACVoltPP = 300.0f;							/* Pk-pk amplitude is 300mV */
-  pBATCfg->DCVolt = 600.0f;							/* Offset voltage of 1.2V*/
+  pBATCfg->DCVolt = 1100.0f;							/* Offset voltage of 1.2V*/
   pBATCfg->DftNum = DFTNUM_8192;
   
   pBATCfg->FifoThresh = 2;      					/* 2 results in FIFO, real and imaginary part. */
@@ -230,8 +230,9 @@ void AD5940_Main_init()
   AD5940PlatformCfg();
   AD5940BATStructInit();             /* Configure your parameters in this function */
 
+  ESP_LOGW(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
   AD5940Err error = AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
-  ESP_LOGI(TAG, "AppBATInit %d %s ",error ,error == AD5940ERR_OK ?"성공":"실패");
+  ESP_LOGW(TAG, "AppBATInit %d %s ",error ,error == AD5940ERR_OK ?"성공":"실패");
 
 
   // iCount = AD5940_WakeUp(50);
