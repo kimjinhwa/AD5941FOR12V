@@ -128,8 +128,9 @@ void AD5940_Main(void *parameters);
 void readnWriteEEProm()
 {
   uint8_t ipaddr1;
-  if (EEPROM.read(0) != 0x55)
+  if (EEPROM.read(0) != 0x55 || EEPROM.read(sizeof(nvsSystemSet) + 1) != 0x55)
   {
+    Serial.println("EEPROM is not initialized....");
     systemDefaultValue.runMode = 0;  // 0: manual 0x01 : onlyVoltate Audo, 0x03 : Voltage & Impedance 
     systemDefaultValue.AlarmAmpere = 2000;  // 200A
     systemDefaultValue.alarmDiffCellVoltage = 200;  //200mV
@@ -155,9 +156,20 @@ void readnWriteEEProm()
     systemDefaultValue.image_Cal = 35511.0f;
     systemDefaultValue.logLevel = ESP_LOG_INFO;
     systemDefaultValue.startBatnumber = 1;
+
+    systemDefaultValue.ACVoltPP = 300;
+    systemDefaultValue.DCVolt = 1100;
+    systemDefaultValue.SinFreq = 1000;
+    systemDefaultValue.RcalLoopCount = 20;
+
     EEPROM.writeByte(0, 0x55);
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.writeByte(sizeof(nvsSystemSet) + 1, 0x55);
     EEPROM.commit();
+  }
+  else
+  {
+    Serial.println("EEPROM is already initialized....");
   }
   EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
   if(systemDefaultValue.startBatnumber > systemDefaultValue.installed_cells  )
@@ -265,8 +277,13 @@ void setup()
 
   Serial.begin(BAUDRATE);
   Serial.println("System booting....");
-  EEPROM.begin(sizeof(nvsSystemSet) + 1);
-  Serial.println("EEPROM begin....");
+  int bRet = EEPROM.begin(sizeof(nvsSystemSet) + 2);
+  if(bRet != 0)
+  Serial.printf("EEPROM begin.... size : %d\n",sizeof(nvsSystemSet) + 2);
+  else
+  {
+    Serial.println("EEPROM begin failed....");
+  }
   readnWriteEEProm();
   Serial.println("EEPROM read....");
   pinsetup();

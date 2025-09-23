@@ -202,13 +202,13 @@ void AD5940BATStructInit(void)
   pBATCfg->SeqStartAddr = 0;
   pBATCfg->MaxSeqLen = 512;
   pBATCfg->RcalVal = 56.0;  							/* Value of RCAL on EVAL-AD5941BATZ board is 50mOhm */
-  pBATCfg->ACVoltPP = 300.0f;							/* Pk-pk amplitude is 300mV */
-  pBATCfg->DCVolt = 1100.0f;							/* Offset voltage of 1.2V*/
+  pBATCfg->ACVoltPP = systemDefaultValue.ACVoltPP;							/* Pk-pk amplitude is 300mV */
+  pBATCfg->DCVolt = systemDefaultValue.DCVolt;							/* Offset voltage of 1.2V*/
   pBATCfg->DftNum = DFTNUM_8192;
   
   pBATCfg->FifoThresh = 2;      					/* 2 results in FIFO, real and imaginary part. */
 	
-	pBATCfg->SinFreq = 5000/5;									/* Sin wave frequency. THis value has no effect if sweep is enabled */
+	pBATCfg->SinFreq = systemDefaultValue.SinFreq;									/* Sin wave frequency. THis value has no effect if sweep is enabled */
 	
 	pBATCfg->SweepCfg.SweepEn = bFALSE;			/* Set to bTRUE to enable sweep function */
 	pBATCfg->SweepCfg.SweepStart = 900.0f;		/* Start sweep at 1Hz  */
@@ -313,7 +313,7 @@ void AD5940_Main(void *parameters)
   AppBATCfg.RcalVolt.Image = systemDefaultValue.image_Cal; 
 
   uint16_t loopCount ;
-  for(loopCount = 0; loopCount < MAX_LOOP_COUNT; loopCount++)
+  for(loopCount = 0; loopCount < systemDefaultValue.RcalLoopCount; loopCount++)
   {
     ESP_LOGW(TAG, "Reading Impedance(%d)",loopCount);
     AppBATCtrl(BATCTRL_MRCAL, 0);     /* Measur RCAL each point in sweep */
@@ -331,7 +331,7 @@ void AD5940_Main(void *parameters)
   while(1)
   {
     /* Check if interrupt flag which will be set when interrupt occurred. */
-    if(loopCount < MAX_LOOP_COUNT)
+    if(loopCount < systemDefaultValue.RcalLoopCount)
       loopCount++;
     else
       loopCount = 0;

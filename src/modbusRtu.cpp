@@ -54,6 +54,7 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
     for(int i=80;i<120;i++){
       sendValue[i] = (uint16_t)(systemDefaultValue.impendanceCompensation[i-80]);
     }
+
   }
   sendValue[120]=0;
   sendValue[121]=0;
@@ -79,6 +80,10 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   if(strErrorMessage[0] != 0 || strErrorMessage[1] != 0) sendValue[140]=1;
   // ESP_LOGI("TEST","\n-------> send Message Value %s %d %d %d",
   //   dest,sendValue[140],strErrorMessage[0],strErrorMessage[1] );
+  sendValue[141] = systemDefaultValue.ACVoltPP;
+  sendValue[142] = systemDefaultValue.DCVolt;
+  sendValue[143] = systemDefaultValue.SinFreq;
+  sendValue[144] = systemDefaultValue.RcalLoopCount;
 }
 char modbusCellData[100];
 
@@ -292,6 +297,8 @@ ModbusMessage FC05(ModbusMessage request)
   }
   return response;
 };
+
+bool isAD5940StructInit_valueChanged = false;
 ModbusMessage FC06(ModbusMessage request)
 {
   uint16_t address;       // requested register address
@@ -355,7 +362,7 @@ ModbusMessage FC06(ModbusMessage request)
     }
 
   }
-  if (writeAddress >= 126 && writeAddress < 132)
+  if (writeAddress >= 126 && writeAddress < 145)
   {
 
     switch (writeAddress)
@@ -376,7 +383,24 @@ ModbusMessage FC06(ModbusMessage request)
       systemDefaultValue.alarmLowCellVoltage = value;
       break;
     case 131:
+      isAD5940StructInit_valueChanged = true;
       systemDefaultValue.AlarmAmpere = value;
+      break;
+    case 141:
+      isAD5940StructInit_valueChanged = true;
+      systemDefaultValue.ACVoltPP = value;
+      break;
+    case 142:
+      isAD5940StructInit_valueChanged = true;
+      systemDefaultValue.DCVolt = value;
+      break;
+    case 143:
+      isAD5940StructInit_valueChanged = true;
+      systemDefaultValue.SinFreq = value;
+      break;
+    case 144:
+      isAD5940StructInit_valueChanged = true;
+      systemDefaultValue.RcalLoopCount = value;
       break;
     default:
       break;
@@ -385,6 +409,10 @@ ModbusMessage FC06(ModbusMessage request)
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    if(isAD5940StructInit_valueChanged)
+    {
+      esp_restart();
+    }
   }
 
   if(writeAddress >= 0x1101 && writeAddress <= 0x2501  ){  // Cell제어 

@@ -58,6 +58,11 @@ typedef struct
     float image_Cal; // 240 + 4 = 248
     uint8_t logLevel; // 240 + 4 = 248
     uint16_t startBatnumber;     // 63 + 2 = 65
+    //AD5941 Parameter
+    uint16_t ACVoltPP;
+    uint16_t DCVolt;
+    uint16_t SinFreq;
+    uint16_t RcalLoopCount;
 } nvsSystemSet;
 extern nvsSystemSet systemDefaultValue;
 
