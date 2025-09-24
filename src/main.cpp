@@ -36,6 +36,7 @@ static char TAG[] ="Main";
 
 TaskHandle_t *h_pxblueToothTask;
 TaskHandle_t *h_pxNetworkTask;
+TaskHandle_t *h_pxAD5940Task;
 nvsSystemSet systemDefaultValue;
 
 ModbusServerRTU external485(2000,EXT_485EN_1);
@@ -44,7 +45,6 @@ uint32_t request_time;
 uint16_t values[2];
 uint16_t cellModbusIdReceived;
 
-uint8_t selecectedCellNumber =0;
 
 _cell_value cellvalue[MAX_INSTALLED_CELLS];
 
@@ -53,7 +53,6 @@ uint16_t startBatnumber=1;
 
 BluetoothSerial SerialBT;
 
-BatDeviceInterface batDevice;
 
 static unsigned long previousSecondmills = 0;
 static int everySecondInterval = 1000;
@@ -80,7 +79,6 @@ int16_t logForHour=0;
 uint32_t loopCount=0;
 static bool isModuleBootingOK=false;
 static long elaspTime=-1;
-SelectCell selectCell;
 
 void AD5940_ShutDown();
 
@@ -98,27 +96,18 @@ void pinsetup()
     pinMode(PORT1, OUTPUT);
     pinMode(PORT2, OUTPUT);
     pinMode(PORT3, OUTPUT);
+    pinMode(PORT4, OUTPUT);
+    pinMode(PORT5, OUTPUT);
     digitalWrite(PORT1, LOW);
     digitalWrite(PORT2, LOW);
     digitalWrite(PORT3, LOW);
-    pinMode(SEL_ADD1, OUTPUT);
-    pinMode(SEL_ADD2, OUTPUT);
-    pinMode(SEL_ADD3, OUTPUT);
-    pinMode(SEL_ADD4, INPUT);
-    digitalWrite(SEL_ADD1, HIGH);
-    digitalWrite(SEL_ADD2, HIGH);
-    digitalWrite(SEL_ADD3, HIGH);
-    digitalWrite(SEL_ADD4, HIGH);
+    digitalWrite(PORT4, LOW);
+    digitalWrite(PORT5, LOW);
 
     pinMode(CS_5940, OUTPUT);
     digitalWrite(CS_5940, HIGH);
     pinMode(RST_5941, OUTPUT);
     digitalWrite(RST_5941, HIGH);
-
-    pinMode(SEL_ADD1, OUTPUT);
-    pinMode(SEL_ADD2, OUTPUT);
-    pinMode(SEL_ADD3, OUTPUT);
-    pinMode(SEL_ADD4, INPUT);
 }
 
 
@@ -321,7 +310,7 @@ void setup()
 
   Serial.println("BlueTooth Task create....");
   xTaskCreate(blueToothTask, "blueToothTask", 5000, NULL, 1, h_pxblueToothTask);
-  xTaskCreate(AD5940_Main, "AD5940_Main", 5000, NULL, 1, NULL);
+  xTaskCreate(AD5940_Main, "AD5940_Main", 5000, NULL, 1, h_pxAD5940Task);
   simpleCli.outputStream = &Serial;
   memset(cellvalue,0,sizeof(cellvalue));
 };
@@ -340,12 +329,6 @@ void loop(void)
     //if(elaspTime != -1) 
     elaspTime++;
     if( elaspTime%10 ==0 ) simpleCli.outputStream->printf("\nTime elasped : %d",elaspTime);
-    uint8_t portNumber = elaspTime%2;
-    simpleCli.outputStream->printf("\nPort1 : %d, Port2 : %d, Port3 : %d portNumber : %d",
-      digitalRead(PORT1),digitalRead(PORT2),digitalRead(PORT3),portNumber);
-    // esp_task_wdt_reset();
-    selectCell.select(portNumber);
-    // delay(100);
     previousSecondmills = now;
   }
   if ((now - previous_3Secondmills > Interval_3Second))

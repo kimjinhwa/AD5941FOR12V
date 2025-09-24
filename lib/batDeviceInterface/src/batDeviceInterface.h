@@ -16,6 +16,7 @@ class BatDeviceInterface
     float batVoltageAdcValue ;
     private:
         float readBatAdcValue(float filter);
+        uint32_t adcCalibration(uint32_t adcVoltage);
         esp_adc_cal_characteristics_t adc_chars;
         uint16_t _cellNumbver;
 };

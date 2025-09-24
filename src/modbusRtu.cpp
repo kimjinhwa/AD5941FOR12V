@@ -3,8 +3,9 @@
 #include "modbusRtu.h"
 #include "maingrobal.h"
 #include <ModbusClientRTU.h>
+#include "mainClass.hpp"
 
-
+extern uint8_t isAD5940ReInit;
 char strErrorMessage[40];
 void setErrorMessageToModbus(bool setError,const char* msg)
 {
@@ -71,11 +72,11 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   for(int  i=132;i<160;i++) sendValue[i] =0x00;
 
   //setErrorMessageToModbus(true,"Hello....\n");
-  char *dest ;
-  dest = (char*)(sendValue+141); //strncpy(dest ,strErrorMessage,sizeof(strErrorMessage)-2);
-  for(int i=0; i< 38;i++){
-    dest[i] = strErrorMessage[i+2]; // Serial.printf("%02x ",dest[i]);
-  }
+  // char *dest ;
+  // dest = (char*)(sendValue+141); //strncpy(dest ,strErrorMessage,sizeof(strErrorMessage)-2);
+  // for(int i=0; i< 38;i++){
+  //   dest[i] = strErrorMessage[i+2]; // Serial.printf("%02x ",dest[i]);
+  // }
   //sendValue[140]= ((int)strErrorMessage[0] << 8) & ((int)strErrorMessage[1] & 0x00ff) ;
   if(strErrorMessage[0] != 0 || strErrorMessage[1] != 0) sendValue[140]=1;
   // ESP_LOGI("TEST","\n-------> send Message Value %s %d %d %d",
@@ -84,6 +85,7 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   sendValue[142] = systemDefaultValue.DCVolt;
   sendValue[143] = systemDefaultValue.SinFreq;
   sendValue[144] = systemDefaultValue.RcalLoopCount;
+  sendValue[145] = selectCell.getCurrentPort();
 }
 char modbusCellData[100];
 
@@ -362,7 +364,7 @@ ModbusMessage FC06(ModbusMessage request)
     }
 
   }
-  if (writeAddress >= 126 && writeAddress < 145)
+  if (writeAddress >= 126 && writeAddress < 146)
   {
 
     switch (writeAddress)
@@ -402,6 +404,9 @@ ModbusMessage FC06(ModbusMessage request)
       isAD5940StructInit_valueChanged = true;
       systemDefaultValue.RcalLoopCount = value;
       break;
+    case 145:
+      selectCell.select(value);
+      break;
     default:
       break;
     };
@@ -411,7 +416,9 @@ ModbusMessage FC06(ModbusMessage request)
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     if(isAD5940StructInit_valueChanged)
     {
-      esp_restart();
+      isAD5940ReInit = 1;
+      isAD5940StructInit_valueChanged = false;
+      //esp_restart();
     }
   }
 

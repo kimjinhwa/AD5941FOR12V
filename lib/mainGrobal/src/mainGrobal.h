@@ -6,21 +6,18 @@
 #define SERIAL_RX1 26 // ok Serial1 통신 485모드버스통신으로 외부와의 인터페이스에 사용한다 
 #define SERIAL_TX1 22 
 
-#define IN_TH1 GPIO_NUM_34
-#define IN_TH2 GPIO_NUM_35
+#define IN_TH1              GPIO_NUM_34
+#define IN_TH2              GPIO_NUM_35
 
 #define EXT_485EN_1         GPIO_NUM_4  
 #define RST_5941            GPIO_NUM_5  // 4951칩을 리셋하기 위함. 
 #define PORT1               GPIO_NUM_19
 #define PORT2               GPIO_NUM_18 
 #define PORT3               GPIO_NUM_27 
+#define PORT4               GPIO_NUM_21
+#define PORT5               GPIO_NUM_23
 
-#define SEL_ADD1            GPIO_NUM_33 
-#define SEL_ADD2            GPIO_NUM_25 
-#define SEL_ADD3            GPIO_NUM_23  
-#define SEL_ADD4            GPIO_NUM_21  
-
-#define READ_BATVOL         GPIO_NUM_36  //배터리 전압을 읽는다. 
+#define READ_BATVOL         GPIO_NUM_36  //배터리 전압을 읽는다. SENSOR_VP
 #define MISO                GPIO_NUM_12  
 #define MOSI                GPIO_NUM_13  
 #define SCK                 GPIO_NUM_14  
