@@ -289,8 +289,16 @@ void setup()
   bleName += WifiAddress;
   bleName += "_";
   bleName += systemDefaultValue.modbusId;
+  
+  // 기존 Classic Bluetooth (호환성 유지)
   SerialBT.begin(bleName.c_str());
   Serial.printf("\nBluetooth Name : %s\n",bleName.c_str());
+  
+  // BLE 초기화 (새로운 통신 방식) - 임시 비활성화
+  // myBlueTooth bleDevice;
+  // bleDevice.setBLEMode(true); // 서버 모드로 설정
+  // bleDevice.initBLE();
+  // Serial.printf("\nBLE Server initialized with name: %s\n", bleName.c_str());
   long sTime = millis();
   Serial.println("LittleFS init....");
   lsFile.littleFsInitFast(0);
@@ -310,6 +318,11 @@ void setup()
 
   Serial.println("BlueTooth Task create....");
   xTaskCreate(blueToothTask, "blueToothTask", 5000, NULL, 1, h_pxblueToothTask);
+  
+  // BLE 태스크 추가 (ESP32 간 통신용) - 임시 비활성화
+  // Serial.println("BLE Task create....");
+  // xTaskCreate(bleServerTask, "bleServerTask", 5000, NULL, 1, NULL);
+  
   xTaskCreate(AD5940_Main, "AD5940_Main", 5000, NULL, 1, h_pxAD5940Task);
   simpleCli.outputStream = &Serial;
   memset(cellvalue,0,sizeof(cellvalue));

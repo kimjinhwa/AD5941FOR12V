@@ -4,10 +4,14 @@
 #include <BluetoothSerial.h>
 #include "filesystem.h"
 
-extern BluetoothSerial SerialBT;
+extern BluetoothSerial SerialBT; // 기존 호환성을 위해 유지
 //extern LittleFileSystem lsFile;
 // Print *outputStream;
-// Stream *inputStream;
+// Stream *inputStream
+
+myBlueTooth::myBlueTooth(){
+    // 기본 생성자
+}
 
 
 // void ls_configCallback(cmd *cmdPtr){
@@ -160,27 +164,6 @@ extern BluetoothSerial SerialBT;
 
 //   lsFile.cat(argVal);
 // }
-myBlueTooth::myBlueTooth(){
-
-  //Command cmd_config ;//= simpleCli.addCommand("ls",ls_configCallback);
-  //cmd_config =  simpleCli.addSingleArgCmd("cat", cat_configCallback);
-  //cmd_config = simpleCli.addSingleArgCmd("rm", rm_configCallback);
-  //cmd_config = simpleCli.addSingleArgCmd("mv", mv_configCallback);
-  //cmd_config = simpleCli.addSingleArgCmd("format", format_configCallback);
-  //cmd_config = simpleCli.addCommand("time", time_configCallback);
-  // cmd_config.addArgument("y/ear","");
-  // cmd_config.addArgument("M/onth","");
-  // cmd_config.addArgument("d/ay","");
-  // cmd_config.addArgument("h/our","");
-  // cmd_config.addArgument("m/inute","");
-  // cmd_config.addArgument("s/econd","");
-//  cmd_config.setDescription(" Get Time or set \r\n time -y 2024 or time -M 11,..., Month is M , minute is m ");
-//  cmd_config = simpleCli.addCommand("df", df_configCallback);
-  //cmd_config = simpleCli.addSingleArgCmd("reboot", reboot_configCallback);
-  //simpleCli.setOnError(errorCallback);
-  //cmd_config= simpleCli.addCommand("help",help_Callback);
-  //cmd_config.setDescription(" Get help!");
-}
 
 void myBlueTooth::readInputSerialBT()
 {
