@@ -352,9 +352,9 @@ void bleServerTask(void *parameter) {
         JsonArray temperatureArray = jsonDocument["T"].to<JsonArray>();
         
         for (int i = 0; i < 20; i++) {
-            voltageArray.add(cellvalue[i].voltage);
-            impedanceArray.add(cellvalue[i].impendance);
-            temperatureArray.add(cellvalue[i].temperature);
+            voltageArray.add( (int)(cellvalue[i].voltage*1000) );
+            impedanceArray.add( (int)(cellvalue[i].impendance*1000) );
+            temperatureArray.add( cellvalue[i].temperature );
         }
         String data = jsonDocument.as<String>();
         if (isConnected) {

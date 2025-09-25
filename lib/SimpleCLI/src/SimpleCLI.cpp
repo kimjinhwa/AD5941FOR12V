@@ -444,7 +444,9 @@ void calibration_configCallback(cmd *cmdPtr){
     simpleCli.outputStream->printf("\r\nMust run at manual mode");
     return;
   }
+  
   simpleCli.outputStream->printf("\nNow Start calibrating...Wait...");
+  selectCell.select(1);
   float ImpMagnitude = AD5940_calibration(&real , &image);
   simpleCli.outputStream->printf("\nRcalVolt Real:%6.2f Image:%6.2f IMP:%6.2f ",
     real,image,ImpMagnitude);

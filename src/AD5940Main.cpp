@@ -48,6 +48,7 @@ SelectCell selectCell;
 BatDeviceInterface batDevice;
 static uint8_t selecectedCellNumber =0;
 void AD5940_ShutDown();
+bool AD5940_Calibration_ForLoop();
 void addResult(uint32_t *pData, uint32_t DataCount)
 {
   fImpCar_Type Average;
@@ -227,30 +228,39 @@ void AD5940_ShutDown(){
 extern TaskHandle_t *h_pxAD5940Task;
 void AD5940_Main_reinit(){
   // 진행하고 있는 것을 멈추고 다시 시작을 해야 겠군.
-  // vTaskSuspend(h_pxAD5940Task);
-  // vTaskDelay(100);
+  ESP_LOGI(TAG, "AD5940_Main_reinit: 주파수 변경 후 재초기화");
+  
   AppBATCtrl(BATCTRL_STOPNOW, 0);
-  vTaskDelay(100);
+  // 설정 구조체 업데이트
   AppBATCfg_Type *pBATCfg;
   AppBATGetCfg(&pBATCfg);
-  pBATCfg->ACVoltPP = systemDefaultValue.ACVoltPP;							/* Pk-pk amplitude is 300mV */
-  pBATCfg->DCVolt = systemDefaultValue.DCVolt;							/* Offset voltage of 1.2V*/
+  pBATCfg->ACVoltPP = systemDefaultValue.ACVoltPP;
+  pBATCfg->DCVolt = systemDefaultValue.DCVolt;
   pBATCfg->DftNum = DFTNUM_8192;
-  pBATCfg->FifoThresh = 2;      					/* 2 results in FIFO, real and imaginary part. */
-	pBATCfg->SinFreq = systemDefaultValue.SinFreq;									/* Sin wave frequency. THis value has no effect if sweep is enabled */
-  //AD5940Err error = AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
-  //AD5940_ClrMCUIntFlag(); /* Clear this flag */
-	//AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE); // 이것이 동작 하는 것은 확인했다.
-  // vTaskResume(h_pxAD5940Task);
-  //AppBATCtrl(BATCTRL_MRCAL, 0);     /* Measur RCAL each point in sweep */
-  //AppBATCtrl(BATCTRL_START, 0);
-  //AD5940_SEQMmrTrig(SEQID_0);   /* 정상 동작 확인 완료 Trigger next measurement ussing MMR write*/
+  pBATCfg->FifoThresh = 2;
+  pBATCfg->SinFreq = systemDefaultValue.SinFreq;  // 새로운 주파수 설정
+  pBATCfg->bParaChanged = bTRUE;
+  ESP_LOGI(TAG, "새로운 주파수 설정: %f Hz", systemDefaultValue.SinFreq);
+  AppBATInit(AppBuff, APPBUFF_SIZE);
+  
+  // // AD5940을 완전히 재초기화
+  // AD5940PlatformCfg();
+  // AD5940BATStructInit();
+  
+  // // BAT 애플리케이션 재초기화
+  // AD5940Err error = AppBATInit(AppBuff, APPBUFF_SIZE);
+  // ESP_LOGW(TAG, "AppBATInit 재초기화 결과: %d %s", error, error == AD5940ERR_OK ? "성공" : "실패");
+  
+  // // 인터럽트 설정
+  // AD5940_ClrMCUIntFlag();
+  // AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);
+  
+  ESP_LOGI(TAG, "AD5940 재초기화 완료");
 }
 void AD5940_Main_init()
 {
   uint16_t temp;
   uint16_t iCount = 0;
-  fImpCar_Type beforRcalVolt;
   uint32_t startTime;
   ESP_LOGI(TAG, "AD5940_Main_init\n");
   AD5940PlatformCfg();
@@ -272,68 +282,30 @@ void AD5940_Main_init()
 
 float AD5940_calibration_read(float real , float image)
 {
-  AppBATCfg.RcalVolt.Real = real;
-  AppBATCfg.RcalVolt.Image = image;
-  return AD5940_ComplexMag(&AppBATCfg.RcalVolt);
+  AppBATCfg_Type BATCfg;
+  BATCfg.RcalVolt.Real = real;
+  BATCfg.RcalVolt.Image = image;
+  return AD5940_ComplexMag(&BATCfg.RcalVolt);
 }
 
 #define CALIBRATION_LOOP_COUNT 10
 float AD5940_calibration(float *real , float *image)
 {
-  uint16_t loopCount = systemDefaultValue.RcalLoopCount;//CALIBRATION_LOOP_COUNT;
-  AD5940PlatformCfg();
-  AD5940BATStructInit();             /* Configure your parameters in this function */
-  AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
-  *real = 0.0f;
-  *image = 0.0f;
   simpleCli.outputStream->printf("Now on calibration(...");
-  while (loopCount--)
-  {
-    //simpleCli.outputStream->
-    //simpleCli.outputStream->printf("Now on calibration(%d)...", loopCount);
-    time_t startTime = millis();
-    if (AD5940ERR_WAKEUP == AppBATCtrl(BATCTRL_MRCAL, 0))
-    {
-      simpleCli.outputStream->printf("\nWakeup Error..retry...");
-    }; /* Measur RCAL each point in sweep */
-    time_t endTime = millis();
-    simpleCli.outputStream->printf("\r\n%d: R I Mag:%6.2f\t %6.2f\t %6.2f (%dmills)",
-                           loopCount,
-                           AppBATCfg.RcalVolt.Real,
-                           AppBATCfg.RcalVolt.Image,
-                           AD5940_ComplexMag(&AppBATCfg.RcalVolt), endTime - startTime);
-    delay(100);
-    if (loopCount < CALIBRATION_LOOP_COUNT)
-    {
-      *real += AppBATCfg.RcalVolt.Real;
-      *image += AppBATCfg.RcalVolt.Image;
-    }
-  };
-  *real /= CALIBRATION_LOOP_COUNT;
-  *image /= CALIBRATION_LOOP_COUNT;
-  AppBATCfg.RcalVolt.Real = *real;
-  AppBATCfg.RcalVolt.Image = *image;
-  AD5940_ShutDown();
+  AD5940_Calibration_ForLoop();
+  *real = AppBATCfg.RcalVolt.Real;
+  *image = AppBATCfg.RcalVolt.Image;
   return AD5940_ComplexMag(&AppBATCfg.RcalVolt);
 }
-uint8_t isAD5940ReInit = 0;
-void AD5940_Main_Loop()
-{
-  uint32_t temp;
-  ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
-  vTaskDelay(100);
-  AD5940PlatformCfg();
-  AD5940BATStructInit();             /* Configure your parameters in this function */
-  AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
-
-  AppBATCfg.RcalVolt.Real = systemDefaultValue.real_Cal;
-  AppBATCfg.RcalVolt.Image = systemDefaultValue.image_Cal;
-
+bool AD5940_Calibration_ForLoop(){
+  bool retValue = false;
   uint16_t loopCount;
-  selectCell.select(1);
   AppBATCfg_Type beforRcalVolt;
   beforRcalVolt = AppBATCfg;
   double compareValue = 0.0f;
+  AD5940PlatformCfg();
+  AD5940BATStructInit();             /* Configure your parameters in this function */
+  AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
   for (loopCount = 0; loopCount < systemDefaultValue.RcalLoopCount; loopCount++)
   {
     ESP_LOGW(TAG, "Reading Impedance(%d)", loopCount);
@@ -348,19 +320,39 @@ void AD5940_Main_Loop()
                AppBATCfg.RcalVolt.Image,
                AD5940_ComplexMag(&AppBATCfg.RcalVolt),
                AD5940_ComplexMag(&beforRcalVolt.RcalVolt), compareValue);
+      simpleCli.outputStream->printf("Real : %.3f, Image : %.3f, Mag : %.3f(%.3f) Compare:(%.4f)",
+               AppBATCfg.RcalVolt.Real,
+               AppBATCfg.RcalVolt.Image,
+               AD5940_ComplexMag(&AppBATCfg.RcalVolt),
+               AD5940_ComplexMag(&beforRcalVolt.RcalVolt), compareValue);
       if (compareValue < 0.0001)
       {
         ESP_LOGI(TAG, "Finishe calibration");
+        retValue = true;
         break;
       }
     }
-    ESP_LOGI(TAG, "Not ready");
+    else
+    {
+      ESP_LOGI(TAG, "Not ready");
+      simpleCli.outputStream->printf("Not ready");
+    }
+    simpleCli.outputStream->printf("\nOn Calibration(%d)", loopCount);
     delay(1000);
   }
-  AD5940_ClrMCUIntFlag(); /* Clear this flag */
+  return retValue;
+}
+uint8_t isAD5940ReInit = 0;
+void AD5940_Main_Loop()
+{
+  uint32_t temp;
+  ESP_LOGI(TAG, "Chip Id : %d\n", AD5940_ReadReg(REG_AFECON_CHIPID));
+  vTaskDelay(100);
+  //AD5940_Calibration_ForLoop();
+  //AD5940_ClrMCUIntFlag(); /* Clear this flag */
   time_t startTime = millis();
   startTime = millis();
-  AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE); // 이것이 동작 하는 것은 확인했다.
+  //AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE); // 이것이 동작 하는 것은 확인했다.
   AppBATCtrl(BATCTRL_START, 0);
   static long elaspTime = 0;
   uint8_t portNumber = elaspTime % 2;
@@ -368,11 +360,10 @@ void AD5940_Main_Loop()
                                  digitalRead(PORT1), digitalRead(PORT2), digitalRead(PORT3), digitalRead(PORT4), digitalRead(PORT5), portNumber);
   // esp_task_wdt_reset();
   // delay(100);
-  for (loopCount = 0; loopCount < systemDefaultValue.RcalLoopCount; loopCount++)
+  for (uint16_t loopCount = 0; loopCount < systemDefaultValue.RcalLoopCount; loopCount++)
   {
-    selecectedCellNumber = selecectedCellNumber == 1 ? 2 : 1;
-    // selectCell.select(selecectedCellNumber );
-    simpleCli.outputStream->printf("\nP1 : %d, P2 : %d, P3 : %d, P4 : %d, P5 : %d portNumber : %d",
+    simpleCli.outputStream->printf("\n(loopCount : %d)P1 : %d, P2 : %d, P3 : %d, P4 : %d, P5 : %d portNumber : %d",
+                                   loopCount,
                                    digitalRead(PORT1), digitalRead(PORT2), digitalRead(PORT3), digitalRead(PORT4), digitalRead(PORT5), portNumber);
     /* Check if interrupt flag which will be set when interrupt occurred. */
     float batVoltage = 0.0;
@@ -389,36 +380,66 @@ void AD5940_Main_Loop()
       AD5940_ClrMCUIntFlag(); /* Clear this flag */
       temp = APPBUFF_SIZE;
       AppBATISR(AppBuff, &temp); /* Deal with it and provide a buffer to store data we got */
-      delay(1000);
       BATShowResult(AppBuff, temp); /* Print measurement results over UART */
+      fImpCar_Type *pImp = (fImpCar_Type*)AppBuff;
+      if(AD5940_ComplexMag(&pImp[0]) != 0.0f)
+        cellvalue[selecectedCellNumber - 1].impendance = AD5940_ComplexMag(&pImp[0]);
       printf("--------------------------------\n");
-      if (isAD5940ReInit == 1)
-      {
-        isAD5940ReInit = 0;
-        AD5940_Main_reinit();
-        printf("AD5940_Main_reinit\n");
-      }
       AD5940_SEQMmrTrig(SEQID_0); /* 정상 동작 확인 완료 Trigger next measurement ussing MMR write*/
+      delay(500);
     }
     delay(1);
   }
 };
 void AD5940_Main(void *parameters)
 {
-  if(parameters != nullptr)
-  outputStream  = static_cast<Print *>(parameters);
-  if(outputStream == nullptr)
+  AD5940_MCUResourceInit(0);
+  AD5940_Main_init();
+  AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
+  AppBATCfg.RcalVolt.Real = systemDefaultValue.real_Cal;
+  AppBATCfg.RcalVolt.Image = systemDefaultValue.image_Cal;
+  if (parameters != nullptr)
+    outputStream = static_cast<Print *>(parameters);
+  if (outputStream == nullptr)
   {
     outputStream = &Serial;
   }
-
-  AD5940_MCUResourceInit(0);
-  AD5940_Main_init();
-  while(1)
-  {
+  bool isCalibrated = false;
   selecectedCellNumber = 1;
-  selectCell.select(selecectedCellNumber);
-    AD5940_Main_Loop();
+  for (;; selecectedCellNumber++)
+  {
+    if (systemDefaultValue.runMode != 0)
+    {
+      if (selecectedCellNumber > systemDefaultValue.installed_cells)
+        selecectedCellNumber = 1;
+      selectCell.select(selecectedCellNumber);
+      // selecectedCellNumber = selecectedCellNumber == 1 ? 2 : 1;
+      AppBATCfg.RcalVolt.Real = systemDefaultValue.real_Cal;
+      AppBATCfg.RcalVolt.Image = systemDefaultValue.image_Cal;
+      printf("RcalVolt Real : %.3f, Image : %.3f, Mag : %.3f\n", AppBATCfg.RcalVolt.Real, AppBATCfg.RcalVolt.Image,AD5940_ComplexMag(&AppBATCfg.RcalVolt));
+      outputStream->printf("RcalVolt Real : %.3f, Image : %.3f, Mag : %.3f\n", AppBATCfg.RcalVolt.Real, AppBATCfg.RcalVolt.Image,AD5940_ComplexMag(&AppBATCfg.RcalVolt));  
+      // if (!isCalibrated)
+      // {
+      //   AppBATCfg.RcalVolt.Real = systemDefaultValue.real_Cal;
+      //   AppBATCfg.RcalVolt.Image = systemDefaultValue.image_Cal;
+      //   isCalibrated = AD5940_Calibration_ForLoop();
+      // }
+      if (isAD5940ReInit == 1)
+      {
+        isAD5940ReInit = 0;
+        AD5940_Main_reinit();
+        printf("AD5940_Main_reinit\n");
+      }
+      AD5940_Main_Loop();
+    }
+    else
+    {
+        printf("RcalVolt Real : %.3f, Image : %.3f, Mag : %.3f\n", AppBATCfg.RcalVolt.Real, AppBATCfg.RcalVolt.Image,AD5940_ComplexMag(&AppBATCfg.RcalVolt));
+        outputStream->printf("\nRcalVolt Real : %.3f, Image : %.3f, Mag : %.3f\n", AppBATCfg.RcalVolt.Real, AppBATCfg.RcalVolt.Image,AD5940_ComplexMag(&AppBATCfg.RcalVolt));  
+        printf("AD5940 Running Mode is %d\n",systemDefaultValue.runMode);
+        outputStream->printf("\nAD5940 Running Mode is %d\n",systemDefaultValue.runMode);
+        vTaskDelay(1000);
+    }
     vTaskDelay(100);
   }
 }
