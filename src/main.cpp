@@ -286,7 +286,15 @@ void setup()
   setModbusAgent();
   String bleName = "TIMP_";
   String WifiAddress = WiFi.macAddress();
-  bleName += WifiAddress;
+  // Bluetooth 주소 가져오기 (ESP32의 Bluetooth MAC 주소)
+  uint8_t baseMac[6];
+  esp_read_mac(baseMac, ESP_MAC_BT);
+  char macStr[18];
+  sprintf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X", 
+          baseMac[0], baseMac[1], baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
+  String BluetoothAddress = String(macStr);
+  Serial.printf("\nBluetooth Address : %s\n",BluetoothAddress.c_str());
+  bleName += BluetoothAddress ;
   bleName += "_";
   bleName += systemDefaultValue.modbusId;
   
@@ -294,11 +302,8 @@ void setup()
   SerialBT.begin(bleName.c_str());
   Serial.printf("\nBluetooth Name : %s\n",bleName.c_str());
   
-  // BLE 초기화 (새로운 통신 방식) - 임시 비활성화
-  // myBlueTooth bleDevice;
-  // bleDevice.setBLEMode(true); // 서버 모드로 설정
-  // bleDevice.initBLE();
-  // Serial.printf("\nBLE Server initialized with name: %s\n", bleName.c_str());
+  // BLE 서버 초기화 (ESP32 간 통신용)
+  Serial.println("BLE Server will be initialized in task...");
   long sTime = millis();
   Serial.println("LittleFS init....");
   lsFile.littleFsInitFast(0);
@@ -319,9 +324,9 @@ void setup()
   Serial.println("BlueTooth Task create....");
   xTaskCreate(blueToothTask, "blueToothTask", 5000, NULL, 1, h_pxblueToothTask);
   
-  // BLE 태스크 추가 (ESP32 간 통신용) - 임시 비활성화
-  // Serial.println("BLE Task create....");
-  // xTaskCreate(bleServerTask, "bleServerTask", 5000, NULL, 1, NULL);
+  // BLE 서버 태스크 추가 (ESP32 간 통신용)
+  Serial.println("BLE Server Task create....");
+  xTaskCreate(bleServerTask, "bleServerTask", 8000, NULL, 1, NULL);
   
   xTaskCreate(AD5940_Main, "AD5940_Main", 5000, NULL, 1, h_pxAD5940Task);
   simpleCli.outputStream = &Serial;

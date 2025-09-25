@@ -3,14 +3,59 @@
 #include <WiFi.h>
 #include <BluetoothSerial.h>
 #include "filesystem.h"
-
+#include "ArduinoJson.h"
+DynamicJsonDocument jsonDocument(512);
 extern BluetoothSerial SerialBT; // 기존 호환성을 위해 유지
 //extern LittleFileSystem lsFile;
 // Print *outputStream;
 // Stream *inputStream
 
 myBlueTooth::myBlueTooth(){
-    // 기본 생성자
+    bleServer = new SimpleBLE();
+}
+
+void myBlueTooth::initBLE() {
+    String deviceName = "ESP32_BLE_Server";
+    bleServer->initServer(deviceName);
+    bleServer->startAdvertising();
+    Serial.println("BLE Server initialized and started");
+}
+
+void myBlueTooth::sendBLEData(String data) {
+    if (bleServer != nullptr) {
+        bleServer->sendData(data);
+    }
+}
+
+bool myBlueTooth::isBLEConnected() {
+    if (bleServer != nullptr) {
+        return bleServer->isConnected();
+    }
+    return false;
+}
+
+void myBlueTooth::setBLEDataCallback(void (*callback)(String)) {
+    if (bleServer != nullptr) {
+        bleServer->setDataCallback(callback);
+    }
+}
+
+void myBlueTooth::setBLEConnectionCallback(void (*callback)(bool)) {
+    if (bleServer != nullptr) {
+        bleServer->setConnectionCallback(callback);
+    }
+}
+
+void myBlueTooth::startAdvertising() {
+    if (bleServer != nullptr) {
+        bleServer->startAdvertising();
+    }
+}
+
+void myBlueTooth::stopAdvertising() {
+    if (bleServer != nullptr) {
+        bleServer->stopAdvertising();
+    }
 }
 
 
@@ -236,4 +281,99 @@ void blueToothTask(void *parameter)
     }
     delay(10);
   }
+}
+
+// BLE 서버 태스크
+void bleServerTask(void *parameter) {
+    Serial.println("Starting BLE Server Task...");
+    
+    myBlueTooth bleDevice;
+    
+    // BLE 서버 초기화
+    bleDevice.initBLE();
+    
+    // 데이터 수신 콜백 설정
+    bleDevice.setBLEDataCallback([](String data) {
+        Serial.println("BLE Data received: " + data);
+        // 여기에 받은 데이터 처리 로직 추가
+    });
+    
+    // 연결 상태 콜백 설정
+    bleDevice.setBLEConnectionCallback([](bool connected) {
+        if (connected) {
+            Serial.println("=== BLE Client Connected! ===");
+        } else {
+            Serial.println("=== BLE Client Disconnected! ===");
+        }
+    });
+    
+    unsigned long lastSend = 0;
+    unsigned long lastStatus = 0;
+    unsigned long lastDisconnect = 0;
+    bool wasConnected = false;
+    
+    for (;;) {
+        bool isConnected = bleDevice.isBLEConnected();
+        
+        // 연결 상태 변화 감지
+        if (isConnected != wasConnected) {
+            if (isConnected) {
+                Serial.println("=== BLE Client Connected! ===");
+                lastDisconnect = 0; // 연결되면 재설정
+            } else {
+                Serial.println("=== BLE Client Disconnected! ===");
+                lastDisconnect = millis(); // 연결 해제 시간 기록
+                
+                // 연결 해제 후 광고 재시작
+                Serial.println("Restarting BLE advertising...");
+                bleDevice.stopAdvertising();
+                delay(1000); // 1초 대기
+                bleDevice.startAdvertising();
+                Serial.println("BLE advertising restarted");
+            }
+            wasConnected = isConnected;
+        }
+        
+        // 10초마다 상태 출력
+        if (millis() - lastStatus > 10000) {
+            Serial.println("BLE Server Status - Connected: " + String(isConnected));
+            if (lastDisconnect > 0) {
+                Serial.println("Time since disconnect: " + String((millis() - lastDisconnect)/1000) + "s");
+            }
+            lastStatus = millis();
+        }
+        
+        // 연결된 클라이언트에게 주기적으로 데이터 전송
+        jsonDocument.clear();
+        
+        // 20개 셀의 전압 데이터를 배열로 추가
+        JsonArray voltageArray = jsonDocument["V"].to<JsonArray>();
+        JsonArray impedanceArray = jsonDocument["I"].to<JsonArray>();
+        JsonArray temperatureArray = jsonDocument["T"].to<JsonArray>();
+        
+        for (int i = 0; i < 20; i++) {
+            voltageArray.add(cellvalue[i].voltage);
+            impedanceArray.add(cellvalue[i].impendance);
+            temperatureArray.add(cellvalue[i].temperature);
+        }
+        String data = jsonDocument.as<String>();
+        if (isConnected) {
+            if (millis() - lastSend > 5000) { // 5초마다 전송
+                //String data = "Hello from ESP32 Server - " + String(millis());
+                data += "\n";
+                bleDevice.sendBLEData(data);
+                lastSend = millis();
+                Serial.println("Sent data to BLE client");
+            }
+        }
+        
+        // 연결 해제 후 30분 경과 시 광고 중지 (전력 절약)
+        // if (!isConnected && lastDisconnect > 0 && (millis() - lastDisconnect) > 1800000) {
+        //     Serial.println("BLE Advertising stopped after 30 minutes of no connection");
+        //     // bleDevice.stopAdvertising(); // 필요시 주석 해제
+        //     lastDisconnect = 0; // 재설정
+        // }
+        
+        delay(100);
+    }
 }
