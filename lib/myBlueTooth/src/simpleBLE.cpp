@@ -1,7 +1,7 @@
 #include "simpleBLE.h"
 
 // 생성자
-SimpleBLE::SimpleBLE() {
+SimpleBLE::SimpleBLE(int modbusId) {
     pServer = nullptr;
     pCharacteristicTX = nullptr;
     pCharacteristicRX = nullptr;
@@ -11,6 +11,22 @@ SimpleBLE::SimpleBLE() {
     connectionCallback = nullptr;
     serverCallbacks = nullptr;
     characteristicCallbacks = nullptr;
+    
+    // modbusId에 따라 UUID 설정
+    if(modbusId == 2) {
+        SERVICE_UUID = BLEUUID(SERVICE_UUID2);
+        CHARACTERISTIC_UUID_TX = BLEUUID(CHARACTERISTIC_UUID_TX2);
+        CHARACTERISTIC_UUID_RX = BLEUUID(CHARACTERISTIC_UUID_RX2);
+    } else {
+        // 기본값 (modbusId 1)
+        SERVICE_UUID = BLEUUID(SERVICE_UUID1);
+        CHARACTERISTIC_UUID_TX = BLEUUID(CHARACTERISTIC_UUID_TX1);
+        CHARACTERISTIC_UUID_RX = BLEUUID(CHARACTERISTIC_UUID_RX1);
+    }
+    
+    // UUID 객체가 제대로 생성되었는지 확인
+    Serial.println("SimpleBLE constructor - modbusId: " + String(modbusId));
+    Serial.println("SERVICE_UUID created: " + String(SERVICE_UUID.toString().c_str()));
 }
 
 // 소멸자
@@ -28,7 +44,12 @@ SimpleBLE::~SimpleBLE() {
 
 // BLE 서버 초기화
 void SimpleBLE::initServer(String deviceName) {
-    // BLE 디바이스 초기화
+    // UUID는 생성자에서 이미 설정됨
+    Serial.println("initServer called with deviceName: " + deviceName);
+    
+    // BLE 초기화 전에 메모리 상태 확인
+    Serial.println("Free heap before BLE init: " + String(ESP.getFreeHeap()));
+    
     BLEDevice::init(deviceName.c_str());
     
     // 보안 설정 (연결 문제 해결을 위해 완화)
@@ -65,9 +86,9 @@ void SimpleBLE::initServer(String deviceName) {
     pService->start();
     
     Serial.println("BLE Server initialized: " + deviceName);
-    Serial.println("Service UUID: " + String(SERVICE_UUID));
-    Serial.println("TX Characteristic UUID: " + String(CHARACTERISTIC_UUID_TX));
-    Serial.println("RX Characteristic UUID: " + String(CHARACTERISTIC_UUID_RX));
+    Serial.println("Service UUID: " + String(SERVICE_UUID.toString().c_str()));
+    Serial.println("TX Characteristic UUID: " + String(CHARACTERISTIC_UUID_TX.toString().c_str()));
+    Serial.println("RX Characteristic UUID: " + String(CHARACTERISTIC_UUID_RX.toString().c_str()));
 }
 
 // 광고 시작
@@ -96,7 +117,7 @@ void SimpleBLE::startAdvertising() {
         pServer->getAdvertising()->start();
         
         Serial.println("=== BLE Server Advertising Started ===");
-        Serial.println("Service UUID: " + String(SERVICE_UUID));
+        Serial.println("Service UUID: " + String(SERVICE_UUID.toString().c_str()));
         Serial.print("Device Address: ");
         Serial.println(BLEDevice::getAddress().toString().c_str());
         Serial.println("Advertising Type: ADV_TYPE_IND");

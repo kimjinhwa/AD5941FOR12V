@@ -4,18 +4,30 @@
 #include <BluetoothSerial.h>
 #include "filesystem.h"
 #include "ArduinoJson.h"
-DynamicJsonDocument jsonDocument(512);
+DynamicJsonDocument jsonDocument(2048);
 extern BluetoothSerial SerialBT; // 기존 호환성을 위해 유지
 //extern LittleFileSystem lsFile;
 // Print *outputStream;
 // Stream *inputStream
 
-myBlueTooth::myBlueTooth(){
-    bleServer = new SimpleBLE();
+myBlueTooth::myBlueTooth(int modbusId){
+    Serial.println("myBlueTooth constructor - modbusId: " + String(modbusId));
+    Serial.println("Free heap before SimpleBLE creation: " + String(ESP.getFreeHeap()));
+    this->modbusId = modbusId;
+    bleServer = new SimpleBLE(modbusId);
+    
+    if (bleServer == nullptr) {
+        Serial.println("ERROR: Failed to create SimpleBLE object!");
+        return;
+    }
+    
+    Serial.println("SimpleBLE object created successfully");
+    Serial.println("Free heap after SimpleBLE creation: " + String(ESP.getFreeHeap()));
 }
 
+float getMaxTemperature();
 void myBlueTooth::initBLE() {
-    String deviceName = "ESP32_BLE_Server";
+    String deviceName = "ESP32_BLE_Server"+ String(modbusId);
     bleServer->initServer(deviceName);
     bleServer->startAdvertising();
     Serial.println("BLE Server initialized and started");
@@ -253,7 +265,8 @@ static int everySecondInterval = 5000;
 static unsigned long now;
 void blueToothTask(void *parameter)
 {
-  myBlueTooth blueTooth;
+  int modbusId = *(int *)parameter;
+  myBlueTooth blueTooth(modbusId);
   //outputStream = &Serial;
   simpleCli.inputStream= &Serial;
 //  SerialBT.register_callback((esp_spp_cb_t *)btCallBack);
@@ -284,10 +297,19 @@ void blueToothTask(void *parameter)
 }
 
 // BLE 서버 태스크
-void bleServerTask(void *parameter) {
+void bleServerTask(void *parameter /* modbusId */) {
     Serial.println("Starting BLE Server Task...");
     
-    myBlueTooth bleDevice;
+    // 안전한 포인터 접근
+    int modbusId = 1; // 기본값
+    if (parameter != nullptr) {
+        modbusId = *(int *)parameter;
+    }
+    
+    Serial.println("BLE Server Task - modbusId: " + String(modbusId));
+    Serial.println("Free heap at task start: " + String(ESP.getFreeHeap()));
+    
+    myBlueTooth bleDevice(modbusId);
     
     // BLE 서버 초기화
     bleDevice.initBLE();
@@ -308,8 +330,12 @@ void bleServerTask(void *parameter) {
     });
     
     unsigned long lastSend = 0;
-    unsigned long lastStatus = 0;
+    unsigned long last10SecondStatus = 0;
+    unsigned long last2SecondStatus = 0;
     unsigned long lastDisconnect = 0;
+    #define  EVERY_10SECOND 10000
+    #define  EVERY_5SECOND 5000
+    #define  EVERY_2SECOND 2000
     bool wasConnected = false;
     
     for (;;) {
@@ -334,36 +360,58 @@ void bleServerTask(void *parameter) {
             wasConnected = isConnected;
         }
         
+        // 2초마다 상태 출력
+        if (millis() - last2SecondStatus > EVERY_2SECOND) {
+            Serial.println("BLE Server Status - Connected: " + String(isConnected));
+            last2SecondStatus = millis();
+        }
+        
         // 10초마다 상태 출력
-        if (millis() - lastStatus > 10000) {
+        if (millis() - last10SecondStatus > EVERY_10SECOND) {
             Serial.println("BLE Server Status - Connected: " + String(isConnected));
             if (lastDisconnect > 0) {
                 Serial.println("Time since disconnect: " + String((millis() - lastDisconnect)/1000) + "s");
             }
-            lastStatus = millis();
+            last10SecondStatus = millis();
         }
         
         // 연결된 클라이언트에게 주기적으로 데이터 전송
-        jsonDocument.clear();
+        float temperature = getMaxTemperature();
+        temperature *= 100;
         
-        // 20개 셀의 전압 데이터를 배열로 추가
-        JsonArray voltageArray = jsonDocument["V"].to<JsonArray>();
-        JsonArray impedanceArray = jsonDocument["I"].to<JsonArray>();
-        JsonArray temperatureArray = jsonDocument["T"].to<JsonArray>();
-        
-        for (int i = 0; i < 20; i++) {
-            voltageArray.add( (int)(cellvalue[i].voltage*1000) );
-            impedanceArray.add( (int)(cellvalue[i].impendance*1000) );
-            temperatureArray.add( cellvalue[i].temperature );
-        }
-        String data = jsonDocument.as<String>();
         if (isConnected) {
-            if (millis() - lastSend > 5000) { // 5초마다 전송
-                //String data = "Hello from ESP32 Server - " + String(millis());
-                data += "\n";
-                bleDevice.sendBLEData(data);
+            if (millis() - lastSend > EVERY_5SECOND) { // 5초마다 전송
+                // 1. 전압 데이터 JSON 전송
+                jsonDocument.clear();
+                JsonArray voltageArray = jsonDocument["V"].to<JsonArray>();
+                for (int i = 0; i < 20; i++) {
+                    voltageArray.add((int)(cellvalue[i].voltage*1000));
+                }
+                String voltageData = jsonDocument.as<String>() + "\n";
+                bleDevice.sendBLEData(voltageData);
+                delay(50); // 전송 간격
+                
+                // 2. 임피던스 데이터 JSON 전송
+                jsonDocument.clear();
+                JsonArray impedanceArray = jsonDocument["I"].to<JsonArray>();
+                for (int i = 0; i < 20; i++) {
+                    impedanceArray.add((int)(cellvalue[i].impendance*1000));
+                }
+                String impedanceData = jsonDocument.as<String>() + "\n";
+                bleDevice.sendBLEData(impedanceData);
+                delay(50); // 전송 간격
+                
+                // 3. 온도 데이터 JSON 전송
+                jsonDocument.clear();
+                JsonArray temperatureArray = jsonDocument["T"].to<JsonArray>();
+                for (int i = 0; i < 20; i++) {
+                    temperatureArray.add((int)temperature);
+                }
+                String temperatureData = jsonDocument.as<String>() + "\n";
+                bleDevice.sendBLEData(temperatureData);
+                
                 lastSend = millis();
-                Serial.println("Sent data to BLE client");
+                Serial.println("Sent separate JSON data to BLE client");
             }
         }
         

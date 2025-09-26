@@ -8,13 +8,17 @@
 #include <BLE2902.h>
 
 // BLE 서비스 및 특성 UUID 정의
-#define SERVICE_UUID        "12345678-1234-1234-1234-123456789ABC"
-#define CHARACTERISTIC_UUID_RX "12345678-1234-1234-1234-123456789ABD"
-#define CHARACTERISTIC_UUID_TX "12345678-1234-1234-1234-123456789ABE"
+#define SERVICE_UUID1        "12345678-1234-1234-1234-123456789ABC"
+#define CHARACTERISTIC_UUID_RX1 "12345678-1234-1234-1234-123456789ABD"
+#define CHARACTERISTIC_UUID_TX1 "12345678-1234-1234-1234-123456789ABE"
+
+#define SERVICE_UUID2        "22345678-1234-1234-1234-123456789ABC"
+#define CHARACTERISTIC_UUID_RX2 "22345678-1234-1234-1234-123456789ABD"
+#define CHARACTERISTIC_UUID_TX2 "22345678-1234-1234-1234-123456789ABE"
 
 class SimpleBLE {
 public:
-    SimpleBLE();
+    SimpleBLE(int modbusId);
     ~SimpleBLE();
     
     // BLE 서버 초기화 및 시작
@@ -36,9 +40,13 @@ private:
     BLEServer* pServer;
     BLECharacteristic* pCharacteristicTX;
     BLECharacteristic* pCharacteristicRX;
+    BLEUUID SERVICE_UUID;
+    BLEUUID CHARACTERISTIC_UUID_TX;
+    BLEUUID CHARACTERISTIC_UUID_RX;
     
     bool deviceConnected;
     bool oldDeviceConnected;
+    
     
     void (*dataCallback)(String);
     void (*connectionCallback)(bool);

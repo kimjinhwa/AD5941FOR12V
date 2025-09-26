@@ -322,16 +322,64 @@ void setup()
 // #endif
 
   Serial.println("BlueTooth Task create....");
-  xTaskCreate(blueToothTask, "blueToothTask", 5000, NULL, 1, h_pxblueToothTask);
+  static int bleModbusId = systemDefaultValue.modbusId;
+  xTaskCreate(blueToothTask, "blueToothTask", 5000, &bleModbusId, 1, h_pxblueToothTask);
   
   // BLE 서버 태스크 추가 (ESP32 간 통신용)
   Serial.println("BLE Server Task create....");
-  xTaskCreate(bleServerTask, "bleServerTask", 8000, NULL, 1, NULL);
+  Serial.println("modbusId value: " + String(systemDefaultValue.modbusId));
+  
+  // 안전한 modbusId 전달을 위해 정적 변수 사용
+  xTaskCreate(bleServerTask, "bleServerTask", 8192, &bleModbusId, 1, NULL);
   
   xTaskCreate(AD5940_Main, "AD5940_Main", 5000, NULL, 1, h_pxAD5940Task);
   simpleCli.outputStream = &Serial;
   memset(cellvalue,0,sizeof(cellvalue));
 };
+float readTemperature(int PORTNO){
+  int rValue = 0;
+  adc1_channel_t readChannel; 
+  esp_adc_cal_characteristics_t adc_chars;
+  adc1_config_width(ADC_WIDTH_BIT_12);
+  adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
+  esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+// #define IN_TH1              GPIO_NUM_34
+// #define IN_TH2              GPIO_NUM_35
+  int portNumber = PORTNO;
+  if( PORTNO == IN_TH1)
+  {
+    portNumber = IN_TH1;
+    readChannel = ADC1_CHANNEL_6;
+  }
+  else if( PORTNO == IN_TH2)
+  {
+    portNumber = IN_TH2;
+    readChannel = ADC1_CHANNEL_7;
+  }
+  else
+  {
+    return 0.0f;
+  }
+  rValue = adc1_get_raw(readChannel);
+  float Vntc= esp_adc_cal_raw_to_voltage((uint32_t)rValue , &adc_chars);
+  Vntc /= 1000.0;
+  float vt = 3.3;
+  float Rref = 10000.0;
+  float Beta = 3950.0;
+  float ntcAt25 = 10000.0;
+  float Rntc = Rref *Vntc/ (vt- Vntc);
+  float ABT0 = 273.15 + 25;  // 25 degree
+  float temperature = 1 / (1 / ABT0 + (1 / Beta) * log(Rntc / ntcAt25));
+  temperature = temperature - 273.15;
+  if (temperature < -10)
+  temperature = -35;
+  return temperature;
+}
+float getMaxTemperature(){
+  float temperature1 = readTemperature(IN_TH1);
+  float temperature2 = readTemperature(IN_TH2);
+  return max(temperature1, temperature2);
+}
 void loop(void)
 {
   bool bRet;
@@ -352,6 +400,8 @@ void loop(void)
   if ((now - previous_3Secondmills > Interval_3Second))
   {
     previous_3Secondmills= now;
+    float temperature = getMaxTemperature();
+    Serial.printf("\nTemperature : %f",temperature);
   }
   // if ((now - previous_5Secondmills > Interval_5Second) && (elaspTime % 60 ==0))
   // {

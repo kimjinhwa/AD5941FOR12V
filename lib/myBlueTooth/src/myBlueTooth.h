@@ -6,7 +6,7 @@
 
 class myBlueTooth  {
     public :
-    myBlueTooth();
+    myBlueTooth(int modbusId);
     void readInputSerialBT();
     void initBLE();
     void sendBLEData(String data);
@@ -16,6 +16,7 @@ class myBlueTooth  {
     void startAdvertising();
     void stopAdvertising();
     private:
+    int modbusId;
     String input = "";
     SimpleBLE* bleServer;
 };

@@ -28,7 +28,7 @@
 #define ESP_INTR_FLAG_DEFAULT 0
 #define ESP_INTR_FLAG_DEFAULT 0
 
-#define MAX_INSTALLED_CELLS 50
+#define MAX_INSTALLED_CELLS 40
 
 typedef struct
 {
