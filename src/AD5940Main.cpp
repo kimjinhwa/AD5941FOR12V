@@ -350,9 +350,11 @@ void AD5940_Main_Loop()
   
   AppBATCtrl(BATCTRL_START, 0);
   static long elaspTime = 0;
-  uint8_t portNumber = elaspTime % 2;
-  simpleCli.outputStream->printf("\nP1 : %d, P2 : %d, P3 : %d, P4 : %d, P5 : %d portNumber : %d",
-                                 digitalRead(PORT1), digitalRead(PORT2), digitalRead(PORT3), digitalRead(PORT4), digitalRead(PORT5), portNumber);
+  simpleCli.outputStream->printf("\nP1 : %d, P2 : %d, P3 : %d, P4 : %d, P5 : %d portNumber : %d", digitalRead(PORT1), digitalRead(PORT2), digitalRead(PORT3), digitalRead(PORT4), digitalRead(PORT5) 
+      ,selectCell.getCurrentPort());
+  ESP_LOGI(TAG, "\nP1:%d,P2:%d,P3:%d,P4:%d,P5:%d, portNumber : %d", 
+      digitalRead(PORT1), digitalRead(PORT2), digitalRead(PORT3), digitalRead(PORT4), digitalRead(PORT5), 
+      selectCell.getCurrentPort());
   
   fImpCar_Type pImpbuff[systemDefaultValue.RcalLoopCount/2];
   int successReadCount = 0;
@@ -372,16 +374,16 @@ void AD5940_Main_Loop()
     {
       AD5940_AGPIOToggle(AGPIO_Pin1);
       AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
-      AD5940_ClrMCUIntFlag(); /* Clear this flag */
+      //AD5940_ClrMCUIntFlag(); /* Clear this flag */
       temp = APPBUFF_SIZE;
       AppBATISR(AppBuff, &temp); /* Deal with it and provide a buffer to store data we got */
-      BATShowResult("NORMAL:",AppBuff, temp); /* Print measurement results over UART */
+      //BATShowResult("NORMAL:",AppBuff, temp); /* Print measurement results over UART */
       
       // AppBuff에서 임피던스 값을 직접 읽어옴
       fImpCar_Type *pImp = (fImpCar_Type*)AppBuff;
       
       // 유효한 값이고 충분한 루프가 지났을 때만 처리
-      if(AD5940_ComplexMag(pImp) > 0.01f && loopCount > (int)systemDefaultValue.RcalLoopCount*2/3)
+      if(AD5940_ComplexMag(pImp) > 0.0001f && loopCount > (int)systemDefaultValue.RcalLoopCount*2/3)
       {
         // 유효한 측정값을 버퍼에 저장
         pImpbuff[successReadCount] = *pImp;
@@ -396,19 +398,26 @@ void AD5940_Main_Loop()
         pImpAvg.Real /= successReadCount;
         pImpAvg.Image /= successReadCount;
         BATShowResult("APR:",AppBuff, temp); /* Print measurement results over UART */
-        BATShowResult("AVG:",(uint32_t*)&pImpAvg, 1); /* Print measurement results over UART */
+        BATShowResult("AVG:",(uint32_t*)&pImpAvg, temp); /* Print measurement results over UART */
          
         // 평균값으로 임피던스 저장
         cellvalue[selecectedCellNumber - 1].impendance = AD5940_ComplexMag(&pImpAvg);
       }
-      
-      printf("Loop:%d cell:%d--------------------------------\n",loopCount,selecectedCellNumber);
+      if(AD5940_ComplexMag(pImp) > 0.0001f){
+        delay(100);
+      }
+      else{
+        delay(1000);
+      }
+      printf("------------------------------->Loop:%d cell:%d\n",loopCount,selecectedCellNumber);
       AD5940_SEQMmrTrig(SEQID_0); /* 정상 동작 확인 완료 Trigger next measurement ussing MMR write*/
-      delay(1000);
     }
-    delay(1);
   }
 };
+void setSelectCell(uint8_t cellNumber)
+{
+  selecectedCellNumber = cellNumber;
+}
 void AD5940_Main(void *parameters)
 {
   AD5940_MCUResourceInit(0);

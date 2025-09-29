@@ -145,9 +145,9 @@ void SimpleBLE::sendData(String data) {
     if (pCharacteristicTX != nullptr && deviceConnected) {
         pCharacteristicTX->setValue(data.c_str());
         pCharacteristicTX->notify();
-        Serial.println("BLE Sent: " + data);
+        ESP_LOGI("BLE", "BLE Sent: %s", data.c_str());
     } else {
-        Serial.println("BLE Send failed - not connected");
+        ESP_LOGI("BLE", "BLE Send failed - not connected");
     }
 }
 

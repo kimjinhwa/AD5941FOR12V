@@ -301,6 +301,7 @@ ModbusMessage FC05(ModbusMessage request)
 };
 
 bool isAD5940StructInit_valueChanged = false;
+void setSelectCell(uint8_t cellNumber);
 ModbusMessage FC06(ModbusMessage request)
 {
   uint16_t address;       // requested register address
@@ -406,6 +407,7 @@ ModbusMessage FC06(ModbusMessage request)
       break;
     case 145:
       selectCell.select(value);
+      setSelectCell(value);
       break;
     default:
       break;

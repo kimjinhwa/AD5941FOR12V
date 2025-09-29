@@ -378,6 +378,9 @@ void bleServerTask(void *parameter /* modbusId */) {
         // 연결된 클라이언트에게 주기적으로 데이터 전송
         float temperature = getMaxTemperature();
         temperature *= 100;
+        for (int i = 0; i < 20; i++) {
+            cellvalue[i].temperature = int(temperature);
+        }
         
         if (isConnected) {
             if (millis() - lastSend > EVERY_5SECOND) { // 5초마다 전송
