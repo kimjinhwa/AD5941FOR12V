@@ -11,6 +11,7 @@
 #include "EEPROM.h"
 #include "ModbusServerRTU.h"
 #include "mainClass.hpp"
+#include "WiFi.h"
 
 LittleFileSystem lsFile;
 SimpleCLI simpleCli;
@@ -521,6 +522,10 @@ void loglevel_configCallback(cmd *cmdPtr)
   simpleCli.outputStream->printf("\r\nLoglevel Changed %d", systemDefaultValue.logLevel);
   esp_log_level_set("*",level);
 };
+void ip_address_configCallback(cmd *cmdPtr){
+  Command cmd(cmdPtr);
+  simpleCli.outputStream->printf("\r\nIP Address: %s", WiFi.localIP().toString().c_str());
+}
 
 void relay_configCallback(cmd *cmdPtr){
   Command cmd(cmdPtr);
@@ -597,6 +602,7 @@ SimpleCLI::SimpleCLI(int commandQueueSize, int errorQueueSize,Print *outputStrea
   cmd_config = addCommand("df", df_configCallback);
   cmd_config = addSingleArgCmd("reboot", reboot_configCallback);
   cmd_config = addCommand("shutdown", shutdown_configCallback);
+  cmd_config = addCommand("ip/address", ip_address_configCallback);
 
   cmd_config = addSingleArgCmd("r/elay", relay_configCallback);
   cmd_config.setDescription("relay on off controll \r\n relay -s/el [1] [-off]");

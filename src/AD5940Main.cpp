@@ -172,7 +172,7 @@ static int32_t AD5940PlatformCfg(void)
   fifo_cfg.FIFOMode = FIFOMODE_FIFO;
   fifo_cfg.FIFOSize = FIFOSIZE_4KB;                       /* 4kB for FIFO, The reset 2kB for sequencer */
   fifo_cfg.FIFOSrc = FIFOSRC_DFT;
-  fifo_cfg.FIFOThresh = 4;//AppBATCfg.FifoThresh;        /* DFT result. One pair for RCAL, another for Rz. One DFT result have real part and imaginary part */
+  fifo_cfg.FIFOThresh = 4;                                /* DFT result. One pair for RCAL, another for Rz. One DFT result have real part and imaginary part */
   ESP_LOGI(TAG,"AD5940_FIFOCfg()");
   AD5940_FIFOCfg(&fifo_cfg);                             /* Disable to reset FIFO. */
   fifo_cfg.FIFOEn = bTRUE;  
@@ -182,9 +182,9 @@ static int32_t AD5940PlatformCfg(void)
   /* Step3. Interrupt controller */
   ESP_LOGI(TAG,"Step3. Interrupt controller ");
   AD5940_INTCCfg(AFEINTC_1, AFEINTSRC_ALLINT, bTRUE);           /* Enable all interrupt in Interrupt Controller 1, so we can check INTC flags */
-  AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
   AD5940_INTCCfg(AFEINTC_0, AFEINTSRC_DATAFIFOTHRESH, bTRUE);   /* Interrupt Controller 0 will control GP0 to generate interrupt to MCU */
   AD5940_INTCClrFlag(AFEINTSRC_ALLINT);
+  /* Step4: Reconfigure GPIO */
   gpio_cfg.FuncSet = GP0_INT|GP2_SYNC;
   gpio_cfg.InputEnSet = AGPIO_Pin0;
   gpio_cfg.OutputEnSet = AGPIO_Pin0|AGPIO_Pin2 | AGPIO_Pin1;
@@ -383,6 +383,7 @@ void AD5940_Main_Loop()
       fImpCar_Type *pImp = (fImpCar_Type*)AppBuff;
       
       // 유효한 값이고 충분한 루프가 지났을 때만 처리
+      BATShowResult("NORMAL:",AppBuff, temp); /* Print measurement results over UART */
       if(AD5940_ComplexMag(pImp) > 0.0001f && loopCount > (int)systemDefaultValue.RcalLoopCount*2/3)
       {
         // 유효한 측정값을 버퍼에 저장
@@ -410,6 +411,13 @@ void AD5940_Main_Loop()
         delay(1000);
       }
       printf("------------------------------->Loop:%d cell:%d\n",loopCount,selecectedCellNumber);
+      if (isAD5940ReInit == 1)
+      {
+        isAD5940ReInit = 0;
+        AD5940_Main_reinit();
+        loopCount = 0;
+        printf("AD5940_Main_reinit\n");
+      }
       AD5940_SEQMmrTrig(SEQID_0); /* 정상 동작 확인 완료 Trigger next measurement ussing MMR write*/
     }
   }
@@ -451,12 +459,6 @@ void AD5940_Main(void *parameters)
       //   AppBATCfg.RcalVolt.Image = systemDefaultValue.image_Cal;
       //   isCalibrated = AD5940_Calibration_ForLoop();
       // }
-      if (isAD5940ReInit == 1)
-      {
-        isAD5940ReInit = 0;
-        AD5940_Main_reinit();
-        printf("AD5940_Main_reinit\n");
-      }
       AD5940_Main_Loop();
     }
     else

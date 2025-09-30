@@ -412,16 +412,16 @@ ModbusMessage FC06(ModbusMessage request)
     default:
       break;
     };
-    ESP_LOGI("MODUBS", "Write EEPROM");
-    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
-    EEPROM.commit();
-    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     if(isAD5940StructInit_valueChanged)
     {
       isAD5940ReInit = 1;
       isAD5940StructInit_valueChanged = false;
       //esp_restart();
     }
+    ESP_LOGI("MODUBS", "Write EEPROM");
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.commit();
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
   }
 
   if(writeAddress >= 0x1101 && writeAddress <= 0x2501  ){  // Cell제어 
