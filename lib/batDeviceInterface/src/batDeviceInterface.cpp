@@ -80,21 +80,22 @@ float BatDeviceInterface::readBatAdcValue(float filter)
       rValue = adc1_get_raw(ADC1_CHANNEL_0);
       singleVoltage = esp_adc_cal_raw_to_voltage((uint32_t)rValue , &adc_chars);
       // ADC 보정 함수 적용
-      singleVoltage = adcCalibration(singleVoltage);
+      //singleVoltage = adcCalibration(singleVoltage);
       batVoltageAdcValue += singleVoltage;
       vTaskDelay(1);
     }
+    printf("singleVoltage---->1 : %d\n",singleVoltage);
     batVoltageAdcValue = batVoltageAdcValue/filter ;
-    //printf("singleVoltage---->1 : %f\n",batVoltageAdcValue );
+    printf("batVoltageAdcValue---->2 : %f\n",batVoltageAdcValue);
   }
+  batVoltageAdcValue  += 287.0;  // 0.685V offset from SSR
   batVoltageAdcValue += systemDefaultValue.voltageCompensation[_cellNumbver-1];
   uint32_t voltage = batVoltageAdcValue;
   
-  batVoltageAdcValue = voltage*5.145;  // OPAMP 배율
-  //printf("singleVoltage---->2 : %f\n",batVoltageAdcValue );
+  batVoltageAdcValue = voltage*5.0;  // OPAMP 배율
+  printf("batVoltageAdcValue---->3 : %f\n",batVoltageAdcValue );
   batVoltageAdcValue  /= 1000.0;  // mv -> v
   //printf("singleVoltage---->3 : %f\n",batVoltageAdcValue );
-  batVoltageAdcValue  += 0.685;  // 0.685V offset from SSR
   //printf("singleVoltage---->4 : %f\n",batVoltageAdcValue );
   if(batVoltageAdcValue < 1.3 ) batVoltageAdcValue = 0; // 1 offset = 0.00151V
   return batVoltageAdcValue ;
