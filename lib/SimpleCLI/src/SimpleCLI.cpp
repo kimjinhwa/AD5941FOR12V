@@ -146,7 +146,8 @@ void batnumber_configCallback(cmd *cmdPtr)
   {
     return;
   }
-  systemDefaultValue.installed_cells = argVal.toInt();
+  systemDefaultValue.installed_cells = argVal.toInt()>MAX_INSTALLED_CELLS?
+      MAX_INSTALLED_CELLS:argVal.toInt();
   EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
   EEPROM.commit();
   EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
@@ -158,11 +159,9 @@ void batnumber_configCallback(cmd *cmdPtr)
 void printCompensationValue(){
   simpleCli.outputStream->printf("\r\nCompensation Value");
   simpleCli.outputStream->printf("\r\n\tno\timp\tvol\r\n");
-  for (int i = 0; i < 10; i++){
-    simpleCli.outputStream->printf("\t%d\t%d\t%d\r\n",i+1,systemDefaultValue.impendanceCompensation[i],systemDefaultValue.voltageCompensation[i] );
-  }
-  for (int i = 10; i < 20; i++){
-    simpleCli.outputStream->printf("\t%d\t%d\t%d\r\n",i+1,systemDefaultValue.impendanceCompensation[i],systemDefaultValue.voltageCompensation[i] );
+  for (int i = 0; i < 20; i++){
+    simpleCli.outputStream->printf("\n\t%d\t%d\t%d\r\n",i+1,systemDefaultValue.impendanceCompensation[i],
+      systemDefaultValue.voltageCompensation[i] );
   }
   simpleCli.outputStream->printf("\r\n-------------------------\r\n");
 }

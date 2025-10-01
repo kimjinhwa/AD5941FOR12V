@@ -37,10 +37,10 @@ char TAG[] = "AD5940";
 
 extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
 /* It's your choice here how to do with the data. Here is just an example to print them to UART */
-extern int measuredImpedance_1[20];
-extern int measuredImpedance_2[20];
-extern int measuredVoltage_1[20];
-extern int measuredVoltage_2[20];
+extern int measuredImpedance_1[MAX_INSTALLED_CELLS];
+extern int measuredImpedance_2[MAX_INSTALLED_CELLS];
+extern int measuredVoltage_1[MAX_INSTALLED_CELLS];
+extern int measuredVoltage_2[MAX_INSTALLED_CELLS];
 extern SimpleCLI simpleCli;
 fImpCar_Type pImpResult[MAX_LOOP_COUNT +1];
 

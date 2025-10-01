@@ -79,7 +79,7 @@ int16_t logForHour=0;
 uint32_t loopCount=0;
 static bool isModuleBootingOK=false;
 static long elaspTime=-1;
-
+float maxTemperature = 0.0f;
 void AD5940_ShutDown();
 
 void setErrorMessageToModbus(bool setError,const char* msg);
@@ -137,9 +137,11 @@ void readnWriteEEProm()
     systemDefaultValue.installed_cells= 20;
     strncpy(systemDefaultValue.userid,"admin",10);
     strncpy(systemDefaultValue.userpassword,"admin",10);
-    for(int i=0;i<40;i++){
+    for(int i=0;i<20;i++){
       systemDefaultValue.voltageCompensation[i]=0;
       systemDefaultValue.impendanceCompensation[i]=0;
+      systemDefaultValue.baseVoltage[i]=0;
+      systemDefaultValue.baseImpendance[i]=0;
     }
     systemDefaultValue.real_Cal = -33410.0f;
     systemDefaultValue.image_Cal = 35511.0f;
@@ -400,8 +402,8 @@ void loop(void)
   if ((now - previous_3Secondmills > Interval_3Second))
   {
     previous_3Secondmills= now;
-    float temperature = getMaxTemperature();
-    Serial.printf("\nTemperature : %f",temperature);
+    getMaxTemperature();
+    Serial.printf("\nTemperature : %f",maxTemperature);
   }
   // if ((now - previous_5Secondmills > Interval_5Second) && (elaspTime % 60 ==0))
   // {

@@ -24,36 +24,42 @@ void setErrorMessageToModbus(bool setError,const char* msg)
     strErrorMessage[1]=0;
   }
 };
+extern float maxTemperature;
+
 void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   struct timeval tmv;
   gettimeofday(&tmv, NULL);
   if(fCode== 4){
-    for(int i=0;i<40;i++){
+    for(int i=0;i<20;i++){
       sendValue[i] = (uint16_t)(cellvalue[i].voltage *100);
+      sendValue[i+20] = (uint16_t)(systemDefaultValue.baseVoltage[i]);
     }
     int16_t temperature; 
     for(int i=40;i<80;i++){
       sendValue[i] = cellvalue[i-40].temperature ;
       //*(sendValue+i) = (uint16_t)();
     }
-    for(int i=80;i<120;i++){
+    for(int i=80;i<100;i++){
       sendValue[i] = (uint16_t)(cellvalue[i-80].impendance*100);
+      sendValue[i+20] = (uint16_t)(systemDefaultValue.baseImpendance[i-80]);
     }
     //에러가 있다면 여기에 값을 적어 넣는다. 최대 30글자이다.
   }
   if(fCode== 3)
   {
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
-    for(int i=0;i<40;i++){
+    for(int i=0;i<20;i++){
       sendValue[i] = (uint16_t)(systemDefaultValue.voltageCompensation[i]);
+      sendValue[i+20] = (uint16_t)(systemDefaultValue.baseVoltage[i]);
     }
     int16_t temperature; 
     for(int i=40;i<80;i++){
-      sendValue[i] = 0;
+      sendValue[i] = (uint16_t)(maxTemperature);
       //*(sendValue+i) = (uint16_t)();
     }
-    for(int i=80;i<120;i++){
+    for(int i=80;i<100;i++){
       sendValue[i] = (uint16_t)(systemDefaultValue.impendanceCompensation[i-80]);
+      sendValue[i+20] = (uint16_t)(systemDefaultValue.baseImpendance[i-80]);
     }
 
   }
@@ -155,7 +161,7 @@ ModbusMessage FC04(ModbusMessage request) {
   request.get(4, words);
   writeAddress = address & 0x00FF;
 
-  if(  words ==0  ||  ((address & 0x00FF) + words) > 255){
+  if(  words ==0  ||  words > 256){
     response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
     return response;
   } 
@@ -171,22 +177,22 @@ ModbusMessage FC04(ModbusMessage request) {
         //Serial.printf(" %d",value);
       }
   }
-  else if((address >= 0x100) && address+words < (0x100 + MAX_INSTALLED_CELLS)){
+  else if((address >= 0x100) && address+words < (0x100 + 40)){
     for (i = writeAddress ; i< words+writeAddress ; i++)
     {
         value = sendValue[i+40];
         response.add(value);
     }
   }
-  else if((address >= 0x200) && address+words < (0x200 + MAX_INSTALLED_CELLS)){
-    writeAddress = address & 0x00FF;
+  else if((address >= 0x200) && address+words < (0x200 + 40)){
+    writeAddress = address & 0x00FF; //중복코드이다 이미 마스킹되어 있다.
     for (i = writeAddress; i< words+writeAddress ; i++)
     {
         value = sendValue[i+80];
         response.add(value);
     }
   }
-  else if((address >= 0x300) && address+words < (0x300 + MAX_INSTALLED_CELLS)){
+  else if((address >= 0x300) && address+words < (0x300 + 40)){
     writeAddress = address & 0x00FF;
     for (i = writeAddress ;i <  words+writeAddress; i++)
     {
@@ -326,9 +332,16 @@ ModbusMessage FC06(ModbusMessage request)
   ESP_LOGI("MODBUS", "\nFunction code %d address(%d) writeAddress(%d) value(%d) ",
     response.getFunctionCode(), address, writeAddress, value);
   ESP_LOGI("MODBUS", "Write and read %d ", systemDefaultValue.voltageCompensation[writeAddress]);
-  if (writeAddress < 40)  // voltage compensation
+  if (writeAddress < 20)  // voltage compensation
   {
     systemDefaultValue.voltageCompensation[writeAddress] = value;
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.commit();
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  }
+  else if (writeAddress >= 20 && writeAddress < 40)  // voltage compensation
+  {
+    systemDefaultValue.baseVoltage[writeAddress - 20] = value;
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
@@ -336,9 +349,16 @@ ModbusMessage FC06(ModbusMessage request)
   if (writeAddress >= 40 && writeAddress < 80) // temperature
   {
   }
-  if (writeAddress >= 80 && writeAddress < 120)  //impedance compensation
+  if (writeAddress >= 80 && writeAddress < 100)  //impedance compensation
   {
     systemDefaultValue.impendanceCompensation[writeAddress - 80] = value;
+    EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+    EEPROM.commit();
+    EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
+  }
+  if (writeAddress >= 100 && writeAddress < 120)  //impedance compensation
+  {
+    systemDefaultValue.baseImpendance[writeAddress - 100] = value;
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
     EEPROM.commit();
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));

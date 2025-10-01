@@ -28,7 +28,7 @@
 #define ESP_INTR_FLAG_DEFAULT 0
 #define ESP_INTR_FLAG_DEFAULT 0
 
-#define MAX_INSTALLED_CELLS 40
+#define MAX_INSTALLED_CELLS 20
 
 typedef struct
 {
@@ -49,8 +49,10 @@ typedef struct
     uint16_t cutoffHighCellVoltage;    // 75 
     uint16_t cutoffLowCellVoltage;    // 77
     uint16_t alarmDiffCellVoltage;    // 75 + 1 = 76
-    int16_t voltageCompensation[40];// 76 + 80 =  156byte 
-    int16_t impendanceCompensation[40];// 156 + 80 = 236
+    int16_t voltageCompensation[20];// 76 + 80 =  156byte 
+    int16_t impendanceCompensation[20];// 156 + 80 = 236
+    int16_t baseVoltage[20];// 76 + 80 =  156byte 
+    int16_t baseImpendance[20];// 156 + 80 = 236
     float real_Cal;  // 236+4 = 240
     float image_Cal; // 240 + 4 = 248
     uint8_t logLevel; // 240 + 4 = 248
@@ -70,6 +72,8 @@ typedef struct {
   int16_t temperature;// 2byte
   int16_t voltageCompensation;// 2byte
   int16_t impendanceCompensation;// 2byte
+  int16_t baseVoltage;// 2byte
+  int16_t baseImpendance;// 2byte
 }_cell_value; // Total 18bte
 extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
 

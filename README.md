@@ -1,4 +1,18 @@
 ## 12V BMS For 4 Cell
+#VERSION "3.1.3"  
+- 최대 셀수를 MAX_INSTALLED_CELLS로 제한한다.
+- 현재 버전은 최대 20셀을 넘지 않게 한다. 
+- 시스템 기본 변수 2개를 추가한다. 
+```C
+    int16_t baseVoltage[20];// 76 + 80 =  156byte 
+    int16_t baseImpendance[20];// 156 + 80 = 236
+```
+#MODBUS ADDRESS 03,06
+- 최대 요청수 : 256
+- Address : 0~255
+
+
+
 ### Purpose
 - To support GunNam-Dam
 - Board Version ...
