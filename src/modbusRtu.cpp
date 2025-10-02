@@ -7,6 +7,10 @@
 
 extern uint8_t isAD5940ReInit;
 char strErrorMessage[40];
+static int saveToBaseVoltage;
+void setMeasureImpendanceNow(bool value);
+bool getMeasureImpendanceNow();
+
 void setErrorMessageToModbus(bool setError,const char* msg)
 {
   memset(strErrorMessage,0x00,sizeof(strErrorMessage));
@@ -29,6 +33,8 @@ extern float maxTemperature;
 void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   struct timeval tmv;
   gettimeofday(&tmv, NULL);
+  struct tm *timeinfo = gmtime(&tmv.tv_sec);
+  //String strLog = getTimeString(tmv.tv_sec);
   if(fCode== 4){
     for(int i=0;i<20;i++){
       sendValue[i] = (uint16_t)(cellvalue[i].voltage *100);
@@ -63,35 +69,38 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
     }
 
   }
-  sendValue[120]=0;
-  sendValue[121]=0;
-  sendValue[122]=0;
-  sendValue[123]=0;
-  sendValue[124]=0;
-  sendValue[125]=0;
+  /*timesetting */
+  sendValue[120]=  timeinfo->tm_year +1900;
+  sendValue[121]=  timeinfo->tm_mon+1;
+  sendValue[122]=  timeinfo->tm_mday;
+  sendValue[123]=  timeinfo->tm_hour;
+  sendValue[124]=  timeinfo->tm_min;
+  sendValue[125]=  timeinfo->tm_sec;
+  /*--------------------------------*/  
   sendValue[126]= systemDefaultValue.modbusId ;
   sendValue[127]= systemDefaultValue.installed_cells;
   sendValue[128]= systemDefaultValue.AlarmTemperature;
   sendValue[129]= systemDefaultValue.alarmHighCellVoltage ;
   sendValue[130]=systemDefaultValue.alarmLowCellVoltage;
   sendValue[131]= systemDefaultValue.AlarmAmpere ;  // 200A
-  for(int  i=132;i<160;i++) sendValue[i] =0x00;
+  //for(int  i=132;i<160;i++) sendValue[i] =0x00;
+  sendValue[132] = systemDefaultValue.ImpedanceFactor;
+  sendValue[133] = systemDefaultValue.VoltageFactor;
+  sendValue[134] = systemDefaultValue.TemperatureFactor;
+  sendValue[135] = systemDefaultValue.runMode;
+  sendValue[136] = systemDefaultValue.logLevel;
+  sendValue[137]=systemDefaultValue.real_Cal;
+  sendValue[138]=systemDefaultValue.image_Cal;
+  sendValue[139]=systemDefaultValue.ImpedanceMeasurePeriod;
 
-  //setErrorMessageToModbus(true,"Hello....\n");
-  // char *dest ;
-  // dest = (char*)(sendValue+141); //strncpy(dest ,strErrorMessage,sizeof(strErrorMessage)-2);
-  // for(int i=0; i< 38;i++){
-  //   dest[i] = strErrorMessage[i+2]; // Serial.printf("%02x ",dest[i]);
-  // }
-  //sendValue[140]= ((int)strErrorMessage[0] << 8) & ((int)strErrorMessage[1] & 0x00ff) ;
-  if(strErrorMessage[0] != 0 || strErrorMessage[1] != 0) sendValue[140]=1;
-  // ESP_LOGI("TEST","\n-------> send Message Value %s %d %d %d",
-  //   dest,sendValue[140],strErrorMessage[0],strErrorMessage[1] );
+
   sendValue[141] = systemDefaultValue.ACVoltPP;
   sendValue[142] = systemDefaultValue.DCVolt;
   sendValue[143] = systemDefaultValue.SinFreq;
   sendValue[144] = systemDefaultValue.RcalLoopCount;
   sendValue[145] = selectCell.getCurrentPort();
+  sendValue[146] = getMeasureImpendanceNow();
+  sendValue[147] = saveToBaseVoltage;
 }
 char modbusCellData[100];
 
@@ -365,33 +374,57 @@ ModbusMessage FC06(ModbusMessage request)
   }
   if (writeAddress >= 120 && writeAddress < 126)
   { // 시간을 설정한다.
+
+    gettimeofday(&tmv, NULL);
+    struct tm *timeinfo = gmtime(&tmv.tv_sec);
     switch (writeAddress)
     {
     case 120:
+      if(value > 1900) value = value - 1900;
+      timeinfo->tm_year = value;
       break;
     case 121:
+      value = value - 1;
+      timeinfo->tm_mon = value;
       break;
     case 122:
+      timeinfo->tm_mday = value;
       break;
     case 123:
+      timeinfo->tm_hour = value;
       break;
     case 124:
+      timeinfo->tm_min = value;
       break;
     case 125:
+      timeinfo->tm_sec = value;
       break;
 
     default:
       break;
     }
+    tmv.tv_sec = mktime(timeinfo);
+    settimeofday(&tmv, NULL);
 
   }
-  if (writeAddress >= 126 && writeAddress < 146)
+  if (writeAddress >= 126 && writeAddress < 147)
   {
 
     switch (writeAddress)
     {
     case 126:
       systemDefaultValue.modbusId = value;
+      for(int i=0;i<20;i++){
+        if(systemDefaultValue.modbusId == 1){
+          systemDefaultValue.baseVoltage[i] = measuredVoltage_1[i];
+          systemDefaultValue.baseImpendance[i] = measuredImpedance_1[i];
+        }
+        else
+        {
+          systemDefaultValue.baseVoltage[i] = measuredVoltage_2[i];
+          systemDefaultValue.baseImpendance[i] = measuredImpedance_2[i];
+        }
+      }
       break;
     case 127:
       systemDefaultValue.installed_cells= value;
@@ -408,6 +441,30 @@ ModbusMessage FC06(ModbusMessage request)
     case 131:
       isAD5940StructInit_valueChanged = true;
       systemDefaultValue.AlarmAmpere = value;
+      break;
+    case 132:
+      systemDefaultValue.ImpedanceFactor = value;
+      break;
+    case 133:
+      systemDefaultValue.VoltageFactor = value;
+      break;
+    case 134:
+      systemDefaultValue.TemperatureFactor = value;
+      break;
+    case 135:
+      systemDefaultValue.runMode = value;
+      break;
+    case 136:
+      systemDefaultValue.logLevel = value;
+      break;
+    case 137:
+      systemDefaultValue.real_Cal = value;
+      break;
+    case 138:
+      systemDefaultValue.image_Cal = value;
+      break;
+    case 139:
+      systemDefaultValue.ImpedanceMeasurePeriod = value;
       break;
     case 141:
       isAD5940StructInit_valueChanged = true;
@@ -428,6 +485,18 @@ ModbusMessage FC06(ModbusMessage request)
     case 145:
       selectCell.select(value);
       setSelectCell(value);
+      break;
+    case 146:  
+      value = value >= 1 ? 1 : 0;
+      setMeasureImpendanceNow(value);
+      break;
+    case 147:
+      if( value == 1){
+        for(int i=0;i<20;i++){
+          systemDefaultValue.baseVoltage[i] = (uint16_t)(cellvalue[i].voltage *100);
+        }
+        saveToBaseVoltage = 2;
+      }
       break;
     default:
       break;

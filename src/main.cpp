@@ -140,8 +140,8 @@ void readnWriteEEProm()
     for(int i=0;i<20;i++){
       systemDefaultValue.voltageCompensation[i]=0;
       systemDefaultValue.impendanceCompensation[i]=0;
-      systemDefaultValue.baseVoltage[i]=0;
-      systemDefaultValue.baseImpendance[i]=0;
+      systemDefaultValue.baseVoltage[i]=measuredVoltage_1[i];
+      systemDefaultValue.baseImpendance[i]=measuredImpedance_1[i];
     }
     systemDefaultValue.real_Cal = -33410.0f;
     systemDefaultValue.image_Cal = 35511.0f;
@@ -152,6 +152,16 @@ void readnWriteEEProm()
     systemDefaultValue.DCVolt = 1100;
     systemDefaultValue.SinFreq = 1000;
     systemDefaultValue.RcalLoopCount = 20;
+    systemDefaultValue.ImpedanceFactor = 1;
+    systemDefaultValue.VoltageFactor = 50;
+    systemDefaultValue.TemperatureFactor = 10;
+    systemDefaultValue.ImpedanceMeasurePeriod = 60;  //1시간 
+    systemDefaultValue.year = 2025;
+    systemDefaultValue.month = 10;
+    systemDefaultValue.day = 2;
+    systemDefaultValue.hour = 0;
+    systemDefaultValue.minute = 0;
+    systemDefaultValue.second = 0;
 
     EEPROM.writeByte(0, 0x55);
     EEPROM.writeBytes(1, (const byte *)&systemDefaultValue, sizeof(nvsSystemSet));
@@ -187,25 +197,25 @@ void setModbusAgent(){
 };
 
 
-int measuredImpedance_1[20]={
+const int measuredImpedance_1[20]={
     267,265,292,255,271,
     274,383,307,277,272,
     262,267,294,278,270,
     285,259,289,262,254
   };
-int measuredImpedance_2[20]={
-    334,337,349,340,345,
-    334,331,350,337,339,
-    334,332,349,337,328,
-    343,341,358,330,334
-  };
-int measuredVoltage_1[20]={
+const int measuredVoltage_1[20]={
     1351,1321,1317,1311,1314,
     1320,1322,1320,1321,1320,
     1325,1339,1338,1338,1344,
     1353,1343,1359,1343,1352
   };
-int measuredVoltage_2[20]={
+const int measuredImpedance_2[20]={
+    334,337,349,340,345,
+    334,331,350,337,339,
+    334,332,349,337,328,
+    343,341,358,330,334
+  };
+const int measuredVoltage_2[20]={
     1339,1340,1340,1339,1338,
     1335,1335,1336,1336,1335,
     1334,1334,1333,1334,1334,
@@ -282,6 +292,22 @@ void setup()
 
   String strResetReason = "System booting reason is  ";
   strResetReason += bootingReasonCheck();
+
+  struct timeval tmv;
+  struct tm *timeinfo = gmtime(&tmv.tv_sec);
+  timeinfo->tm_hour = systemDefaultValue.hour;
+  timeinfo->tm_min = systemDefaultValue.minute;
+  timeinfo->tm_sec = systemDefaultValue.second;
+  timeinfo->tm_mday = systemDefaultValue.day;
+  timeinfo->tm_mon = systemDefaultValue.month-1;
+  timeinfo->tm_year = systemDefaultValue.year-1900;
+  tmv.tv_sec = mktime(timeinfo);
+  COMPILE_
+  settimeofday(&tmv, NULL);
+  gettimeofday(&tmv, NULL);
+  timeinfo = gmtime(&tmv.tv_sec);
+  Serial.printf("\nTime set to %d-%d-%d %d:%d:%d\n", timeinfo->tm_year+1900, timeinfo->tm_mon+1, timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+
   Serial.println(strResetReason);
   memset(cellvalue,0,sizeof(cellvalue));
   Serial.println("ModbusAgent set....");
@@ -337,6 +363,17 @@ void setup()
   xTaskCreate(AD5940_Main, "AD5940_Main", 5000, NULL, 1, h_pxAD5940Task);
   simpleCli.outputStream = &Serial;
   memset(cellvalue,0,sizeof(cellvalue));
+  for(int i=0;i<systemDefaultValue.installed_cells;i++){
+    if(systemDefaultValue.modbusId == 1){
+    cellvalue[i].voltage = measuredVoltage_1[i]/1000.0f;
+    cellvalue[i].impendance = measuredImpedance_1[i]/100.0f;
+    }
+    else
+    {
+      cellvalue[i].voltage = measuredVoltage_2[i]/1000.0f;
+      cellvalue[i].impendance = measuredImpedance_2[i]/100.0f;
+    }
+  }
 };
 float readTemperature(int PORTNO){
   int rValue = 0;
@@ -386,7 +423,7 @@ void loop(void)
 {
   bool bRet;
   void *parameters;
-  esp_log_level_set("*",ESP_LOG_INFO);
+  esp_log_level_set("*",(esp_log_level_t)systemDefaultValue.logLevel);
   //parameters = simpleCli.outputStream;
   parameters = &Serial;
   now = millis(); 
@@ -402,7 +439,7 @@ void loop(void)
   if ((now - previous_3Secondmills > Interval_3Second))
   {
     previous_3Secondmills= now;
-    getMaxTemperature();
+    maxTemperature = getMaxTemperature();
     Serial.printf("\nTemperature : %f",maxTemperature);
   }
   // if ((now - previous_5Secondmills > Interval_5Second) && (elaspTime % 60 ==0))

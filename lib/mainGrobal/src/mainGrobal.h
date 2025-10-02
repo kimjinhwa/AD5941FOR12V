@@ -62,6 +62,16 @@ typedef struct
     uint16_t DCVolt;
     uint16_t SinFreq;
     uint16_t RcalLoopCount;
+    uint8_t ImpedanceFactor;
+    uint8_t VoltageFactor;
+    uint8_t TemperatureFactor;
+    uint16_t ImpedanceMeasurePeriod;
+    uint16_t year;
+    uint16_t month;
+    uint16_t day;
+    uint16_t hour;
+    uint16_t minute;
+    uint16_t second;
 } nvsSystemSet;
 extern nvsSystemSet systemDefaultValue;
 
@@ -92,4 +102,8 @@ typedef struct {
   int16_t temperature[20];// 2byte
 }cell_logData_t; // Total 18bte
 
+extern const int measuredImpedance_1[20];
+extern const int measuredVoltage_1[20];
+extern const int measuredImpedance_2[20];
+extern const int measuredVoltage_2[20];
 #endif

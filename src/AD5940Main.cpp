@@ -37,18 +37,27 @@ char TAG[] = "AD5940";
 
 extern _cell_value cellvalue[MAX_INSTALLED_CELLS];
 /* It's your choice here how to do with the data. Here is just an example to print them to UART */
-extern int measuredImpedance_1[MAX_INSTALLED_CELLS];
-extern int measuredImpedance_2[MAX_INSTALLED_CELLS];
-extern int measuredVoltage_1[MAX_INSTALLED_CELLS];
-extern int measuredVoltage_2[MAX_INSTALLED_CELLS];
+extern const int measuredImpedance_1[MAX_INSTALLED_CELLS];
+extern const int measuredImpedance_2[MAX_INSTALLED_CELLS];
+extern const int measuredVoltage_1[MAX_INSTALLED_CELLS];
+extern const int measuredVoltage_2[MAX_INSTALLED_CELLS];
 extern SimpleCLI simpleCli;
 fImpCar_Type pImpResult[MAX_LOOP_COUNT +1];
 
 SelectCell selectCell;
 BatDeviceInterface batDevice;
 static uint8_t selecectedCellNumber =0;
+static bool MeasureImpendanceNow=0;
 void AD5940_ShutDown();
 bool AD5940_Calibration_ForLoop();
+void setMeasureImpendanceNow (bool value)
+{
+  MeasureImpendanceNow = value;
+}
+bool getMeasureImpendanceNow ()
+{
+  return MeasureImpendanceNow;
+}
 void addResult(uint32_t *pData, uint32_t DataCount)
 {
   fImpCar_Type Average;
@@ -103,7 +112,7 @@ void addResult(uint32_t *pData, uint32_t DataCount)
         // 전압변화량은 0~10까지 움직이므로 그 값을 그대로 합산한다.
         // 13.5V->12.5로 변했다면 0.74가 합산되어 진다.
         cellvalue[selecectedCellNumber].impendance += vGap;
-      }
+    }
       else
       {
         cellvalue[selecectedCellNumber].impendance =
@@ -342,6 +351,7 @@ bool AD5940_Calibration_ForLoop(){
   return retValue;
 }
 uint8_t isAD5940ReInit = 0;
+float getMaxTemperature();
 void AD5940_Main_Loop()
 {
   uint32_t temp;
@@ -361,15 +371,7 @@ void AD5940_Main_Loop()
   
   for (uint16_t loopCount = 0; loopCount < systemDefaultValue.RcalLoopCount; loopCount++)
   {
-    /* Check if interrupt flag which will be set when interrupt occurred. */
-    float batVoltage = 0.0;
-    batVoltage = batDevice.readBatAdcValue(selecectedCellNumber, 600);
-    printf("\nloopCount:%d, cell:%d, Bat Voltage : %f", loopCount, selecectedCellNumber, batVoltage);
-    if (batVoltage > 18.0)
-      batVoltage = 0.0;
-    cellvalue[selecectedCellNumber - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
     esp_task_wdt_reset();
-    
     if (AD5940_GetMCUIntFlag())
     {
       AD5940_AGPIOToggle(AGPIO_Pin1);
@@ -402,7 +404,21 @@ void AD5940_Main_Loop()
         BATShowResult("AVG:",(uint32_t*)&pImpAvg, temp); /* Print measurement results over UART */
          
         // 평균값으로 임피던스 저장
-        cellvalue[selecectedCellNumber - 1].impendance = AD5940_ComplexMag(&pImpAvg);
+        // 내부저항 = 기준내부저항 A + 실측값임피던수반영분B+ 전압변화량 반영부C + 온도 변화량 반영분D
+        float a,b,c,d;
+        a = systemDefaultValue.baseImpendance[selecectedCellNumber - 1]/100.0;
+        b = AD5940_ComplexMag(&pImpAvg)*systemDefaultValue.ImpedanceFactor/100.0;
+        c = (systemDefaultValue.baseVoltage[selecectedCellNumber - 1] - cellvalue[selecectedCellNumber - 1].voltage);
+        if(c<0) c =c*c; // C가 음수일경우는 값의 제곱을 해주자. 이것은 전압이 높아졌을경우 내부저항이 크게 증가했음을 말하기 때문이다.
+        c = c*a;
+        c /= systemDefaultValue.baseVoltage[selecectedCellNumber - 1];
+        c *=  systemDefaultValue.VoltageFactor/100.0;
+        d = a*(cellvalue[selecectedCellNumber - 1].temperature - getMaxTemperature());
+        d /= cellvalue[selecectedCellNumber - 1].temperature;
+        d *=  systemDefaultValue.TemperatureFactor/100.0;
+        cellvalue[selecectedCellNumber - 1].impendance = a + b + c + d;
+        printf("----------------->a:%f,b:%f,c:%f,d:%f\n",a,b,c,d);
+        //cellvalue[selecectedCellNumber - 1].impendance = AD5940_ComplexMag(&pImpAvg);
       }
       if(AD5940_ComplexMag(pImp) > 0.0001f){
         delay(100);
@@ -419,6 +435,11 @@ void AD5940_Main_Loop()
         printf("AD5940_Main_reinit\n");
       }
       AD5940_SEQMmrTrig(SEQID_0); /* 정상 동작 확인 완료 Trigger next measurement ussing MMR write*/
+    }
+    else
+    {
+      printf("------------------------------->Loop:%d cell:%d\n",loopCount,selecectedCellNumber);
+      delay(1000);
     }
   }
 };
@@ -441,25 +462,60 @@ void AD5940_Main(void *parameters)
   }
   bool isCalibrated = false;
   selecectedCellNumber = 1;
+  static uint32_t currentTime = millis();
+  static uint32_t previousTime = millis();
   for (;; selecectedCellNumber++)
   {
+    AppBATCfg.RcalVolt.Real = systemDefaultValue.real_Cal;
+    AppBATCfg.RcalVolt.Image = systemDefaultValue.image_Cal;
+    currentTime = millis();
+    //if (currentTime - previousTime > 1000*60*60*MEASURE_TIME) //초*분*시간  1시간마다 실행한다
+    if (currentTime - previousTime > 1000*60*systemDefaultValue.ImpedanceMeasurePeriod && MeasureImpendanceNow == 0) //초*분*시간  1분마다 실행한다
+    {
+      previousTime = currentTime;
+      MeasureImpendanceNow=1;
+      printf("currentTime : %d\n", currentTime);
+      selecectedCellNumber = 1;
+      selectCell.select(selecectedCellNumber);
+    }
+    if (MeasureImpendanceNow == 1 && systemDefaultValue.runMode != 0)
+    {
+      ESP_LOGI(TAG, "\nOnMeasureImpendanceNow : currentTime : %d %d\n", currentTime, getMeasureImpendanceNow());
+      if (selecectedCellNumber >= systemDefaultValue.installed_cells)
+        MeasureImpendanceNow=0;  //끝까지 스캔하면 이제 중지 한다>
+      AD5940_Main_init();
+      AD5940_WakeUp(100);
+      AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
+      AppBATCfg.RcalVolt.Real = systemDefaultValue.real_Cal;
+      AppBATCfg.RcalVolt.Image = systemDefaultValue.image_Cal;
+      AD5940_Main_Loop();
+      AD5940_EnterSleepS();  /* Manually put AFE back to hibernate mode. */
+      AD5940_ShutDown();
+      delay(1000);
+    }
     if (systemDefaultValue.runMode != 0)
     {
       if (selecectedCellNumber > systemDefaultValue.installed_cells)
         selecectedCellNumber = 1;
       selectCell.select(selecectedCellNumber);
-      // selecectedCellNumber = selecectedCellNumber == 1 ? 2 : 1;
-      AppBATCfg.RcalVolt.Real = systemDefaultValue.real_Cal;
-      AppBATCfg.RcalVolt.Image = systemDefaultValue.image_Cal;
       printf("RcalVolt Real : %.3f, Image : %.3f, Mag : %.3f\n", AppBATCfg.RcalVolt.Real, AppBATCfg.RcalVolt.Image,AD5940_ComplexMag(&AppBATCfg.RcalVolt));
       outputStream->printf("RcalVolt Real : %.3f, Image : %.3f, Mag : %.3f\n", AppBATCfg.RcalVolt.Real, AppBATCfg.RcalVolt.Image,AD5940_ComplexMag(&AppBATCfg.RcalVolt));  
-      // if (!isCalibrated)
-      // {
-      //   AppBATCfg.RcalVolt.Real = systemDefaultValue.real_Cal;
-      //   AppBATCfg.RcalVolt.Image = systemDefaultValue.image_Cal;
-      //   isCalibrated = AD5940_Calibration_ForLoop();
-      // }
-      AD5940_Main_Loop();
+      float batVoltage = 0.0;
+      AD5940_EnterSleepS();  /* Manually put AFE back to hibernate mode. */
+      AD5940_ShutDown();
+      delay(1000);
+      batVoltage = batDevice.readBatAdcValue(selecectedCellNumber, 600);
+      cellvalue[selecectedCellNumber - 1].voltage = batVoltage; // 구조체에 값을 적어 넣는다
+      printf("\n cell:%d, Bat Voltage : %f", selecectedCellNumber, batVoltage);
+      // AD5940_Main_init();
+      // AD5940_WakeUp(100);
+      // AppBATInit(AppBuff, APPBUFF_SIZE); /* Initialize BAT application. Provide a buffer, which is used to store sequencer commands */
+      // AppBATCfg.RcalVolt.Real = systemDefaultValue.real_Cal;
+      // AppBATCfg.RcalVolt.Image = systemDefaultValue.image_Cal;
+      // AD5940_Main_Loop();
+      // AD5940_EnterSleepS();  /* Manually put AFE back to hibernate mode. */
+      // AD5940_ShutDown();
+      // delay(1000);
     }
     else
     {

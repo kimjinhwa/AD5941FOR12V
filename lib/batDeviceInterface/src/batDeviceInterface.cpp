@@ -84,16 +84,17 @@ float BatDeviceInterface::readBatAdcValue(float filter)
       batVoltageAdcValue += singleVoltage;
       vTaskDelay(1);
     }
-    printf("singleVoltage---->1 : %d\n",singleVoltage);
+    // printf("rValue---->0 : %d\n",rValue);
+    // printf("singleVoltage---->1 : %d\n",singleVoltage);
     batVoltageAdcValue = batVoltageAdcValue/filter ;
-    printf("batVoltageAdcValue---->2 : %f\n",batVoltageAdcValue);
+    //printf("batVoltageAdcValue---->2 : %f\n",batVoltageAdcValue);
   }
-  batVoltageAdcValue  += 287.0;  // 0.685V offset from SSR
-  batVoltageAdcValue += systemDefaultValue.voltageCompensation[_cellNumbver-1];
+  batVoltageAdcValue  -= 20.0;  // 0.685V offset from SSR
   uint32_t voltage = batVoltageAdcValue;
   
   batVoltageAdcValue = voltage*5.0;  // OPAMP 배율
-  printf("batVoltageAdcValue---->3 : %f\n",batVoltageAdcValue );
+  batVoltageAdcValue += systemDefaultValue.voltageCompensation[_cellNumbver-1]/1000.0;
+  //printf("batVoltageAdcValue---->3 : %f\n",batVoltageAdcValue );
   batVoltageAdcValue  /= 1000.0;  // mv -> v
   //printf("singleVoltage---->3 : %f\n",batVoltageAdcValue );
   //printf("singleVoltage---->4 : %f\n",batVoltageAdcValue );

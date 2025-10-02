@@ -362,15 +362,15 @@ void bleServerTask(void *parameter /* modbusId */) {
         
         // 2초마다 상태 출력
         if (millis() - last2SecondStatus > EVERY_2SECOND) {
-            Serial.println("BLE Server Status - Connected: " + String(isConnected));
+            //Serial.println("BLE Server Status - Connected: " + String(isConnected));
             last2SecondStatus = millis();
         }
         
         // 10초마다 상태 출력
         if (millis() - last10SecondStatus > EVERY_10SECOND) {
-            Serial.println("BLE Server Status - Connected: " + String(isConnected));
+            Serial.println("\nBLE Server Status - Connected: " + String(isConnected));
             if (lastDisconnect > 0) {
-                Serial.println("Time since disconnect: " + String((millis() - lastDisconnect)/1000) + "s");
+                Serial.println("\nTime since disconnect: " + String((millis() - lastDisconnect)/1000) + "s");
             }
             last10SecondStatus = millis();
         }

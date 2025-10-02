@@ -1,4 +1,7 @@
-#define VERSION "3.1.3"  // baseVoltage와 baseImpendance를 추가하였다. ReadMe참조 
+#define VERSION "3.1.5" // 모드버스의 커맨드를 추가하였다. 
+//#define VERSION "3.1.5" // 모드버스를 이용하여 즉시 임피던스 측정모드로 진입하게 한다 
+//#define VERSION "3.1.4" // 임피던스는 하루에 한번만 읽기를 수행한다.
+//#define VERSION "3.1.3"  // baseVoltage와 baseImpendance를 추가하였다. ReadMe참조 
 //#define VERSION "3.1.2"  // 전압 옵세을 저절함. 
 //#define VERSION "3.1.2"  // 소소한 변경 
 //#define VERSION "3.1.2"  // 셀선택변경시 전체에 반영되어 디버깅이 쉽도록 변경함 
