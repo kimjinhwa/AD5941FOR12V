@@ -385,6 +385,22 @@ void bleServerTask(void *parameter /* modbusId */) {
         if (isConnected) {
             if (millis() - lastSend > EVERY_5SECOND) { // 5초마다 전송
                 // 1. 전압 데이터 JSON 전송
+                
+                jsonDocument.clear();
+                struct timeval tmv;
+                gettimeofday(&tmv, NULL);
+                struct tm *timeinfo = gmtime(&tmv.tv_sec);
+                JsonArray timeArray = jsonDocument["Time"].to<JsonArray>();
+                timeArray.add(timeinfo->tm_year + 1900);
+                timeArray.add(timeinfo->tm_mon + 1);
+                timeArray.add(timeinfo->tm_mday);
+                timeArray.add(timeinfo->tm_hour);
+                timeArray.add(timeinfo->tm_min);
+                timeArray.add(timeinfo->tm_sec);
+                String timeData = jsonDocument.as<String>() + "\n";
+                bleDevice.sendBLEData(timeData);
+                delay(50); // 전송 간격
+
                 jsonDocument.clear();
                 JsonArray voltageArray = jsonDocument["V"].to<JsonArray>();
                 for (int i = 0; i < 20; i++) {

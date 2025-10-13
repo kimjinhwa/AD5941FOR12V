@@ -302,7 +302,7 @@ void setup()
   timeinfo->tm_mon = systemDefaultValue.month-1;
   timeinfo->tm_year = systemDefaultValue.year-1900;
   tmv.tv_sec = mktime(timeinfo);
-  COMPILE_
+  
   settimeofday(&tmv, NULL);
   gettimeofday(&tmv, NULL);
   timeinfo = gmtime(&tmv.tv_sec);
