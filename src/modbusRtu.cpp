@@ -495,7 +495,7 @@ ModbusMessage FC06(ModbusMessage request)
         for(int i=0;i<20;i++){
           systemDefaultValue.baseVoltage[i] = (uint16_t)(cellvalue[i].voltage *100);
         }
-        saveToBaseVoltage = 2;
+        saveToBaseVoltage = 1;
       }
       break;
     default:

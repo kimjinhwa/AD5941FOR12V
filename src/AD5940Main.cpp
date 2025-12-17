@@ -140,7 +140,7 @@ int32_t BATShowResultBLE(uint32_t *pData, uint32_t DataCount)
   return 0;
 
 }
-int32_t BATShowResult(char *tag, uint32_t *pData, uint32_t DataCount)
+int32_t BATShowResult(const char *tag, uint32_t *pData, uint32_t DataCount)
 {
   fImpCar_Type *pImp = (fImpCar_Type*)pData;
 	float freq;

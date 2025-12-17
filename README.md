@@ -1,4 +1,16 @@
-## 12V BMS For 4 Cell
+## BMS For 12V Cell
+* 군남댐용으로 개발 되었으며 일반적인 12V BMS의 내부저항을 측정하기 위하여 사용한다. 
+* 기능
+  - 임피던스 측정
+  - 전압측정
+  - 온도측정(2point)
+## 기본설정 
+* runmode 
+  - 1 : 임피던스및 기능을 수행한다.
+  - 0 : 측정기능을 정지한다. ( Calibration을 할 때 사용한다.)
+* install cell를 설정한다.  
+* saveBaseVoltage 
+  - 현재의 전압값을 기본값에 저장한다.
 #define VERSIOn "3.1.6" 임피던스 계산공식을 위하여 시스템메모리변수를 추가한다.
 ```C
   sendValue[120]=systemDefaultValue.real_Cal;
@@ -9,8 +21,12 @@
 ```
 #VERSION "3.1.5" // 임피던스는 하루에 한번만 읽기를 수행한다.
 - 다른시간에는 전압읽기를 하며 이때 ad5941는 RUN을 중지한다. 이것은 부하가 걸릴때 SSR의 전압드롭을 방지 하기 위함이다.
+- 시간의 설정은 ImpedanceMeasurePeriod(분)을 설정하며 모드버스로 설정한다.
 - 처음 시스템이 시작될때는 메모리에 있는 전압과 임피턴스를 리턴한다.
 - 모드버스를 이용하여 즉시 임피던스 측정모드로 진입하게 한다.
+```C
+  sendValue[139]=ImpedanceMeasurePeriod(분)
+```
 
 
 #VERSION "3.1.3" //모드버스 아이디를 변경하면 기본 하드코딩된 값으로 baseVoltage, baseImpendance
@@ -66,3 +82,4 @@ C:\Users\ServerManager\OneDrive\바탕 화면\1.PARACTICE\2.범용12V_BMS_재설
 ### Power Consumtion
 - 500mA
 
+![modbusSetting, Basic setting](img/modpollCaptureMain1.jpg)
