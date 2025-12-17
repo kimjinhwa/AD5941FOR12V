@@ -1,4 +1,5 @@
-#define VERSION "3.1.6" // 디스플레이에 시간을 전송한다. 
+#define VERSION "3.1.7" // miner change 
+//#define VERSION "3.1.6" // 디스플레이에 시간을 전송한다. 
 //#define VERSION "3.1.5" // 모드버스의 커맨드를 추가하였다. 
 //#define VERSION "3.1.5" // 모드버스를 이용하여 즉시 임피던스 측정모드로 진입하게 한다 
 //#define VERSION "3.1.4" // 임피던스는 하루에 한번만 읽기를 수행한다.
