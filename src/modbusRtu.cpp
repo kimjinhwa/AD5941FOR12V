@@ -36,16 +36,16 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   struct tm *timeinfo = gmtime(&tmv.tv_sec);
   //String strLog = getTimeString(tmv.tv_sec);
   if(fCode== 4){
-    for(int i=0;i<20;i++){
+    for(int i=0;i<MAX_INSTALLED_CELLS;i++){
       sendValue[i] = (uint16_t)(cellvalue[i].voltage *100);
       sendValue[i+20] = (uint16_t)(systemDefaultValue.baseVoltage[i]);
     }
     int16_t temperature; 
-    for(int i=40;i<80;i++){
+    for(int i=40;i<40+MAX_INSTALLED_CELLS;i++){
       sendValue[i] = cellvalue[i-40].temperature ;
       //*(sendValue+i) = (uint16_t)();
     }
-    for(int i=80;i<100;i++){
+    for(int i=80;i<80+MAX_INSTALLED_CELLS;i++){
       sendValue[i] = (uint16_t)(cellvalue[i-80].impendance*100);
       sendValue[i+20] = (uint16_t)(systemDefaultValue.baseImpendance[i-80]);
     }
@@ -54,16 +54,16 @@ void setSendbuffer(uint8_t fCode,uint16_t *sendValue){
   if(fCode== 3)
   {
     EEPROM.readBytes(1, (byte *)&systemDefaultValue, sizeof(nvsSystemSet));
-    for(int i=0;i<20;i++){
+    for(int i=0;i<MAX_INSTALLED_CELLS;i++){
       sendValue[i] = (uint16_t)(systemDefaultValue.voltageCompensation[i]);
       sendValue[i+20] = (uint16_t)(systemDefaultValue.baseVoltage[i]);
     }
     int16_t temperature; 
-    for(int i=40;i<80;i++){
+    for(int i=40;i<40+MAX_INSTALLED_CELLS;i++){
       sendValue[i] = (uint16_t)(maxTemperature);
       //*(sendValue+i) = (uint16_t)();
     }
-    for(int i=80;i<100;i++){
+    for(int i=80;i<80+MAX_INSTALLED_CELLS;i++){
       sendValue[i] = (uint16_t)(systemDefaultValue.impendanceCompensation[i-80]);
       sendValue[i+20] = (uint16_t)(systemDefaultValue.baseImpendance[i-80]);
     }
